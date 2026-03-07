@@ -98,7 +98,3 @@ This ensures changes apply to every visible element in the UI.
 ## 🤝 Contributing
 
 PRs welcome! If you've created a great color scheme, open a PR to add it as an official preset.
-
-## 📄 License
-
-MIT
