@@ -98,3 +98,20 @@ This ensures changes apply to every visible element in the UI.
 ## 🤝 Contributing
 
 PRs welcome! If you've created a great color scheme, open a PR to add it as an official preset.
+
+
+![Version](https://img.shields.io/github/v/release/stefaceriani/chromashift?logo=github)
+![Downloads](https://img.shields.io/github/downloads/stefaceriani/chromashift/total?logo=github)
+![Stars](https://img.shields.io/github/stars/stefaceriani/chromashift?style=social)
+![Forks](https://img.shields.io/github/forks/stefaceriani/chromashift?style=social)
+![License](https://img.shields.io/github/license/stefaceriani/chromashift)
+![Last Commit](https://img.shields.io/github/last-commit/stefaceriani/chromashift)
+![Repo Size](https://img.shields.io/github/repo-size/stefaceriani/chromashift)
+![Issues](https://img.shields.io/github/issues/stefaceriani/chromashift)
+![Pull Requests](https://img.shields.io/github/issues-pr/stefaceriani/chromashift)
+![Spotify](https://img.shields.io/badge/Spotify-Compatible-1DB954?logo=spotify&logoColor=white)
+![Spicetify](https://img.shields.io/badge/Spicetify-Extension-FF5C00?logo=spotify&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)
+[![Report Bug](https://img.shields.io/badge/Report-Bug-red?logo=github)](https://github.com/stefaceriani/chromashift/issues)
+[![Request Feature](https://img.shields.io/badge/Request-Feature-blue?logo=github)](https://github.com/stefaceriani/chromashift/issues)
+[![Star Repo](https://img.shields.io/badge/Star-this%20repo-yellow?logo=github)](https://github.com/stefaceriani/chromashift)
