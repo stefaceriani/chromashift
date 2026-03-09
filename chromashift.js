@@ -1262,7 +1262,7 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
   // UPDATE CHECKER
   // ═══════════════════════════════════════════════════════════
 
-  const CURRENT_VERSION  = "1.0.0";
+  const CURRENT_VERSION  = "2.0.0";
   const REMOTE_RAW       = "https://raw.githubusercontent.com/stefaceriani/chromashift/main/chromashift.js";
   const RELEASES_URL     = "https://github.com/stefaceriani/chromashift/releases";
   const KEY_SEEN_VER     = "cs4_last_seen_version";
