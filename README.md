@@ -11,7 +11,7 @@ ChromaShift is a [Spicetify](https://spicetify.app/) extension that lets you cha
 | Feature | Description |
 |---|---|
 | **7 Presets** | Spotify Default, Midnight Blue, Rose Gold, Forest, Cyberpunk, Monochrome, Light Mode |
-| **13 color variables** | Text, subtext, backgrounds, highlights, accent, buttons, sidebar, player, cards, notifications |
+| **13+ color variables** | Text, subtext, backgrounds, highlights, accent, buttons, sidebar, player, cards, notifications |
 | **Live preview** | Colors update instantly as you move the picker |
 | **Full override** | Overrides both legacy `--spice-*` and modern `--encore-*` Spotify tokens |
 | **Persistent** | Colors are saved via `Spicetify.LocalStorage` and applied on every launch |
@@ -45,31 +45,33 @@ spicetify apply
 ## 🎨 Customizable colors
 
 ### Text
-- **Main text** — track titles, primary labels
-- **Subtext** — artist names, metadata, captions
+- **Main text**
+- **Subtext**
 
 ### Backgrounds
-- **Main background** — central content area
-- **Elevated background** — panels and raised surfaces
-- **Hover / selection** — row hover in lists
-- **Elevated hover** — hover on raised surfaces
+- **Main background**
+- **Elevated background**
+- **Hover / selection**
+- **Elevated hover**
 
 ### Accent & Buttons
-- **Accent color** — progress bar, active links, indicators
-- **Primary button** — play, shuffle, follow
-- **Disabled button** — unavailable actions
+- **Accent color**
+- **Primary button**
+- **Disabled button**
 
 ### Structure
-- **Sidebar** — left navigation bar
-- **Player bar** — bottom playback bar
-- **Cards** — album, playlist, artist cards
-- **Notifications** — toasts and badges
+- **Sidebar**
+- **Player bar**
+- **Cards**
+- **Notifications**
+
+### & more
 
 ---
 
 ## 🔧 How to use
 
-1. Scroll to the **ChromaShift** section at the bottom
+1. Scroll to the **ChromaShift** section at settings page
 2. Pick a **preset** or click any color circle to open the picker
 3. Colors update **live** as you drag the picker
 4. Click **Save & Apply** to persist your changes
@@ -97,9 +99,13 @@ This ensures changes apply to every visible element in the UI.
 
 ## 🤝 Contributing
 
-PRs welcome! If you've created a great color scheme, open a PR to add it as an official preset.
+PRs welcome! If you've created a great color scheme, open a PR to add it as an official preset and if you want your name will be added to the preset list.
 
+## 🐛 Bug or Request?
 
+Open a issue
+
+---
 [![Version](https://img.shields.io/github/v/release/stefaceriani/chromashift?logo=github)](https://github.com/stefaceriani/chromashift/releases)
 [![Forks](https://img.shields.io/github/forks/stefaceriani/chromashift?style=social)](https://github.com/stefaceriani/chromashift/fork)
 [![Last Commit](https://img.shields.io/github/last-commit/stefaceriani/chromashift)](https://github.com/stefaceriani/chromashift/commit/)
@@ -107,6 +113,6 @@ PRs welcome! If you've created a great color scheme, open a PR to add it as an o
 [![Pull Requests](https://img.shields.io/github/issues-pr/stefaceriani/chromashift)](https://github.com/stefaceriani/chromashift/pulls)
 [![Spotify](https://img.shields.io/badge/Spotify-Compatible-1DB954?logo=spotify&logoColor=white)](https://open.spotify.com)
 [![Spicetify](https://img.shields.io/badge/Spicetify-Extension-FF5C00?logo=spotify&logoColor=white)](https://spicetify.app)
-[![Platform](https://img.shields.io/badge/platform-Spicetify-green)](https://spicetify.app/docs/)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)](https://spicetify.app/docs/)
 [![Report Bug](https://img.shields.io/badge/Report-Bug-red?logo=github)](https://github.com/stefaceriani/chromashift/issues)
 [![Request Feature](https://img.shields.io/badge/Request-Feature-blue?logo=github)](https://github.com/stefaceriani/chromashift/issues)
