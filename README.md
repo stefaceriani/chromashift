@@ -18,6 +18,7 @@ ChromaShift is a [Spicetify](https://spicetify.app/) extension that lets you cha
 | **Full override** | Overrides both legacy `--spice-*` and modern `--encore-*` Spotify tokens |
 | **Persistent** | Colors are saved via `Spicetify.LocalStorage` and applied on every launch |
 | **Export / Import** | Share your theme as a `.json` file |
+| **AutoUpdater CHecker** | Extension auto check new updates |
 
 ---
 
