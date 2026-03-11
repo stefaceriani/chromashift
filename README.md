@@ -4,6 +4,8 @@
 
 ChromaShift is a [Spicetify](https://spicetify.app/) extension that lets you change Spotify's colors without touching any theme files. Everything is done through a clean interface injected right into **Settings**.
 
+<a href="preview.png"><img src="preview.png"></a>
+
 ---
 
 ## ✨ Features
