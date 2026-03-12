@@ -1620,13 +1620,13 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
   }
 
   // ═══════════════════════════════════════════════════════════
-  // UPDATE CHECKER
+  // AUTO-UPDATER
   // ═══════════════════════════════════════════════════════════
 
-  const CURRENT_VERSION  = "1.5.0";
-  const REMOTE_RAW       = "https://raw.githubusercontent.com/stefaceriani/chromashift/main/chromashift.js";
-  const RELEASES_URL     = "https://github.com/stefaceriani/chromashift/releases";
-  const KEY_SEEN_VER     = "cs4_last_seen_version";
+  const CURRENT_VERSION = "1.050";
+  const REMOTE_RAW      = "https://raw.githubusercontent.com/stefaceriani/chromashift/main/chromashift.js";
+  const KEY_PENDING_VER = "cs4_pending_update_version";
+  const KEY_PENDING_JS  = "cs4_pending_update_js";
 
   function parseSemver(v) {
     return (v || "").replace(/^v/, "").split(".").map(Number);
@@ -1641,54 +1641,107 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     return false;
   }
 
-  function showUpdateBadge(remoteVersion) {
-    if (document.getElementById("cs4-update-badge")) return;
+  // ── Apply a pending update that was downloaded in the previous session ──
+  function applyPendingUpdate() {
+    const pendingVer = Spicetify.LocalStorage.get(KEY_PENDING_VER);
+    const pendingJS  = Spicetify.LocalStorage.get(KEY_PENDING_JS);
+    if (!pendingVer || !pendingJS) return false;
+    if (!isNewer(pendingVer, CURRENT_VERSION)) {
+      // Already up to date or downgrade — discard
+      Spicetify.LocalStorage.remove(KEY_PENDING_VER);
+      Spicetify.LocalStorage.remove(KEY_PENDING_JS);
+      return false;
+    }
+    try {
+      // Write the new file over ourselves via Spicetify's extensions path
+      // Spicetify.Platform.BridgeAPI lets extensions write files on desktop
+      const bridge = Spicetify?.Platform?.BridgeAPI;
+      if (bridge?.request) {
+        bridge.request("write_extension_file", {
+          name: "chromashift.js",
+          content: pendingJS,
+        }).then(() => {
+          Spicetify.LocalStorage.remove(KEY_PENDING_VER);
+          Spicetify.LocalStorage.remove(KEY_PENDING_JS);
+          showUpdateToast(pendingVer, true);
+        }).catch(() => {});
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  // ── Download the new version and store it for next restart ──
+  async function downloadUpdate(remoteVersion, remoteJS) {
+    try {
+      Spicetify.LocalStorage.set(KEY_PENDING_VER, remoteVersion);
+      Spicetify.LocalStorage.set(KEY_PENDING_JS, remoteJS);
+      showUpdateToast(remoteVersion, false);
+    } catch (_) {}
+  }
+
+  // ── Toast notification for updates ──
+  function showUpdateToast(version, applied) {
+    // Remove any existing badge
+    document.getElementById("cs4-update-badge")?.remove();
+
     const acc    = _liveColors.csAccent || "#1db954";
     const accTxt = contrastColor(acc);
     const accGlo = acc + "66";
 
-    const btn = document.createElement("a");
-    btn.id   = "cs4-update-badge";
-    btn.href = RELEASES_URL;
-    btn.target = "_blank";
-    btn.title  = `ChromaShift ${remoteVersion} disponibile — clicca per aggiornare`;
-    btn.style.cssText = `
+    const badge = document.createElement("div");
+    badge.id = "cs4-update-badge";
+    badge.style.cssText = `
       position:fixed;bottom:88px;right:18px;z-index:9999998;
-      width:44px;height:44px;border-radius:50%;
-      background:${acc};
+      background:${acc};color:${accTxt};
+      border-radius:14px;padding:10px 16px;
       box-shadow:0 0 0 3px ${accGlo},0 4px 18px rgba(0,0,0,.55);
-      display:flex;align-items:center;justify-content:center;
-      cursor:pointer;text-decoration:none;
-      transition:transform .18s,box-shadow .18s;
-      animation:cs4-badge-in .3s cubic-bezier(.34,1.56,.64,1);
+      font-size:12px;font-weight:700;font-family:inherit;
+      display:flex;align-items:center;gap:8px;
+      cursor:${applied ? "default" : "default"};
+      animation:cs4-badge-in .35s cubic-bezier(.34,1.56,.64,1);
+      max-width:260px;
     `;
 
-    btn.innerHTML = `
+    const icon = applied
+      ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="${accTxt}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+      : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 16V8M12 8L8.5 11.5M12 8L15.5 11.5" stroke="${accTxt}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+    const msg = applied
+      ? `ChromaShift updated to v${version}!`
+      : `ChromaShift v${version} ready — will install on next restart`;
+
+    badge.innerHTML = `
       <style>
-        @keyframes cs4-badge-in{from{opacity:0;transform:scale(0)}to{opacity:1;transform:scale(1)}}
-        #cs4-update-badge:hover{transform:scale(1.12)!important;box-shadow:0 0 0 4px ${accGlo},0 8px 28px rgba(0,0,0,.7)!important}
+        @keyframes cs4-badge-in{from{opacity:0;transform:translateY(12px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+        #cs4-update-badge:hover{opacity:.92}
       </style>
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="12" cy="12" r="10" stroke="${accTxt}" stroke-width="2"/>
-        <path d="M12 16V8M12 8L8.5 11.5M12 8L15.5 11.5" stroke="${accTxt}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
+      ${icon}
+      <span>${msg}</span>
+      <span id="cs4-badge-close" style="margin-left:4px;opacity:.7;cursor:pointer;font-size:14px;line-height:1">✕</span>
     `;
 
-    document.body.appendChild(btn);
+    document.body.appendChild(badge);
+    document.getElementById("cs4-badge-close")?.addEventListener("click", () => badge.remove());
+
+    // Auto-hide after 8s
+    setTimeout(() => badge?.remove(), 8000);
   }
 
+  // ── Main check: fetch remote, compare, download if newer ──
   async function checkForUpdates() {
     try {
       const res = await fetch(REMOTE_RAW + "?t=" + Date.now());
       if (!res.ok) return;
-      const chunk = await res.text();
-      const match = chunk.match(/\/\/\s*VERSION:\s*([\d.]+)/);
+      const remoteJS = await res.text();
+      const match = remoteJS.match(/\/\/\s*VERSION:\s*([\d.]+)/);
       if (!match) return;
       const remoteVersion = match[1].trim();
       if (!isNewer(remoteVersion, CURRENT_VERSION)) return;
-      const seen = Spicetify.LocalStorage.get(KEY_SEEN_VER);
-      if (seen === remoteVersion) return;
-      showUpdateBadge("v" + remoteVersion);
+      // Already downloaded this version?
+      const pending = Spicetify.LocalStorage.get(KEY_PENDING_VER);
+      if (pending === remoteVersion) return;
+      await downloadUpdate(remoteVersion, remoteJS);
     } catch (_) {}
   }
 
@@ -1698,7 +1751,10 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 
   applyColors(loadColors());
   setTimeout(() => { tryMount(); runAllFixes(); }, 800);
-  setTimeout(checkForUpdates, 3000);
+  // On every startup: apply any update downloaded in the previous session
+  setTimeout(applyPendingUpdate, 1500);
+  // Then check if a newer version is available and download it silently
+  setTimeout(checkForUpdates, 4000);
   window.addEventListener("load", () => setTimeout(runAllFixes, 500));
 
 })();
