@@ -4,8 +4,6 @@
 
 ChromaShift is a [Spicetify](https://spicetify.app/) extension that lets you change Spotify's colors without touching any theme files. Everything is done through a clean interface injected right into **Settings**.
 
-<a href="preview.png"><img src="preview.png" height="600"></a>
-
 ---
 
 ## ✨ Features
@@ -111,19 +109,22 @@ Open a issue
 # 📷 Screenshot
 <table>
   <tr>
-    <td><img src="Preset - 1.png" width="600"/></td>
-    <td><img src="Preset - 2.png" width="600"/></td>
-    <td><img src="Preset - 3.png" width="600"/></td>
-    <td><img src="Preset - 4.png" width="600"/></td>
+    <td><img src="img/Preset - 1.png" width="600"/></td>
+    <td><img src="img/Preset - 2.png" width="600"/></td>
+  </tr>
+  <tr>
+    <td><img src="img/Preset - 3.png" width="600"/></td>
+    <td><img src="img/Preset - 4.png" width="600"/></td>
   </tr>
 </table>
 
 <table>
   <tr>
-    <td><img src="Preset - 5.png" width="600"/></td>
-    <td><img src="Preset - 6.png" width="600"/></td>
-    <td><img src="Preset - 7.png" width="600"/></td>
-    <td><img src="Custom.png" width="600"/></td>
+    <td><img src="img/Preset - 5.png" width="600"/></td>
+    <td><img src="img/Preset - 6.png" width="600"/></td>
+  </tr>
+    <tr>
+    <td><img src="img/Custom.png" width="600"/></td>
   </tr>
 </table>
 
