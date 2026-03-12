@@ -10,14 +10,5 @@
         { "name": "Stefano Ceriani", "url": "https://github.com/stefaceriani" }
     ],
     "tags": ["colors", "theme", "customization", "ui", "settings", "palette"]
-  },
-  {
-    "name": "ChromaShift",
-    "description": "Customize Spotify colors directly from the Settings page. Choose from presets or build your own palette: text, backgrounds, accents, buttons, sidebar and more — all in real time.",
-    "preview": "https://raw.githubusercontent.com/stefaceriani/chromashift/main/preview.png",
-    "main": "chromashift.js",
-    "readme": "https://raw.githubusercontent.com/stefaceriani/chromashift/main/README.md",
-    "branch": "main"
   }
-  
 ]
