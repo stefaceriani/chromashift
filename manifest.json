@@ -6,7 +6,7 @@
   "main": "chromashift.js",
   "readme": "README.md",
     "authors": [
-        { "name": "Stefano Ceriani", "url": "https://github.com/stefaceriani" }
+        { "name": "stefaceriani", "url": "https://github.com/stefaceriani" }
     ],
     "tags": ["colors", "spotify", "customization", "ui", "settings", "palette", "spicetify", "spicetify-extensions"]
   }
