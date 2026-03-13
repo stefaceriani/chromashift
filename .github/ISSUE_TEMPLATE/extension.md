@@ -1,6 +1,6 @@
 ---
 name: ⚙️ Extension/Version Issue
-about: explain code / version issue
+about: ⚠️ explain code / version issue
 title: "🧩 [Extension/Version]"
 labels: extension
 ---
