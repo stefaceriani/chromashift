@@ -1623,10 +1623,10 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
   // AUTO-UPDATER
   // ═══════════════════════════════════════════════════════════
 
-  const CURRENT_VERSION = "2.0.0";
-  const REMOTE_RAW      = "https://raw.githubusercontent.com/stefaceriani/chromashift/main/chromashift.js";
-  const KEY_PENDING_VER = "cs4_pending_update_version";
-  const KEY_PENDING_JS  = "cs4_pending_update_js";
+  const CURRENT_VERSION  = "2.0.0";
+  const RELEASES_API     = "https://api.github.com/repos/stefaceriani/chromashift/releases/latest";
+  const RELEASES_PAGE    = "https://github.com/stefaceriani/chromashift/releases";
+  const UPDATE_INTERVAL  = 60 * 60 * 1000; // 1 ora
 
   function parseSemver(v) {
     return (v || "").replace(/^v/, "").split(".").map(Number);
@@ -1641,125 +1641,8 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     return false;
   }
 
-  // ── Detect OS and resolve the Spicetify extensions path ──
-  function getExtensionsPath() {
-    try {
-      // Spicetify exposes the config path via Platform or via a global
-      const cfgDir =
-        Spicetify?.Platform?.PlatformData?.config_dir ||
-        Spicetify?.Platform?.config_dir ||
-        window._spicetify_config_dir;
-
-      if (cfgDir) {
-        // cfgDir is already the spicetify config root
-        const sep = cfgDir.includes("\\") ? "\\" : "/";
-        return cfgDir + sep + "Extensions" + sep + "chromashift.js";
-      }
-
-      // Fallback: detect OS from userAgent and use default paths
-      const ua = navigator.userAgent.toLowerCase();
-      const isWin = ua.includes("windows");
-      const isMac = ua.includes("mac os");
-
-      if (isWin) {
-        const appdata = window.process?.env?.APPDATA || "";
-        return appdata
-          ? appdata + "\\spicetify\\Extensions\\chromashift.js"
-          : null;
-      }
-      if (isMac) {
-        return (window.process?.env?.HOME || "") + "/.config/spicetify/Extensions/chromashift.js";
-      }
-      // Linux
-      const xdg = window.process?.env?.XDG_CONFIG_HOME || "";
-      const home = window.process?.env?.HOME || "";
-      const base = xdg || (home + "/.config");
-      return base + "/spicetify/Extensions/chromashift.js";
-    } catch (_) {
-      return null;
-    }
-  }
-
-  // ── Write file to disk using Node.js fs (exposed by Spotify desktop) ──
-  async function writeFileToDisk(filePath, content) {
-    // Method 1: window.require (Node integration in older Spotify/Spicetify)
-    try {
-      const fs = window.require("fs");
-      fs.writeFileSync(filePath, content, "utf8");
-      return true;
-    } catch (_) {}
-
-    // Method 2: Spicetify CosmosAsync filesystem endpoint
-    try {
-      await Spicetify.CosmosAsync.post("sp://desktop/v1/file/write", {
-        path: filePath,
-        content: btoa(unescape(encodeURIComponent(content))),
-        encoding: "base64",
-      });
-      return true;
-    } catch (_) {}
-
-    // Method 3: Spicetify Platform NativeAPI (newer Spicetify versions)
-    try {
-      await Spicetify.Platform.NativeAPI.writeFile(filePath, content);
-      return true;
-    } catch (_) {}
-
-    // Method 4: CEF (Chromium Embedded Framework) exposed by Spotify
-    try {
-      await window.cefQuery({
-        request: JSON.stringify({ type: "writeFile", path: filePath, data: content }),
-      });
-      return true;
-    } catch (_) {}
-
-    return false;
-  }
-
-  // ── Apply update: write file then reload ──
-  async function applyUpdate(version, js) {
-    const filePath = getExtensionsPath();
-    showUpdateBadge(version, "installing");
-
-    if (filePath) {
-      const ok = await writeFileToDisk(filePath, js);
-      if (ok) {
-        Spicetify.LocalStorage.remove(KEY_PENDING_VER);
-        Spicetify.LocalStorage.remove(KEY_PENDING_JS);
-        showUpdateBadge(version, "done");
-        // Reload Spotify after 1.5s so the user sees the toast
-        setTimeout(() => {
-          try { Spicetify.Platform.reload(); } catch (_) {
-            try { window.location.reload(); } catch (__) {}
-          }
-        }, 1500);
-        return;
-      }
-    }
-
-    // Could not write — fallback: store for next manual restart
-    Spicetify.LocalStorage.set(KEY_PENDING_VER, version);
-    Spicetify.LocalStorage.set(KEY_PENDING_JS, js);
-    showUpdateBadge(version, "pending");
-  }
-
-  // ── On boot: check if a pending update was stored last session ──
-  function bootApplyPending() {
-    const pendingVer = Spicetify.LocalStorage.get(KEY_PENDING_VER);
-    const pendingJS  = Spicetify.LocalStorage.get(KEY_PENDING_JS);
-    if (!pendingVer || !pendingJS) return;
-    if (!isNewer(pendingVer, CURRENT_VERSION)) {
-      Spicetify.LocalStorage.remove(KEY_PENDING_VER);
-      Spicetify.LocalStorage.remove(KEY_PENDING_JS);
-      return;
-    }
-    // Auto-apply silently on boot
-    applyUpdate(pendingVer, pendingJS);
-  }
-
-  // ── Badge / notification UI ──
-  function showUpdateBadge(version, state) {
-    document.getElementById("cs4-update-badge")?.remove();
+  function showUpdateBadge(remoteVersion) {
+    if (document.getElementById("cs4-update-badge")) return;
 
     const acc    = _liveColors.csAccent || "#1db954";
     const accTxt = contrastColor(acc);
@@ -1774,79 +1657,59 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
       box-shadow:0 0 0 3px ${accGlo},0 4px 18px rgba(0,0,0,.55);
       font-size:12px;font-weight:700;font-family:inherit;
       display:flex;align-items:center;gap:8px;
+      cursor:pointer;
       animation:cs4-badge-in .35s cubic-bezier(.34,1.56,.64,1);
-      max-width:280px;user-select:none;
+      max-width:300px;user-select:none;
     `;
-
-    const icons = {
-      available:   `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 16V8M12 8L8.5 11.5M12 8L15.5 11.5" stroke="${accTxt}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-      installing:  `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="${accTxt}" stroke-width="2" stroke-dasharray="28" stroke-dashoffset="10"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur=".8s" repeatCount="indefinite"/></circle></svg>`,
-      done:        `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="${accTxt}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-      pending:     `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="${accTxt}" stroke-width="2"/><path d="M12 7v5l3 3" stroke="${accTxt}" stroke-width="2" stroke-linecap="round"/></svg>`,
-    };
-
-    const msgs = {
-      available:  `ChromaShift v${version} available`,
-      installing: `Installing v${version}…`,
-      done:       `Updated to v${version}! Restarting…`,
-      pending:    `v${version} ready — restart Spotify to apply`,
-    };
-
-    const showBtn = state === "available";
 
     badge.innerHTML = `
       <style>
         @keyframes cs4-badge-in{from{opacity:0;transform:translateY(12px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+        #cs4-update-badge:hover{filter:brightness(1.1)}
       </style>
-      ${icons[state] || icons.available}
-      <span>${msgs[state] || ""}</span>
-      ${showBtn ? `<button id="cs4-update-btn" style="
-        margin-left:4px;background:rgba(0,0,0,.25);color:${accTxt};
-        border:1.5px solid rgba(255,255,255,.3);border-radius:8px;
-        padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;
-        transition:background .14s;white-space:nowrap;
-      ">Update now</button>` : ""}
-      ${state !== "installing" && state !== "done" ? `<span id="cs4-badge-close" style="margin-left:2px;opacity:.65;cursor:pointer;font-size:15px;line-height:1">✕</span>` : ""}
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path d="M12 16V8M12 8L8.5 11.5M12 8L15.5 11.5" stroke="${accTxt}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="12" cy="12" r="10" stroke="${accTxt}" stroke-width="2"/>
+      </svg>
+      <span>ChromaShift v${remoteVersion} available — click to restart</span>
+      <span id="cs4-badge-close" style="margin-left:4px;opacity:.65;cursor:pointer;font-size:15px;line-height:1">✕</span>
     `;
 
     document.body.appendChild(badge);
 
-    document.getElementById("cs4-badge-close")?.addEventListener("click", () => badge.remove());
+    // Click sul badge → riavvia Spotify/Spicetify
+    badge.addEventListener("click", (e) => {
+      if (e.target.id === "cs4-badge-close") { badge.remove(); return; }
+      badge.querySelector("span:not(#cs4-badge-close)").textContent = "Restarting…";
 
-    if (showBtn) {
-      document.getElementById("cs4-update-btn")?.addEventListener("click", async () => {
-        const js = Spicetify.LocalStorage.get(KEY_PENDING_JS);
-        if (js) await applyUpdate(version, js);
-      });
-    }
+      // Metodo 1: Spicetify Platform reload
+      try { Spicetify.Platform.reload(); return; } catch (_) {}
+      // Metodo 2: window.location reload
+      try { window.location.reload(); return; } catch (_) {}
+      // Metodo 3: apre la pagina releases se nessun metodo funziona
+      window.open(RELEASES_PAGE, "_blank");
+    });
 
-    if (state === "done") {
-      // Badge stays until reload kicks in
-    } else if (state !== "installing") {
-      setTimeout(() => badge?.remove(), 10000);
-    }
+    document.getElementById("cs4-badge-close")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      badge.remove();
+    });
+
+    // Auto-hide dopo 15s
+    setTimeout(() => badge?.remove(), 15000);
   }
 
-  // ── Fetch remote, compare, store if newer ──
   async function checkForUpdates() {
     try {
-      const res = await fetch(REMOTE_RAW + "?t=" + Date.now());
+      const res = await fetch(RELEASES_API + "?t=" + Date.now(), {
+        headers: { "Accept": "application/vnd.github.v3+json" }
+      });
       if (!res.ok) return;
-      const remoteJS = await res.text();
-      const match = remoteJS.match(/\/\/\s*VERSION:\s*([\d.]+)/);
-      if (!match) return;
-      const remoteVersion = match[1].trim();
+      const data = await res.json();
+      const remoteVersion = (data.tag_name || "").replace(/^v/, "");
+      if (!remoteVersion) return;
       if (!isNewer(remoteVersion, CURRENT_VERSION)) return;
-      // Already stored this version — just show the badge if not shown
-      const pending = Spicetify.LocalStorage.get(KEY_PENDING_VER);
-      if (pending === remoteVersion) {
-        showUpdateBadge(remoteVersion, "available");
-        return;
-      }
-      // Store JS for instant apply
-      Spicetify.LocalStorage.set(KEY_PENDING_VER, remoteVersion);
-      Spicetify.LocalStorage.set(KEY_PENDING_JS, remoteJS);
-      showUpdateBadge(remoteVersion, "available");
+      showUpdateBadge(remoteVersion);
     } catch (_) {}
   }
 
@@ -1856,10 +1719,10 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 
   applyColors(loadColors());
   setTimeout(() => { tryMount(); runAllFixes(); }, 800);
-  // Apply any pending update from last session immediately on boot
-  setTimeout(bootApplyPending, 1200);
-  // Check GitHub for newer version
-  setTimeout(checkForUpdates, 4000);
+  // Controlla aggiornamenti al boot e poi ogni ora
+  setTimeout(checkForUpdates, 5000);
+  setInterval(checkForUpdates, UPDATE_INTERVAL);
   window.addEventListener("load", () => setTimeout(runAllFixes, 500));
 
 })();
+
