@@ -1677,10 +1677,19 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 
     document.body.appendChild(badge);
 
-    // Click sul badge → riavvia Spotify/Spicetify
-    badge.addEventListener("click", (e) => {
+    // Click sul badge → purge cache jsdelivr poi riavvia
+    badge.addEventListener("click", async (e) => {
       if (e.target.id === "cs4-badge-close") { badge.remove(); return; }
-      badge.querySelector("span:not(#cs4-badge-close)").textContent = "Restarting…";
+      const msgEl = badge.querySelector("span:not(#cs4-badge-close)");
+      msgEl.textContent = "Clearing cache…";
+
+      // Purge jsdelivr cache prima del reload
+      try {
+        await fetch("https://purge.jsdelivr.net/gh/stefaceriani/chromashift@main/chromashift.js");
+      } catch (_) {}
+
+      msgEl.textContent = "Restarting…";
+      await new Promise(r => setTimeout(r, 800));
 
       // Metodo 1: Spicetify Platform reload
       try { Spicetify.Platform.reload(); return; } catch (_) {}
