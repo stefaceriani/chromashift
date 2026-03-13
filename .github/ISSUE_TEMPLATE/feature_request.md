@@ -1,6 +1,6 @@
 ---
 name: ✨ Feature Request
-about: 🗣️ Suggest a new feature
+about: 💡 Suggest a new feature
 title: "💫 [FEATURE] "
 labels: enhancement
 ---
