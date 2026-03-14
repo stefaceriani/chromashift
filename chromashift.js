@@ -1,7 +1,7 @@
 // NAME: ChromaShift
 // AUTHOR: stefaceriani
-// DESCRIPTION: Personalizza i colori di Spotify dalla pagina Impostazioni.
-// VERSION: 2.0.0
+// DESCRIPTION: Customise every Spotify colour from the Settings page.
+// VERSION: 2.5.3
 
 (function ChromaShift() {
   "use strict";
@@ -361,14 +361,14 @@
 .LayoutResizer__resize-bar+*{background-color:${side}!important}
 body:not(.cs4-sbl-active) .Root__main-view,
 body:not(.cs4-sbl-active) .main-view-container__scroll-node,
-body:not(.cs4-sbl-active) [class*="contentSpacing"]{background-color:${bg}!important}
+body:not(.cs4-sbl-active) [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)){background-color:${bg}!important}
 body.cs4-sbl-active .Root__main-view:not(:has(.lyrics-lyrics-container)),
 body.cs4-sbl-active .main-view-container__scroll-node:not(:has(.lyrics-lyrics-container)),
-body.cs4-sbl-active [class*="contentSpacing"]:not(:has(.lyrics-lyrics-container)){background-color:${bg}!important}
+body.cs4-sbl-active [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)):not(:has(.lyrics-lyrics-container)){background-color:${bg}!important}
 .Root__now-playing-bar,.now-playing-bar,[class*="nowPlayingBar"],
 footer{background-color:${play}!important}
 
-/* ── Top bar: solid su tutte le pagine (override via JS per home) ── */
+/* ── Top bar: solid on all pages (JS overrides for home) ── */
 .Root__top-bar{
   background-color:${bg}!important;
   background-image:none!important;
@@ -408,9 +408,9 @@ footer{background-color:${play}!important}
 [data-testid="volume-bar"] .x-progressBar-handle,
 [class*="volume"] .x-progressBar-handle{background-color:${volFg}!important}
 
-/* ── TUTTI i play button cerchi: invisibili a riposo, visibili solo al hover del genitore ── */
-/* Regola globale: qualsiasi .main-playButton-PlayButton o [data-testid="play-button"]
-   che NON sia nella player bar e NON sia nella tracklist → nascosto di default */
+/* ── ALL play button circles: hidden at rest, visible only on parent hover ── */
+/* Global rule: any .main-playButton-PlayButton or [data-testid="play-button"]
+   that is NOT in the player bar and NOT in the tracklist → hidden by default */
 .main-playButton-PlayButton:not([data-testid="control-button-playpause"]),
 [data-testid="play-button"]{
   opacity:0!important;
@@ -420,7 +420,7 @@ footer{background-color:${play}!important}
   pointer-events:none!important;
   transition:opacity .15s,transform .15s!important;
 }
-/* Hover sul genitore diretto o indiretto → visibile */
+/* Hover on direct or indirect parent → visible */
 *:hover > .main-playButton-PlayButton,
 *:hover > [data-testid="play-button"],
 *:hover .main-playButton-PlayButton,
@@ -430,15 +430,15 @@ footer{background-color:${play}!important}
   pointer-events:all!important;
 }
 
-/* ── Home: nascondi il cerchio colorato dei play button su TUTTE le card a riposo ── */
-/* Copre sia le card grandi che le card rettangolari compatte (shortcut recently played) */
-/* Forza background trasparente su TUTTI i play button della home tranne player bar e actionBar */
+/* ── Home: hide coloured circle on ALL card play buttons at rest ── */
+/* Covers both large cards and compact rectangular cards (recently played shortcuts) */
+/* Force transparent background on ALL home play buttons except player bar and actionBar */
 [data-testid="home-page"] .main-playButton-PlayButton:not([data-testid="control-button-playpause"]),
 [data-testid="home-page"] [data-testid="play-button"]{
   background-color:transparent!important;
   box-shadow:none!important;
 }
-/* Player bar play/pause: sempre visibile con colore accento */
+/* Player bar play/pause: always visible with accent colour */
 [data-testid="control-button-playpause"]{
   background-color:${pbtn}!important;color:${pbtnText}!important;
   border-radius:50%!important;border:none!important;
@@ -450,7 +450,7 @@ footer{background-color:${play}!important}
 [data-testid="control-button-playpause"] svg{
   fill:${pbtnText}!important;color:${pbtnText}!important;
 }
-/* Header playlist/album play button: visibile sempre con accento */
+/* Header playlist/album play button: always visible with accent colour */
 .main-actionBar-ActionBar .main-playButton-PlayButton,
 .main-actionBar-ActionBar [data-testid="play-button"],
 [class*="actionBar"] .main-playButton-PlayButton,
@@ -463,7 +463,7 @@ footer{background-color:${play}!important}
 [class*="EntityHeader"] [data-testid="play-button"]{
   background-color:${pbtn}!important;color:${pbtnText}!important;
   border-radius:50%!important;border:none!important;
-  opacity:1!important;transform:none!important;pointer-events:none!important;
+  opacity:1!important;transform:none!important;pointer-events:auto!important;
 }
 [class*="actionBar"] .main-playButton-PlayButton svg,
 [class*="ActionBar"] .main-playButton-PlayButton svg,
@@ -471,7 +471,7 @@ footer{background-color:${play}!important}
 [class*="EntityHeader"] .main-playButton-PlayButton svg{
   fill:${pbtnText}!important;color:${pbtnText}!important;
 }
-/* Hover colore separato su card e actionBar play button */
+/* Separate hover colour on card and actionBar play button */
 [class*="actionBar"] .main-playButton-PlayButton:hover,
 [class*="ActionBar"] .main-playButton-PlayButton:hover,
 [class*="entityHeader"] .main-playButton-PlayButton:hover,
@@ -496,7 +496,7 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 [class*="gridItem"]:hover [data-testid="card-container"] *,
 [class*="gridItem"]:hover [class*="CardComponent"] *{transform:none!important}
 
-/* ── Card description tooltip/overlay: trasparente ── */
+/* ── Card description tooltip/overlay: transparent ── */
 [class*="cardDescription"],[class*="CardDescription"],
 [class*="card-description"],[class*="cardFooter"],[class*="CardFooter"],
 [data-testid="card-container"] [class*="description"],
@@ -507,16 +507,11 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
   background:transparent!important;
 }
 
-/* ── Filter bar: trasparente di default, --background-base neutralizzata ── */
-.main-home-filterChipsContainer,.main-home-filterChipsSection,
-[class*="filterChips"],[class*="FilterChips"],
-[data-testid="filter-bar"],[data-testid="filterBar"]{
-  --background-base:transparent!important;
+/* ── Filter bar (Tutto/Musica/Podcast): transparent at rest, solid on scroll ── */
+.search-searchCategory-contentArea,
+[class*="search-searchCategory-contentArea"]{
   background-color:transparent!important;
   background:transparent!important;
-  backdrop-filter:none!important;
-  -webkit-backdrop-filter:none!important;
-  box-shadow:none!important;
 }
 
 /* ── Tracklist rows ── */
@@ -611,7 +606,7 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     TOPBAR_SELS.forEach(sel => {
       document.querySelectorAll(sel).forEach(el => {
         if (onHome) {
-          // Home: forza trasparenza rimuovendo inline e sovrascrivendo
+          // Home: force transparency by removing inline styles and overriding
           el.style.setProperty("background-color", "transparent", "important");
           el.style.setProperty("background-image", "none", "important");
           el.style.setProperty("background", "transparent", "important");
@@ -676,14 +671,14 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         btn.dataset.testid === "control-button-playpause"
       ) return;
 
-      // Colore testo/svg su tutti
+      // Text/svg colour on all
       btn.style.setProperty("color", pbtnText, "important");
       btn.querySelectorAll("svg,path,polygon").forEach(el => {
         el.style.setProperty("fill", pbtnText, "important");
         el.style.setProperty("color", pbtnText, "important");
       });
 
-      // ActionBar/EntityHeader: sempre visibile con colore fisso, hover via JS
+      // ActionBar/EntityHeader: always visible with fixed colour, hover via JS
       if (
         btn.closest("[class*='actionBar']") || btn.closest("[class*='ActionBar']") ||
         btn.closest("[class*='entityHeader']") || btn.closest("[class*='EntityHeader']")
@@ -698,8 +693,8 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         return;
       }
 
-      // Card play button: NON impostare background a riposo (CSS gestisce opacity/visibilità)
-      // Solo hook sul genitore per mostrare il colore quando la card è in hover
+      // Card play button: do NOT set background at rest (CSS handles opacity/visibility)
+      // Only hook on parent to show colour when card is hovered
       btn.style.removeProperty("background-color");
       btn.style.setProperty("border-radius", "50%", "important");
 
@@ -723,7 +718,7 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
           cardAnchor.addEventListener("mouseleave", () => {
             btn.style.removeProperty("background-color");
           });
-          // Hover diretto sul bottone → colore hover
+          // Direct hover on button → hover colour
           btn.addEventListener("mouseenter", () => btn.style.setProperty("background-color", pbtnHov, "important"));
           btn.addEventListener("mouseleave", () => btn.style.setProperty("background-color", pbtn, "important"));
         }
@@ -732,16 +727,12 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
   }
 
   // ═══════════════════════════════════════════════════════════
-  // FILTER BAR (Home): trasparente a riposo, solida su scroll
+  // FILTER BAR (Home): transparent at rest, solid on scroll
   // ═══════════════════════════════════════════════════════════
 
   const FILTER_SELS = [
-    ".main-home-filterChipsContainer",
-    ".main-home-filterChipsSection",
-    "[class*='filterChips']",
-    "[class*='FilterChips']",
-    "[data-testid='filter-bar']",
-    "[data-testid='filterBar']",
+    ".search-searchCategory-contentArea",
+    "[class*='search-searchCategory-contentArea']",
   ];
 
   let _filterScrollListener = null;
@@ -752,19 +743,13 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     FILTER_SELS.forEach(sel => {
       document.querySelectorAll(sel).forEach(el => {
         if (!scrolled) {
-          el.style.setProperty("--background-base", "transparent");
           el.style.setProperty("background-color", "transparent", "important");
-          el.style.setProperty("background",       "transparent", "important");
-          el.style.setProperty("backdrop-filter",  "none",        "important");
-          el.style.setProperty("-webkit-backdrop-filter", "none", "important");
-          el.style.setProperty("box-shadow",       "none",        "important");
+          el.style.setProperty("background", "transparent", "important");
+          el.style.setProperty("box-shadow", "none", "important");
         } else {
-          el.style.setProperty("--background-base", bgEl);
           el.style.setProperty("background-color", bgEl, "important");
-          el.style.setProperty("background",       bgEl, "important");
-          el.style.setProperty("box-shadow",       "0 2px 8px rgba(0,0,0,.45)", "important");
-          el.style.removeProperty("backdrop-filter");
-          el.style.removeProperty("-webkit-backdrop-filter");
+          el.style.setProperty("background", bgEl, "important");
+          el.style.setProperty("box-shadow", "0 2px 8px rgba(0,0,0,.45)", "important");
         }
       });
     });
@@ -772,53 +757,24 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 
   function attachFilterScrollObserver() {
     if (!isHomePage()) return;
-
     const scrollEl =
       document.querySelector(".main-view-container__scroll-node") ||
       document.querySelector("[class*='scrollNode']") ||
       document.querySelector(".os-viewport");
-    if (!scrollEl) return;
-
-    if (_filterScrollEl && _filterScrollEl !== scrollEl && _filterScrollListener) {
+    if (!scrollEl || _filterScrollEl === scrollEl) return;
+    if (_filterScrollEl && _filterScrollListener) {
       _filterScrollEl.removeEventListener("scroll", _filterScrollListener);
-      _filterScrollEl = null;
-      _filterScrollListener = null;
     }
-    if (_filterScrollEl === scrollEl) return;
-
     _filterScrollEl = scrollEl;
     applyFilterBarStyle(false);
-
-    _filterScrollListener = () => {
-      applyFilterBarStyle(scrollEl.scrollTop > 10);
-    };
+    _filterScrollListener = () => applyFilterBarStyle(scrollEl.scrollTop > 10);
     scrollEl.addEventListener("scroll", _filterScrollListener, { passive: true });
   }
 
   function fixFilterBar() {
-    if (isHomePage()) {
-      applyFilterBarStyle(false);
-      attachFilterScrollObserver();
-      // Osserva re-injection stili inline sulla filter bar (come topbar)
-      FILTER_SELS.forEach(sel => {
-        document.querySelectorAll(sel).forEach(el => {
-          if (el.dataset.cs4FilterHooked) return;
-          el.dataset.cs4FilterHooked = "1";
-          const obs = new MutationObserver((mutations) => {
-            // Ignora se Spotify sta solo animando opacity (fade-in iniziale)
-            const onlyOpacity = mutations.every(m =>
-              m.type === "attributes" && m.attributeName === "style" &&
-              el.style.opacity !== "" && !el.style.backgroundImage &&
-              el.style.cssText.replace(/opacity[^;]+;?/g, "").trim() === ""
-            );
-            if (onlyOpacity) return;
-            const scrolled = _filterScrollEl ? _filterScrollEl.scrollTop > 10 : false;
-            applyFilterBarStyle(scrolled);
-          });
-          obs.observe(el, { attributes: true, attributeFilter: ["style", "class"] });
-        });
-      });
-    }
+    if (!isHomePage()) return;
+    applyFilterBarStyle(_filterScrollEl ? _filterScrollEl.scrollTop > 10 : false);
+    attachFilterScrollObserver();
   }
 
   function runAllFixes() { fixTopBar(); fixPlayButtons(); fixFilterBar(); attachTopBarObserver(); applySBLFix(); }
@@ -904,41 +860,15 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
       groupStructure: "Structure",
       groupPlayer:    "Player",
       langLabel:      "Language",
-      colorLabels: {
-        csText: "Main text", csSubtext: "Secondary text",
-        csMain: "Main background", csMainElevated: "Elevated background",
-        csHighlight: "Hover / selection", csHighlightElevated: "Elevated hover",
-        csAccent: "Accent", csPlayButton: "Play button",
-        csPlayButtonHover: "Play button (hover)", csButtonDisabled: "Disabled button",
-        csSidebar: "Sidebar", csPlayer: "Player bar",
-        csCard: "Card", csCardHover: "Card hover",
-        csNotification: "Notifications",
-        csProgressBg: "Progress background", csProgressFg: "Progress colour",
-        csVolumeBg: "Volume background", csVolumeFg: "Volume colour",
+      presetNames: {
+        default:    "Spotify Default",
+        midnight:   "Midnight Blue",
+        rose:       "Rose Gold",
+        forest:     "Forest",
+        cyber:      "Cyberpunk",
+        monochrome: "Monochrome",
+        light:      "Light Mode",
       },
-    },
-    "en-US": {
-      subtitle:       "Customize every Spotify color in real time",
-      tabPresets:     "Presets",
-      tabEditor:      "Color editor",
-      saveBtn:        "＋ Save current",
-      presetNamePh:   "Custom preset name…",
-      applyBtn:       "✓ Apply & Save",
-      resetBtn:       "↺ Restore preset",
-      defaultBtn:     "↩ Spotify Default",
-      toastSaved:     "Saved and applied!",
-      toastReset:     "Restored to active preset.",
-      toastDefault:   "Spotify default restored.",
-      toastNoName:    "Enter a name.",
-      toastPresetSaved: (n) => `Preset "${n}" saved!`,
-      toastPresetApplied: (n) => `"${n}" applied!`,
-      toastPresetDeleted: "Preset deleted.",
-      groupText:      "Text",
-      groupBg:        "Backgrounds",
-      groupAccents:   "Accents",
-      groupStructure: "Structure",
-      groupPlayer:    "Player",
-      langLabel:      "Language",
       colorLabels: {
         csText: "Main text", csSubtext: "Secondary text",
         csMain: "Main background", csMainElevated: "Elevated background",
@@ -974,6 +904,15 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
       groupStructure: "Struttura",
       groupPlayer:    "Player",
       langLabel:      "Lingua",
+      presetNames: {
+        default:    "Spotify Predefinito",
+        midnight:   "Blu Mezzanotte",
+        rose:       "Rosa Oro",
+        forest:     "Foresta",
+        cyber:      "Cyberpunk",
+        monochrome: "Monocromatico",
+        light:      "Modalità Chiara",
+      },
       colorLabels: {
         csText: "Testo principale", csSubtext: "Testo secondario",
         csMain: "Sfondo principale", csMainElevated: "Sfondo elevato",
@@ -1009,6 +948,15 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
       groupStructure: "Struktur",
       groupPlayer:    "Player",
       langLabel:      "Sprache",
+      presetNames: {
+        default:    "Spotify Standard",
+        midnight:   "Mitternachtsblau",
+        rose:       "Roségold",
+        forest:     "Wald",
+        cyber:      "Cyberpunk",
+        monochrome: "Monochrom",
+        light:      "Heller Modus",
+      },
       colorLabels: {
         csText: "Haupttext", csSubtext: "Sekundärtext",
         csMain: "Haupthintergrund", csMainElevated: "Erhöhter Hintergrund",
@@ -1044,6 +992,15 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
       groupStructure: "Structure",
       groupPlayer:    "Lecteur",
       langLabel:      "Langue",
+      presetNames: {
+        default:    "Spotify par défaut",
+        midnight:   "Bleu minuit",
+        rose:       "Or rose",
+        forest:     "Forêt",
+        cyber:      "Cyberpunk",
+        monochrome: "Monochrome",
+        light:      "Mode clair",
+      },
       colorLabels: {
         csText: "Texte principal", csSubtext: "Texte secondaire",
         csMain: "Arrière-plan principal", csMainElevated: "Arrière-plan élevé",
@@ -1079,6 +1036,15 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
       groupStructure: "Estructura",
       groupPlayer:    "Reproductor",
       langLabel:      "Idioma",
+      presetNames: {
+        default:    "Spotify predeterminado",
+        midnight:   "Azul medianoche",
+        rose:       "Oro rosa",
+        forest:     "Bosque",
+        cyber:      "Cyberpunk",
+        monochrome: "Monocromo",
+        light:      "Modo claro",
+      },
       colorLabels: {
         csText: "Texto principal", csSubtext: "Texto secundario",
         csMain: "Fondo principal", csMainElevated: "Fondo elevado",
@@ -1114,6 +1080,15 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
       groupStructure: "Структура",
       groupPlayer:    "Плеєр",
       langLabel:      "Мова",
+      presetNames: {
+        default:    "Стандарт Spotify",
+        midnight:   "Північ синя",
+        rose:       "Рожеве золото",
+        forest:     "Ліс",
+        cyber:      "Кіберпанк",
+        monochrome: "Монохром",
+        light:      "Світлий режим",
+      },
       colorLabels: {
         csText: "Основний текст", csSubtext: "Другорядний текст",
         csMain: "Основний фон", csMainElevated: "Підвищений фон",
@@ -1149,6 +1124,15 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
       groupStructure: "Структура",
       groupPlayer:    "Плеер",
       langLabel:      "Язык",
+      presetNames: {
+        default:    "Стандарт Spotify",
+        midnight:   "Полночный синий",
+        rose:       "Розовое золото",
+        forest:     "Лес",
+        cyber:      "Киберпанк",
+        monochrome: "Монохром",
+        light:      "Светлый режим",
+      },
       colorLabels: {
         csText: "Основной текст", csSubtext: "Вторичный текст",
         csMain: "Основной фон", csMainElevated: "Поднятый фон",
@@ -1184,6 +1168,15 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
       groupStructure: "结构",
       groupPlayer:    "播放器",
       langLabel:      "语言",
+      presetNames: {
+        default:    "Spotify 默认",
+        midnight:   "午夜蓝",
+        rose:       "玫瑰金",
+        forest:     "森林",
+        cyber:      "赛博朋克",
+        monochrome: "单色",
+        light:      "浅色模式",
+      },
       colorLabels: {
         csText: "主要文字", csSubtext: "次要文字",
         csMain: "主背景", csMainElevated: "提升背景",
@@ -1200,7 +1193,8 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
   };
 
   function getLang() {
-    return "en-GB";
+    const stored = Spicetify.LocalStorage.get(KEY_LANG);
+    return (stored && TRANSLATIONS[stored]) ? stored : "en-GB";
   }
 
   function setLang(code) {
@@ -1290,13 +1284,19 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 .cs4-sl-track::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;background:${acc};cursor:pointer;border:2px solid ${bgEl};box-shadow:0 0 6px ${accGlo}}
 .cs4-sl-val{font-size:11px;font-family:'Courier New',monospace;color:${txt};width:26px;text-align:right;flex-shrink:0}
 /* Lang bar */
-.cs4-lang-bar{display:none}
+.cs4-lang-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:18px}
 .cs4-lang-label{font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:${sub};margin-right:4px}
 .cs4-lang-btn{background:${hl};border:1.5px solid transparent;border-radius:8px;padding:5px 8px;font-size:18px;cursor:pointer;transition:all .14s;line-height:1}
 .cs4-lang-btn:hover{border-color:${hlEl};transform:scale(1.12)}
 .cs4-lang-btn.cs4-lang-active{border-color:${acc};box-shadow:0 0 0 1px ${acc};transform:scale(1.1)}
 /* Actions */
 .cs4-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:26px;padding-top:20px;border-top:1px solid ${hl}}
+.cs4-footer{display:flex;flex-direction:column;gap:6px;margin-top:28px;padding:16px 18px;background:${card};border-radius:12px;border-left:3px solid ${acc}}
+.cs4-footer span{font-size:12px;color:${sub};line-height:1.5}
+.cs4-footer strong{color:${txt};font-weight:700}
+.cs4-footer-link{color:${acc};text-decoration:none;font-weight:700}
+.cs4-footer-link:hover{text-decoration:underline}
+.cs4-footer-note{margin-top:4px;font-size:11px;color:${sub};opacity:.7;font-style:italic;padding-top:8px;border-top:1px solid ${hl}}
 .cs4-btn{padding:9px 22px;border-radius:500px;font-size:13px;font-weight:700;letter-spacing:.3px;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:7px;transition:all .14s}
 .cs4-btn-primary{background:${acc};color:${accTxt}}
 .cs4-btn-primary:hover{filter:brightness(1.12);transform:scale(1.02);box-shadow:0 0 18px ${accGlo}}
@@ -1339,6 +1339,21 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     <button class="cs4-btn cs4-btn-secondary" id="cs4-reset">${tr.resetBtn}</button>
     <button class="cs4-btn cs4-btn-danger" id="cs4-default">${tr.defaultBtn}</button>
   </div>
+</div>
+<div class="cs4-footer">
+  <span>🐛 Have you found a <strong>bug</strong>? Open an <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">issue</a></span>
+  <span>✨ Have a <strong>request</strong>? Open an <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">issue</a></span>
+  <span>🎨 Want to propose a <strong>preset</strong>? Open an <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">issue</a></span>
+  <span class="cs4-footer-note">but <em>don't</em> open one if there's already an open issue for that bug/request</span>
+</div>
+
+<div class="cs4-footer">
+  <span>💖 Do you want a <b>custom preset</b>? open an <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">issue</a></span>
+  <span>⚠️ Important</span>
+  <span>Any custom presets or special versions requested by users will be published on the repo and will need to be installed manually.</span>
+  <span>The version or preset will be updated in parallel with the public version. (If it isn't possible to update, this will be communicated in the main release.)</span>
+  <br></br>
+  <span>Thanks fot the compriention❤️</span>
 </div>
 `;
 
@@ -1386,7 +1401,7 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
           </div>
           <div class="cs4-preset-name">
             <span>${preset.emoji||"🎨"}</span>
-            <span>${preset.name}</span>
+            <span>${preset.builtin ? (t().presetNames?.[key] || preset.name) : preset.name}</span>
             ${!preset.builtin?`<span class="cs4-preset-badge">custom</span>`:""}
           </div>
           ${!preset.builtin?`<button class="cs4-preset-del" title="Elimina">✕</button>`:""}
@@ -1402,7 +1417,7 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
           syncPickers();
           // Rebuild UI to adapt colors
           setTimeout(() => { const s = document.getElementById(SECTION_ID); if (s) renderUI(s); }, 80);
-          toast(t().toastPresetApplied(preset.name));
+          toast(t().toastPresetApplied(preset.builtin ? (t().presetNames?.[key] || preset.name) : preset.name));
         });
         const del = el.querySelector(".cs4-preset-del");
         if (del) {
@@ -1623,7 +1638,7 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
   // AUTO-UPDATER
   // ═══════════════════════════════════════════════════════════
 
-  const CURRENT_VERSION  = "2.0.0";
+  const CURRENT_VERSION  = "2.5.3";
   const RELEASES_API     = "https://api.github.com/repos/stefaceriani/chromashift/releases/latest";
   const RELEASES_PAGE    = "https://github.com/stefaceriani/chromashift/releases";
   const UPDATE_INTERVAL  = 60 * 60 * 1000; // 1 ora
@@ -1677,13 +1692,13 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 
     document.body.appendChild(badge);
 
-    // Click sul badge → purge cache jsdelivr poi riavvia
+    // Click on badge → purge jsdelivr cache then restart
     badge.addEventListener("click", async (e) => {
       if (e.target.id === "cs4-badge-close") { badge.remove(); return; }
       const msgEl = badge.querySelector("span:not(#cs4-badge-close)");
       msgEl.textContent = "Clearing cache…";
 
-      // Purge jsdelivr cache prima del reload
+      // Purge jsdelivr cache before reload
       try {
         await fetch("https://purge.jsdelivr.net/gh/stefaceriani/chromashift@main/chromashift.js");
       } catch (_) {}
@@ -1691,11 +1706,11 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
       msgEl.textContent = "Restarting…";
       await new Promise(r => setTimeout(r, 800));
 
-      // Metodo 1: Spicetify Platform reload
+      // Method 1: Spicetify Platform reload
       try { Spicetify.Platform.reload(); return; } catch (_) {}
-      // Metodo 2: window.location reload
+      // Method 2: window.location reload
       try { window.location.reload(); return; } catch (_) {}
-      // Metodo 3: apre la pagina releases se nessun metodo funziona
+      // Method 3: open releases page if no method works
       window.open(RELEASES_PAGE, "_blank");
     });
 
@@ -1704,7 +1719,7 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
       badge.remove();
     });
 
-    // Auto-hide dopo 15s
+    // Auto-hide after 15s
     setTimeout(() => badge?.remove(), 15000);
   }
 
@@ -1728,7 +1743,7 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 
   applyColors(loadColors());
   setTimeout(() => { tryMount(); runAllFixes(); }, 800);
-  // Controlla aggiornamenti al boot e poi ogni ora
+  // Check for updates on boot then every hour
   setTimeout(checkForUpdates, 5000);
   setInterval(checkForUpdates, UPDATE_INTERVAL);
   window.addEventListener("load", () => setTimeout(runAllFixes, 500));
