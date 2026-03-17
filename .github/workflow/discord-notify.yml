@@ -1,1 +1,295 @@
-///
+name: Discord Notifications
+
+on:
+  push:
+    branches: ["main"]
+  create:
+  delete:
+  fork:
+  pull_request:
+    types: [opened, closed, reopened, edited, labeled, unlabeled, assigned, unassigned, review_requested, synchronize, converted_to_draft, ready_for_review]
+  issues:
+    types: [opened, closed, reopened, edited, labeled, unlabeled, assigned, unassigned, deleted]
+  star:
+    types: [created, deleted]
+  watch:
+    types: [started]
+  deployment:
+  label:
+    types: [created, edited, deleted]
+  release:
+    types: [published, prereleased, edited, deleted]
+
+jobs:
+  notify-general:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'release'
+    steps:
+
+      - name: Commit/s
+        if: github.event_name == 'push'
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          COUNT=$(echo '${{ toJson(github.event.commits) }}' | python3 -c "import sys,json; print(len(json.load(sys.stdin)))")
+          DESC=$(echo '${{ toJson(github.event.commits) }}' | python3 -c "
+          import sys,json
+          commits=json.load(sys.stdin)
+          for c in commits[:10]:
+              sha=c['id'][:7]
+              msg=c['message'].split('\n')[0][:72]
+              author=c['author']['name']
+              print(f'\`{sha}\` {msg} — {author}')
+          ")
+          curl -s -X POST "${{ secrets.DISCORD_UPDATE_NOTIFY }}" \
+            -H "Content-Type: application/json" \
+            -d "$(python3 -c "
+          import json
+          print(json.dumps({'embeds':[{
+            'color':0x5865F2,
+            'author':{'name':'${{ github.actor }}','icon_url':'https://github.com/${{ github.actor }}.png'},
+            'title':'[\`$BRANCH\`] $COUNT new commit' + ('s' if int('$COUNT') > 1 else ''),
+            'url':'${{ github.event.compare }}',
+            'description':'$DESC',
+            'footer':{'text':'ChromaShift · ${{ github.repository }}'},
+            'timestamp':'$(date -u +%Y-%m-%dT%H:%M:%SZ)'
+          }]}))")"
+
+      - name: Brach or Tag
+        if: github.event_name == 'create'
+        run: |
+          TYPE="${{ github.event.ref_type }}"
+          REF="${{ github.event.ref }}"
+          EMOJI=$([ "$TYPE" = "tag" ] && echo "🏷️" || echo "🌿")
+          curl -s -X POST "${{ secrets.DISCORD_UPDATE_NOTIFY }}" \
+            -H "Content-Type: application/json" \
+            -d "$(python3 -c "
+          import json
+          print(json.dumps({'embeds':[{
+            'color':0x57F287,
+            'author':{'name':'${{ github.actor }}','icon_url':'https://github.com/${{ github.actor }}.png'},
+            'title':'$EMOJI New $TYPE created: \`$REF\`',
+            'url':'https://github.com/${{ github.repository }}/tree/$REF',
+            'footer':{'text':'ChromaShift · ${{ github.repository }}'},
+            'timestamp':'$(date -u +%Y-%m-%dT%H:%M:%SZ)'
+          }]}))")"
+
+      - name: Delete Branch or Tag
+        if: github.event_name == 'delete'
+        run: |
+          TYPE="${{ github.event.ref_type }}"
+          REF="${{ github.event.ref }}"
+          curl -s -X POST "${{ secrets.DISCORD_UPDATE_NOTIFY }}" \
+            -H "Content-Type: application/json" \
+            -d "$(python3 -c "
+          import json
+          print(json.dumps({'embeds':[{
+            'color':0xED4245,
+            'author':{'name':'${{ github.actor }}','icon_url':'https://github.com/${{ github.actor }}.png'},
+            'title':'🗑️ $TYPE deleted: \`$REF\`',
+            'footer':{'text':'ChromaShift · ${{ github.repository }}'},
+            'timestamp':'$(date -u +%Y-%m-%dT%H:%M:%SZ)'
+          }]}))")"
+
+      - name: Fork
+        if: github.event_name == 'fork'
+        run: |
+          curl -s -X POST "${{ secrets.DISCORD_UPDATE_NOTIFY }}" \
+            -H "Content-Type: application/json" \
+            -d "$(python3 -c "
+          import json
+          print(json.dumps({'embeds':[{
+            'color':0xEB459E,
+            'author':{'name':'${{ github.actor }}','icon_url':'https://github.com/${{ github.actor }}.png'},
+            'title':'🍴 Repo forked by ${{ github.actor }}',
+            'url':'${{ github.event.forkee.html_url }}',
+            'fields':[{'name':'Fork','value':'[${{ github.event.forkee.full_name }}](${{ github.event.forkee.html_url }})','inline':True}],
+            'footer':{'text':'ChromaShift · ${{ github.repository }}'},
+            'timestamp':'$(date -u +%Y-%m-%dT%H:%M:%SZ)'
+          }]}))")"
+
+      - name: PR
+        if: github.event_name == 'pull_request'
+        run: |
+          ACTION="${{ github.event.action }}"
+          MERGED="${{ github.event.pull_request.merged }}"
+          python3 -c "
+          action_map = {
+            'opened':'🔀 PR Opened','closed':'✅ PR Closed','reopened':'🔄 PR Reopened',
+            'edited':'📝 PR Edited','labeled':'🏷️ PR Labeled','unlabeled':'🏷️ PR Unlabeled',
+            'assigned':'👤 PR Assigned','unassigned':'👤 PR Unassigned',
+            'review_requested':'👀 Review Requested','synchronize':'🔃 PR Updated',
+            'converted_to_draft':'📋 PR → Draft','ready_for_review':'✅ PR Ready for Review'
+          }
+          label = '🟣 PR Merged' if '$MERGED' == 'true' else action_map.get('$ACTION', '🔀 PR $ACTION')
+          print(label)
+          " > /tmp/pr_label
+          curl -s -X POST "${{ secrets.DISCORD_UPDATE_NOTIFY }}" \
+            -H "Content-Type: application/json" \
+            -d "$(python3 -c "
+          import json
+          merged = '$MERGED' == 'true'
+          color = 0x8957E5 if merged else 0xFEE75C
+          body = '${{ github.event.pull_request.body }}'[:200] if '${{ github.event.pull_request.body }}' else 'No description.'
+          label = open('/tmp/pr_label').read().strip()
+          print(json.dumps({'embeds':[{
+            'color': color,
+            'author':{'name':'${{ github.actor }}','icon_url':'https://github.com/${{ github.actor }}.png'},
+            'title':f'{label}: ${{ github.event.pull_request.title }}',
+            'url':'${{ github.event.pull_request.html_url }}',
+            'description': body,
+            'fields':[
+              {'name':'Branch','value':'\`${{ github.event.pull_request.head.ref }}\` → \`${{ github.event.pull_request.base.ref }}\`','inline':True},
+              {'name':'Changes','value':'+${{ github.event.pull_request.additions }} / -${{ github.event.pull_request.deletions }}','inline':True}
+            ],
+            'footer':{'text':'ChromaShift · ${{ github.repository }}'},
+            'timestamp':'$(date -u +%Y-%m-%dT%H:%M:%SZ)'
+          }]}))")"
+
+      - name: Issue
+        if: github.event_name == 'issues'
+        run: |
+          ACTION="${{ github.event.action }}"
+          python3 -c "
+          action_map = {
+            'opened':'🐛 Issue Opened','closed':'✅ Issue Closed','reopened':'🔄 Issue Reopened',
+            'edited':'📝 Issue Edited','labeled':'🏷️ Issue Labeled','unlabeled':'🏷️ Issue Unlabeled',
+            'assigned':'👤 Issue Assigned','unassigned':'👤 Issue Unassigned','deleted':'🗑️ Issue Deleted'
+          }
+          print(action_map.get('$ACTION','🐛 Issue $ACTION'))
+          " > /tmp/issue_label
+          curl -s -X POST "${{ secrets.DISCORD_UPDATE_NOTIFY }}" \
+            -H "Content-Type: application/json" \
+            -d "$(python3 -c "
+          import json
+          body = '${{ github.event.issue.body }}'[:200] if '${{ github.event.issue.body }}' else 'No description.'
+          labels = '${{ join(github.event.issue.labels.*.name, ', ') }}' or 'none'
+          label = open('/tmp/issue_label').read().strip()
+          print(json.dumps({'embeds':[{
+            'color':0xFEE75C,
+            'author':{'name':'${{ github.actor }}','icon_url':'https://github.com/${{ github.actor }}.png'},
+            'title':f'{label}: ${{ github.event.issue.title }}',
+            'url':'${{ github.event.issue.html_url }}',
+            'description': body,
+            'fields':[{'name':'Labels','value':labels,'inline':True}],
+            'footer':{'text':'ChromaShift · ${{ github.repository }}'},
+            'timestamp':'$(date -u +%Y-%m-%dT%H:%M:%SZ)'
+          }]}))")"
+
+      - name: Star
+        if: github.event_name == 'star'
+        run: |
+          ACTION="${{ github.event.action }}"
+          EMOJI=$([ "$ACTION" = "created" ] && echo "⭐" || echo "💔")
+          VERB=$([ "$ACTION" = "created" ] && echo "starred" || echo "unstarred")
+          COLOR=$([ "$ACTION" = "created" ] && echo "16763996" || echo "10066329")
+          curl -s -X POST "${{ secrets.DISCORD_UPDATE_NOTIFY }}" \
+            -H "Content-Type: application/json" \
+            -d "$(python3 -c "
+          import json
+          print(json.dumps({'embeds':[{
+            'color': $COLOR,
+            'author':{'name':'${{ github.actor }}','icon_url':'https://github.com/${{ github.actor }}.png'},
+            'title':'$EMOJI ${{ github.actor }} $VERB the repo',
+            'url':'https://github.com/${{ github.repository }}/stargazers',
+            'footer':{'text':'ChromaShift · ${{ github.repository }}'},
+            'timestamp':'$(date -u +%Y-%m-%dT%H:%M:%SZ)'
+          }]}))")"
+
+      - name: Folllow
+        if: github.event_name == 'watch'
+        run: |
+          curl -s -X POST "${{ secrets.DISCORD_UPDATE_NOTIFY }}" \
+            -H "Content-Type: application/json" \
+            -d "$(python3 -c "
+          import json
+          print(json.dumps({'embeds':[{
+            'color':0x5865F2,
+            'author':{'name':'${{ github.actor }}','icon_url':'https://github.com/${{ github.actor }}.png'},
+            'title':'👁️ ${{ github.actor }} New follow',
+            'url':'https://github.com/${{ github.repository }}/watchers',
+            'footer':{'text':'ChromaShift · ${{ github.repository }}'},
+            'timestamp':'$(date -u +%Y-%m-%dT%H:%M:%SZ)'
+          }]}))")"
+
+      - name: Deploy
+        if: github.event_name == 'deployment'
+        run: |
+          curl -s -X POST "${{ secrets.DISCORD_UPDATE_NOTIFY }}" \
+            -H "Content-Type: application/json" \
+            -d "$(python3 -c "
+          import json
+          print(json.dumps({'embeds':[{
+            'color':0x57F287,
+            'author':{'name':'${{ github.actor }}','icon_url':'https://github.com/${{ github.actor }}.png'},
+            'title':'🚀 New deployment: ${{ github.event.deployment.environment }}',
+            'fields':[
+              {'name':'Ref','value':'\`${{ github.event.deployment.ref }}\`','inline':True},
+              {'name':'Task','value':'${{ github.event.deployment.task }}','inline':True}
+            ],
+            'footer':{'text':'ChromaShift · ${{ github.repository }}'},
+            'timestamp':'$(date -u +%Y-%m-%dT%H:%M:%SZ)'
+          }]}))")"
+
+      - name: Label
+        if: github.event_name == 'label'
+        run: |
+          ACTION="${{ github.event.action }}"
+          EMOJI=$([ "$ACTION" = "created" ] && echo "🏷️ Label created" || ([ "$ACTION" = "edited" ] && echo "✏️ Label edited" || echo "🗑️ Label deleted"))
+          COLOR_HEX="${{ github.event.label.color }}"
+          curl -s -X POST "${{ secrets.DISCORD_UPDATE_NOTIFY }}" \
+            -H "Content-Type: application/json" \
+            -d "$(python3 -c "
+          import json
+          try:
+              color = int('$COLOR_HEX', 16)
+          except:
+              color = 0x99AAB5
+          print(json.dumps({'embeds':[{
+            'color': color,
+            'author':{'name':'${{ github.actor }}','icon_url':'https://github.com/${{ github.actor }}.png'},
+            'title':'$EMOJI: ${{ github.event.label.name }}',
+            'footer':{'text':'ChromaShift · ${{ github.repository }}'},
+            'timestamp':'$(date -u +%Y-%m-%dT%H:%M:%SZ)'
+          }]}))")"
+
+  notify-release:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    steps:
+      - name: Release
+        run: |
+          ACTION="${{ github.event.action }}"
+          python3 -c "
+          action_map = {
+            'published':'🚀 New Release Published',
+            'prereleased':'🧪 Pre-release Published',
+            'edited':'📝 Release Edited',
+            'deleted':'🗑️ Release Deleted'
+          }
+          print(action_map.get('$ACTION','📦 Release $ACTION'))
+          " > /tmp/release_label
+          PRERELEASE="${{ github.event.release.prerelease }}"
+          curl -s -X POST "${{ secrets.DISCORD_UPDATE_NOTIFY_RELESE }}" \
+            -H "Content-Type: application/json" \
+            -d "$(python3 -c "
+          import json
+          action = '$ACTION'
+          color_map = {'published':0x57F287,'prereleased':0xFEE75C,'deleted':0xED4245}
+          color = color_map.get(action, 0x5865F2)
+          body = '${{ github.event.release.body }}'[:500] if '${{ github.event.release.body }}' else 'No release notes.'
+          prerelease = '$PRERELEASE' == 'true'
+          label = open('/tmp/release_label').read().strip()
+          name = '${{ github.event.release.name }}' or '${{ github.event.release.tag_name }}'
+          print(json.dumps({'embeds':[{
+            'color': color,
+            'author':{'name':'${{ github.actor }}','icon_url':'https://github.com/${{ github.actor }}.png'},
+            'title':f'{label}: {name}',
+            'url':'${{ github.event.release.html_url }}',
+            'description': body,
+            'fields':[
+              {'name':'Tag','value':'\`${{ github.event.release.tag_name }}\`','inline':True},
+              {'name':'Type','value':'Pre-release' if prerelease else 'Stable','inline':True}
+            ],
+            'footer':{'text':'ChromaShift · ${{ github.repository }}'},
+            'timestamp':'$(date -u +%Y-%m-%dT%H:%M:%SZ)'
+          }]}))")"
