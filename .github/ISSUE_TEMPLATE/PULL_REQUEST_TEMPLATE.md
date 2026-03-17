@@ -9,6 +9,7 @@ Explains what this PR does.
 ## ✅ Checklist
 - [ ] Tested code
 - [ ] Updated documentation
+- [ ] Check there aren't any similar PR 
 
 ## ⚙️ Upload Modified Code
 
