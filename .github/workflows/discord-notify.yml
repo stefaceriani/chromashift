@@ -1,4 +1,4 @@
-name: Discord Notifications
+name: Discord Notification
 
 on:
   push:
