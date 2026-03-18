@@ -10,8 +10,6 @@ on:
     types: [opened, closed, reopened, edited, labeled, unlabeled, assigned, unassigned, review_requested, synchronize, converted_to_draft, ready_for_review]
   issues:
     types: [opened, closed, reopened, edited, labeled, unlabeled, assigned, unassigned, deleted]
-  star:
-    types: [created, deleted]
   watch:
     types: [started]
   deployment:
