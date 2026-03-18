@@ -26,130 +26,304 @@ jobs:
 
       - name: Notify Push
         if: github.event_name == 'push'
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_UPDATE_NOTIFY }}
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const commits = github.event.commits.slice(0, 10);
-            const desc = commits.map(c => `\`${c.id.slice(0,7)}\` ${c.message.split('\n')[0].slice(0,72)} — ${c.author.name}`).join('\n');
+            const commits = context.payload.commits.slice(0, 10);
+            const desc = commits.map(c =>
+              `\`${c.id.slice(0,7)}\` ${c.message.split('\n')[0].slice(0,72)} — ${c.author.name}`
+            ).join('\n');
+            const count = context.payload.commits.length;
+            const branch = context.ref.replace('refs/heads/', '');
             const payload = {
               embeds: [{
                 color: 0x5865F2,
-                author: { name: github.actor, icon_url: `https://github.com/${github.actor}.png` },
-                title: `[${github.ref_name}] ${github.event.commits.length} new commit${github.event.commits.length>1?'s':''}`,
-                url: github.event.compare,
+                author: { name: context.actor, icon_url: `https://github.com/${context.actor}.png` },
+                title: `[\`${branch}\`] ${count} new commit${count > 1 ? 's' : ''}`,
+                url: context.payload.compare,
                 description: desc,
-                footer: { text: `ChromaShift · ${github.repository}` },
+                footer: { text: `ChromaShift · ${context.repo.owner}/${context.repo.repo}` },
                 timestamp: new Date().toISOString()
               }]
             };
-            await require('node-fetch')(process.env.DISCORD_UPDATE_NOTIFY, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            await fetch(process.env.WEBHOOK, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
 
       - name: Notify Create
         if: github.event_name == 'create'
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_UPDATE_NOTIFY }}
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const type = github.event.ref_type;
-            const ref = github.event.ref;
+            const type = context.payload.ref_type;
+            const ref = context.payload.ref;
             const emoji = type === 'tag' ? '🏷️' : '🌿';
+            const repo = `${context.repo.owner}/${context.repo.repo}`;
             const payload = {
               embeds: [{
                 color: 0x57F287,
-                author: { name: github.actor, icon_url: `https://github.com/${github.actor}.png` },
+                author: { name: context.actor, icon_url: `https://github.com/${context.actor}.png` },
                 title: `${emoji} New ${type} created: \`${ref}\``,
-                url: `https://github.com/${github.repository}/tree/${ref}`,
-                footer: { text: `ChromaShift · ${github.repository}` },
+                url: `https://github.com/${repo}/tree/${ref}`,
+                footer: { text: `ChromaShift · ${repo}` },
                 timestamp: new Date().toISOString()
               }]
             };
-            await require('node-fetch')(process.env.DISCORD_UPDATE_NOTIFY, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            await fetch(process.env.WEBHOOK, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
 
       - name: Notify Delete
         if: github.event_name == 'delete'
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_UPDATE_NOTIFY }}
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const type = github.event.ref_type;
-            const ref = github.event.ref;
+            const type = context.payload.ref_type;
+            const ref = context.payload.ref;
+            const repo = `${context.repo.owner}/${context.repo.repo}`;
             const payload = {
               embeds: [{
                 color: 0xED4245,
-                author: { name: github.actor, icon_url: `https://github.com/${github.actor}.png` },
+                author: { name: context.actor, icon_url: `https://github.com/${context.actor}.png` },
                 title: `🗑️ ${type} deleted: \`${ref}\``,
-                footer: { text: `ChromaShift · ${github.repository}` },
+                footer: { text: `ChromaShift · ${repo}` },
                 timestamp: new Date().toISOString()
               }]
             };
-            await require('node-fetch')(process.env.DISCORD_UPDATE_NOTIFY, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            await fetch(process.env.WEBHOOK, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+      - name: Notify Fork
+        if: github.event_name == 'fork'
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_UPDATE_NOTIFY }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const repo = `${context.repo.owner}/${context.repo.repo}`;
+            const fork = context.payload.forkee;
+            const payload = {
+              embeds: [{
+                color: 0xEB459E,
+                author: { name: context.actor, icon_url: `https://github.com/${context.actor}.png` },
+                title: `🍴 Repo forked by ${context.actor}`,
+                url: fork.html_url,
+                fields: [{ name: 'Fork', value: `[${fork.full_name}](${fork.html_url})`, inline: true }],
+                footer: { text: `ChromaShift · ${repo}` },
+                timestamp: new Date().toISOString()
+              }]
+            };
+            await fetch(process.env.WEBHOOK, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
 
       - name: Notify Pull Request
         if: github.event_name == 'pull_request'
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_UPDATE_NOTIFY }}
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const actionMap = {
               opened:'🔀 PR Opened', closed:'✅ PR Closed', reopened:'🔄 PR Reopened',
               edited:'📝 PR Edited', labeled:'🏷️ PR Labeled', unlabeled:'🏷️ PR Unlabeled',
-              assigned:'👤 PR Assigned', unassigned:'👤 PR Unassigned', review_requested:'👀 Review Requested',
-              synchronize:'🔃 PR Updated', converted_to_draft:'📋 PR → Draft', ready_for_review:'✅ PR Ready for Review'
+              assigned:'👤 PR Assigned', unassigned:'👤 PR Unassigned',
+              review_requested:'👀 Review Requested', synchronize:'🔃 PR Updated',
+              converted_to_draft:'📋 PR → Draft', ready_for_review:'✅ PR Ready for Review'
             };
-            const merged = github.event.pull_request.merged;
-            const label = merged ? '🟣 PR Merged' : (actionMap[github.event.action] || `🔀 PR ${github.event.action}`);
-            const body = github.event.pull_request.body ? github.event.pull_request.body.slice(0,200) : 'No description.';
+            const pr = context.payload.pull_request;
+            const merged = pr.merged;
+            const label = merged ? '🟣 PR Merged' : (actionMap[context.payload.action] || `🔀 PR ${context.payload.action}`);
+            const body = pr.body ? pr.body.slice(0, 200) : 'No description.';
+            const repo = `${context.repo.owner}/${context.repo.repo}`;
             const payload = {
               embeds: [{
                 color: merged ? 0x8957E5 : 0xFEE75C,
-                author: { name: github.actor, icon_url: `https://github.com/${github.actor}.png` },
-                title: `${label}: ${github.event.pull_request.title}`,
-                url: github.event.pull_request.html_url,
+                author: { name: context.actor, icon_url: `https://github.com/${context.actor}.png` },
+                title: `${label}: ${pr.title}`,
+                url: pr.html_url,
                 description: body,
                 fields: [
-                  { name: 'Branch', value: `\`${github.event.pull_request.head.ref}\` → \`${github.event.pull_request.base.ref}\``, inline: true },
-                  { name: 'Changes', value: `+${github.event.pull_request.additions} / -${github.event.pull_request.deletions}`, inline: true }
+                  { name: 'Branch', value: `\`${pr.head.ref}\` → \`${pr.base.ref}\``, inline: true },
+                  { name: 'Changes', value: `+${pr.additions} / -${pr.deletions}`, inline: true }
                 ],
-                footer: { text: `ChromaShift · ${github.repository}` },
+                footer: { text: `ChromaShift · ${repo}` },
                 timestamp: new Date().toISOString()
               }]
             };
-            await require('node-fetch')(process.env.DISCORD_UPDATE_NOTIFY, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            await fetch(process.env.WEBHOOK, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+      - name: Notify Issue
+        if: github.event_name == 'issues'
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_UPDATE_NOTIFY }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const actionMap = {
+              opened:'🐛 Issue Opened', closed:'✅ Issue Closed', reopened:'🔄 Issue Reopened',
+              edited:'📝 Issue Edited', labeled:'🏷️ Issue Labeled', unlabeled:'🏷️ Issue Unlabeled',
+              assigned:'👤 Issue Assigned', unassigned:'👤 Issue Unassigned', deleted:'🗑️ Issue Deleted'
+            };
+            const issue = context.payload.issue;
+            const label = actionMap[context.payload.action] || `🐛 Issue ${context.payload.action}`;
+            const body = issue.body ? issue.body.slice(0, 200) : 'No description.';
+            const labels = issue.labels.map(l => l.name).join(', ') || 'none';
+            const repo = `${context.repo.owner}/${context.repo.repo}`;
+            const payload = {
+              embeds: [{
+                color: 0xFEE75C,
+                author: { name: context.actor, icon_url: `https://github.com/${context.actor}.png` },
+                title: `${label}: ${issue.title}`,
+                url: issue.html_url,
+                description: body,
+                fields: [{ name: 'Labels', value: labels, inline: true }],
+                footer: { text: `ChromaShift · ${repo}` },
+                timestamp: new Date().toISOString()
+              }]
+            };
+            await fetch(process.env.WEBHOOK, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+      - name: Notify Watch
+        if: github.event_name == 'watch'
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_UPDATE_NOTIFY }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const repo = `${context.repo.owner}/${context.repo.repo}`;
+            const payload = {
+              embeds: [{
+                color: 0x5865F2,
+                author: { name: context.actor, icon_url: `https://github.com/${context.actor}.png` },
+                title: `👁️ ${context.actor} is now watching the repo`,
+                url: `https://github.com/${repo}/watchers`,
+                footer: { text: `ChromaShift · ${repo}` },
+                timestamp: new Date().toISOString()
+              }]
+            };
+            await fetch(process.env.WEBHOOK, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+      - name: Notify Deployment
+        if: github.event_name == 'deployment'
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_UPDATE_NOTIFY }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const d = context.payload.deployment;
+            const repo = `${context.repo.owner}/${context.repo.repo}`;
+            const payload = {
+              embeds: [{
+                color: 0x57F287,
+                author: { name: context.actor, icon_url: `https://github.com/${context.actor}.png` },
+                title: `🚀 New deployment: ${d.environment}`,
+                fields: [
+                  { name: 'Ref', value: `\`${d.ref}\``, inline: true },
+                  { name: 'Task', value: d.task, inline: true }
+                ],
+                footer: { text: `ChromaShift · ${repo}` },
+                timestamp: new Date().toISOString()
+              }]
+            };
+            await fetch(process.env.WEBHOOK, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+      - name: Notify Label
+        if: github.event_name == 'label'
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_UPDATE_NOTIFY }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const actionMap = { created:'🏷️ Label Created', edited:'✏️ Label Edited', deleted:'🗑️ Label Deleted' };
+            const lbl = context.payload.label;
+            const label = actionMap[context.payload.action] || `🏷️ Label ${context.payload.action}`;
+            const repo = `${context.repo.owner}/${context.repo.repo}`;
+            const color = parseInt(lbl.color, 16) || 0x99AAB5;
+            const payload = {
+              embeds: [{
+                color,
+                author: { name: context.actor, icon_url: `https://github.com/${context.actor}.png` },
+                title: `${label}: ${lbl.name}`,
+                footer: { text: `ChromaShift · ${repo}` },
+                timestamp: new Date().toISOString()
+              }]
+            };
+            await fetch(process.env.WEBHOOK, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
 
   notify-release:
     runs-on: ubuntu-latest
     if: github.event_name == 'release'
     steps:
       - name: Notify Release
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_UPDATE_NOTIFY_RELESE }}
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const actionMap = {
-              published:'🚀 New Release Published',
-              prereleased:'🧪 Pre-release Published',
-              edited:'📝 Release Edited',
-              deleted:'🗑️ Release Deleted'
+              published:'🚀 New Release Published', prereleased:'🧪 Pre-release Published',
+              edited:'📝 Release Edited', deleted:'🗑️ Release Deleted'
             };
-            const action = github.event.action;
+            const colorMap = { published: 0x57F287, prereleased: 0xFEE75C, deleted: 0xED4245 };
+            const action = context.payload.action;
+            const release = context.payload.release;
             const label = actionMap[action] || `📦 Release ${action}`;
-            const body = github.event.release.body ? github.event.release.body.slice(0,500) : 'No release notes.';
-            const prerelease = github.event.release.prerelease;
-            const name = github.event.release.name || github.event.release.tag_name;
+            const body = release.body ? release.body.slice(0, 500) : 'No release notes.';
+            const name = release.name || release.tag_name;
+            const repo = `${context.repo.owner}/${context.repo.repo}`;
             const payload = {
               embeds: [{
-                color: { published:0x57F287, prereleased:0xFEE75C, deleted:0xED4245 }[action] || 0x5865F2,
-                author: { name: github.actor, icon_url: `https://github.com/${github.actor}.png` },
+                color: colorMap[action] || 0x5865F2,
+                author: { name: context.actor, icon_url: `https://github.com/${context.actor}.png` },
                 title: `${label}: ${name}`,
-                url: github.event.release.html_url,
+                url: release.html_url,
                 description: body,
                 fields: [
-                  { name: 'Tag', value: `\`${github.event.release.tag_name}\``, inline: true },
-                  { name: 'Type', value: prerelease ? 'Pre-release' : 'Stable', inline: true }
+                  { name: 'Tag', value: `\`${release.tag_name}\``, inline: true },
+                  { name: 'Type', value: release.prerelease ? 'Pre-release' : 'Stable', inline: true }
                 ],
-                footer: { text: `ChromaShift · ${github.repository}` },
+                footer: { text: `ChromaShift · ${repo}` },
                 timestamp: new Date().toISOString()
               }]
             };
-            await require('node-fetch')(process.env.DISCORD_UPDATE_NOTIFY_RELEASE, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            await fetch(process.env.WEBHOOK, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
