@@ -1,8 +1,4 @@
 // PRESET NAME: 🌙 Golden Hour
-// REQUESTEd BY: @stefaceriani
-// CS VERSION: 2.5.3
-// PRESET VERSION: 1.0.0
-
 },
     golden: {
       name: "Golden Hour", emoji: "🌙", builtin: true,
@@ -17,3 +13,8 @@
       },
     },
   }
+
+
+// REQUESTEd BY: @stefaceriani
+// CS VERSION: 2.5.3
+// PRESET VERSION: 1.0.0
