@@ -2,10 +2,12 @@
 
 ## ⚙️ Supported Versions
 
-| Version | Supported          | Note                 |
-| ------- | ------------------ | -------------------- |
-| 1.0.0   | :white_check_mark: | All works perfectly  |
-| < 1.0.0 | :x:                | Bug & old improvment |
+| Version    | Supported          | Note                 |
+| ---------- | ------------------ | -------------------- |
+| 2.5.3      | ✅                 | All works perfectly  |
+| 2.0.0 or < | ❌                 | Bug & old improvment |
+| 1.0.0 or < | ❌                 | Bug & old improvment |
+
 
 ## 🛡️ Reporting a Vulnerability or Bugs
 
