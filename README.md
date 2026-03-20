@@ -104,7 +104,7 @@ PRs welcome! If you've created a great color scheme, open a PR to add it as an o
 
 ## 🐛 Bug or Request?
 
-Open a issue
+Open a issue or join our community https://discord.gg/pVZHxKW5KN
 
 # 📷 Screenshot
 <table>
@@ -129,6 +129,7 @@ Open a issue
 </table>
 
 ---
+[![Discord](https://img.shields.io/badge/Discord-🎨ChromaShift_Support-5865F2?logo=discord&logoColor=white)](https://discord.gg/rSpeNDRcGx)
 [![Version](https://img.shields.io/github/v/release/stefaceriani/chromashift?logo=github)](https://github.com/stefaceriani/chromashift/releases)
 [![Forks](https://img.shields.io/github/forks/stefaceriani/chromashift?style=social)](https://github.com/stefaceriani/chromashift/fork)
 [![Last Commit](https://img.shields.io/github/last-commit/stefaceriani/chromashift)](https://github.com/stefaceriani/chromashift/commit/)
