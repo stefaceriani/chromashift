@@ -4,7 +4,8 @@
 
 | Version    | Supported | Notes              |
 | ---------- | --------- | ------------------ |
-| 2.5.3      | ✅         | Fully supported    |
+| 3.0.0      | ✅         | Fully supported    |
+| 2.5.3 or < | ❌         | Outdated, not safe |
 | 2.0.0 or < | ❌         | Outdated, not safe |
 | 1.0.0 or < | ❌         | Outdated, not safe |
 
