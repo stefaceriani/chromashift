@@ -1,7 +1,7 @@
 // NAME: ChromaShift
 // AUTHOR: stefaceriani
 // DESCRIPTION: Customise every Spotify colour from the Settings page.
-// VERSION: 2.5.3
+// VERSION: 3.0.0
 
 (function ChromaShift() {
   "use strict";
@@ -11,9 +11,9 @@
     return;
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // UTILITIES
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   function hexToRgb(hex) {
     hex = hex.replace(/^#/, "");
@@ -87,9 +87,9 @@
     return "#" + v.toLowerCase();
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // PRESETS
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   const BUILTIN_PRESETS = {
     default: {
@@ -200,13 +200,17 @@
     { key: "csVolumeFg",          labelKey: "csVolumeFg",          group: "groupPlayer" },
   ];
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // STORAGE
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   const KEY_COLORS         = "cs4_colors";
   const KEY_PRESET         = "cs4_preset";
-  const KEY_CUSTOM_PRESETS = "cs4_custom_presets";
+  const KEY_CUSTOM_PRESETS    = "cs4_custom_presets";
+  const KEY_COMMUNITY_ENABLED = "cs4_community_enabled";
+  const KEY_COMMUNITY_PRESETS = "cs4_community_presets";
+  const COMMUNITY_BASE        = "https://cdn.jsdelivr.net/gh/stefaceriani/chromashift@main/custom_preset";
+  const COMMUNITY_INDEX       = COMMUNITY_BASE + "/index.json";
 
   function loadColors() {
     try {
@@ -240,13 +244,79 @@
     Spicetify.LocalStorage.set(KEY_CUSTOM_PRESETS, JSON.stringify(obj));
   }
 
-  function getAllPresets() {
-    return { ...BUILTIN_PRESETS, ...loadCustomPresets() };
+  function isCommunityEnabled() {
+    return Spicetify.LocalStorage.get(KEY_COMMUNITY_ENABLED) === "1";
   }
 
-  // ═══════════════════════════════════════════════════════════
+  function setCommunityEnabled(val) {
+    Spicetify.LocalStorage.set(KEY_COMMUNITY_ENABLED, val ? "1" : "0");
+  }
+
+  function loadCommunityPresets() {
+    try {
+      const s = Spicetify.LocalStorage.get(KEY_COMMUNITY_PRESETS);
+      if (s) return JSON.parse(s);
+    } catch (_) {}
+    return {};
+  }
+
+  function saveCommunityPresets(obj) {
+    Spicetify.LocalStorage.set(KEY_COMMUNITY_PRESETS, JSON.stringify(obj));
+  }
+
+  async function fetchCommunityPresets() {
+    const URLS = [
+      "https://cdn.jsdelivr.net/gh/stefaceriani/chromashift@main/custom_preset",
+      "https://raw.githubusercontent.com/stefaceriani/chromashift/main/custom_preset",
+    ];
+
+    let index = null;
+    let baseUrl = null;
+
+    for (const base of URLS) {
+      try {
+        const res = await fetch(base + "/index.json?t=" + Date.now());
+        if (res.ok) { index = await res.json(); baseUrl = base; break; }
+      } catch (_) {}
+    }
+
+    if (!Array.isArray(index) || index.length === 0) return null;
+
+    const presets = {};
+    await Promise.all(index.map(async (filename) => {
+      try {
+        const res = await fetch(baseUrl + "/" + filename + "?t=" + Date.now());
+        if (!res.ok) return;
+        const code = await res.text();
+
+        const nameMatch = code.match(/\/\/\s*PRESET NAME:\s*(.+)/);
+        if (!nameMatch) return;
+        const nameFull = nameMatch[1].trim();
+        const emojiMatch = nameFull.match(/^\p{Emoji}+\s*/u);
+        const emoji = emojiMatch ? emojiMatch[0].trim() : "🎨";
+        const name = nameFull.replace(/^\p{Emoji}+\s*/u, "").trim() || nameFull;
+
+        const colorsMatch = code.match(/colors:\s*\{([\s\S]*?)\}/);
+        if (!colorsMatch) return;
+        const colors = Function('"use strict"; return {' + colorsMatch[1] + '}')();
+        if (!colors || typeof colors !== "object") return;
+
+        const key = "community_" + filename.replace(".js", "").replace(/[^a-z0-9]/gi, "_").toLowerCase();
+        presets[key] = { name, emoji, builtin: false, community: true, colors };
+      } catch (_) {}
+    }));
+
+    return Object.keys(presets).length > 0 ? presets : null;
+  }
+
+  function getAllPresets() {
+    const community = isCommunityEnabled() ? loadCommunityPresets() : {};
+    return { ...BUILTIN_PRESETS, ...community, ...loadCustomPresets() };
+  }
+
+  // ===========================================================
   // CSS INJECTION
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   let styleEl = document.getElementById("cs4-style");
   if (!styleEl) {
@@ -559,14 +629,9 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 
   function applyCSS(colors) { styleEl.textContent = buildCSS(colors); }
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // SIMPLE BEAUTIFUL LYRICS COMPATIBILITY
-  // ═══════════════════════════════════════════════════════════
-  // SBL uses .lyrics-lyrics-container as its root and paints the background
-  // via --lyrics-color-background on .lyrics-lyrics-background.
-  // ChromaShift must not set background-color on any ancestor of that container
-  // while the lyrics view is open. We do this by toggling a class on <body>
-  // and using a CSS :has() guard in buildCSS.
+  // ===========================================================
 
   const SBL_BODY_CLASS = "cs4-sbl-active";
 
@@ -578,7 +643,7 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     }
   }
 
-  // Run immediately and on every DOM change
+  
   sblCheck();
   new MutationObserver(sblCheck).observe(document.body, { childList: true, subtree: true });
 
@@ -591,8 +656,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
       window.location.pathname === "/home"
     );
   }
-
-  // Topbar selectors Spotify uses
   const TOPBAR_SELS = [
     ".Root__top-bar",
     ".main-topBar-container",
@@ -606,7 +669,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     TOPBAR_SELS.forEach(sel => {
       document.querySelectorAll(sel).forEach(el => {
         if (onHome) {
-          // Home: force transparency by removing inline styles and overriding
           el.style.setProperty("background-color", "transparent", "important");
           el.style.setProperty("background-image", "none", "important");
           el.style.setProperty("background", "transparent", "important");
@@ -624,8 +686,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
       });
     });
   }
-
-  // Dedicated observer for topbar inline style injection (Spotify injects on scroll)
   let _topBarObserver = null;
   function attachTopBarObserver() {
     if (_topBarObserver) { _topBarObserver.disconnect(); _topBarObserver = null; }
@@ -645,8 +705,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     const pbtn      = _liveColors.csPlayButton     || _liveColors.csButton || "#1db954";
     const pbtnHov   = _liveColors.csPlayButtonHover || adjustColor(pbtn, 0.1);
     const pbtnText  = contrastColor(pbtn);
-
-    // ── Player bar play/pause ──
     document.querySelectorAll("[data-testid='control-button-playpause']").forEach(btn => {
       btn.style.setProperty("background-color", pbtn, "important");
       btn.style.setProperty("color", pbtnText, "important");
@@ -663,22 +721,17 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     });
 
     document.querySelectorAll(".main-playButton-PlayButton,[data-testid='play-button']").forEach(btn => {
-      // Skip tracklist rows e player bar
       if (
         btn.closest("[class*='TrackListRow']") || btn.closest("[class*='tracklist-row']") ||
         btn.closest(".main-trackList-trackListRow") || btn.closest("[data-testid='tracklist-row']") ||
         btn.closest("[data-testid='queue-row']") || btn.closest("[class*='QueueRow']") ||
         btn.dataset.testid === "control-button-playpause"
       ) return;
-
-      // Text/svg colour on all
       btn.style.setProperty("color", pbtnText, "important");
       btn.querySelectorAll("svg,path,polygon").forEach(el => {
         el.style.setProperty("fill", pbtnText, "important");
         el.style.setProperty("color", pbtnText, "important");
       });
-
-      // ActionBar/EntityHeader: always visible with fixed colour, hover via JS
       if (
         btn.closest("[class*='actionBar']") || btn.closest("[class*='ActionBar']") ||
         btn.closest("[class*='entityHeader']") || btn.closest("[class*='EntityHeader']")
@@ -692,9 +745,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         }
         return;
       }
-
-      // Card play button: do NOT set background at rest (CSS handles opacity/visibility)
-      // Only hook on parent to show colour when card is hovered
       btn.style.removeProperty("background-color");
       btn.style.setProperty("border-radius", "50%", "important");
 
@@ -718,7 +768,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
           cardAnchor.addEventListener("mouseleave", () => {
             btn.style.removeProperty("background-color");
           });
-          // Direct hover on button → hover colour
           btn.addEventListener("mouseenter", () => btn.style.setProperty("background-color", pbtnHov, "important"));
           btn.addEventListener("mouseleave", () => btn.style.setProperty("background-color", pbtn, "important"));
         }
@@ -726,9 +775,9 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     });
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // FILTER BAR (Home): transparent at rest, solid on scroll
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   const FILTER_SELS = [
     ".search-searchCategory-contentArea",
@@ -791,9 +840,9 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     setTimeout(runAllFixes, 50);
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // UI
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   const SECTION_ID = "cs4-section";
 
@@ -819,9 +868,9 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     renderUI(section);
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // I18N
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
+  // LANG
+  // ===========================================================
 
   const KEY_LANG = "cs4_lang";
 
@@ -881,6 +930,74 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csProgressBg: "Progress background", csProgressFg: "Progress color",
         csVolumeBg: "Volume background", csVolumeFg: "Volume color",
       },
+      footer: {
+        bug:       "🐛 Have you found a <strong>bug</strong>? Open an",
+        request:   "✨ Have a <strong>request</strong>? Open an",
+        preset:    "🎨 Want to propose a <strong>preset</strong>? Open an",
+        issue:     "issue",
+        note:      "but <em>don't</em> open one if there's already an open issue for that bug/request",
+        custom:    "💖 Do you want a <strong>custom preset</strong>? Open an",
+        warning:   "⚠️ Important",
+        warnText:  "Any custom presets or special versions requested by users will be published on the repo and will need to be installed manually.",
+        warnText2: "The version or preset will be updated in parallel with the public version. (If it isn't possible to update, this will be communicated in the main release.)",
+        thanks:    "Thanks for your understanding ❤️",
+      },
+    },
+    "en-US": {
+      subtitle:       "Customize every Spotify color in real time",
+      tabPresets:     "Presets",
+      tabEditor:      "Color editor",
+      saveBtn:        "＋ Save current",
+      presetNamePh:   "Custom preset name…",
+      applyBtn:       "✓ Apply & Save",
+      resetBtn:       "↺ Restore preset",
+      defaultBtn:     "↩ Spotify Default",
+      toastSaved:     "Saved and applied!",
+      toastReset:     "Restored to active preset.",
+      toastDefault:   "Spotify default restored.",
+      toastNoName:    "Enter a name.",
+      toastPresetSaved: (n) => `Preset "${n}" saved!`,
+      toastPresetApplied: (n) => `"${n}" applied!`,
+      toastPresetDeleted: "Preset deleted.",
+      groupText:      "Text",
+      groupBg:        "Backgrounds",
+      groupAccents:   "Accents",
+      groupStructure: "Structure",
+      groupPlayer:    "Player",
+      langLabel:      "Language",
+      presetNames: {
+        default:    "Spotify Default",
+        midnight:   "Midnight Blue",
+        rose:       "Rose Gold",
+        forest:     "Forest",
+        cyber:      "Cyberpunk",
+        monochrome: "Monochrome",
+        light:      "Light Mode",
+      },
+      colorLabels: {
+        csText: "Main text", csSubtext: "Secondary text",
+        csMain: "Main background", csMainElevated: "Elevated background",
+        csHighlight: "Hover / selection", csHighlightElevated: "Elevated hover",
+        csAccent: "Accent", csPlayButton: "Play button",
+        csPlayButtonHover: "Play button (hover)", csButtonDisabled: "Disabled button",
+        csSidebar: "Sidebar", csPlayer: "Player bar",
+        csCard: "Card", csCardHover: "Card hover",
+        csNotification: "Notifications",
+        csProgressBg: "Progress background", csProgressFg: "Progress color",
+        csVolumeBg: "Volume background", csVolumeFg: "Volume color",
+      },
+      footer: {
+        bug:       "🐛 Have you found a <strong>bug</strong>? Open an",
+        request:   "✨ Have a <strong>request</strong>? Open an",
+        preset:    "🎨 Want to propose a <strong>preset</strong>? Open an",
+        issue:     "issue",
+        note:      "but <em>don't</em> open one if there's already an open issue for that bug/request",
+        custom:    "💖 Do you want a <strong>custom preset</strong>? Open an",
+        warning:   "⚠️ Important",
+        warnText:  "Any custom presets or special versions requested by users will be published on the repo and will need to be installed manually.",
+        warnText2: "The version or preset will be updated in parallel with the public version. (If it isn't possible to update, this will be communicated in the main release.)",
+        thanks:    "Thanks for your understanding ❤️",
+      },
     },
     "it": {
       subtitle:       "Personalizza ogni colore di Spotify in tempo reale",
@@ -924,6 +1041,18 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csNotification: "Notifiche",
         csProgressBg: "Avanzamento sfondo", csProgressFg: "Avanzamento colore",
         csVolumeBg: "Volume sfondo", csVolumeFg: "Volume colore",
+      },
+      footer: {
+        bug:       "🐛 Hai trovato un <strong>bug</strong>? Apri una",
+        request:   "✨ Hai una <strong>richiesta</strong>? Apri una",
+        preset:    "🎨 Vuoi proporre un <strong>preset</strong>? Apri una",
+        issue:     "segnalazione",
+        note:      "ma <em>non</em> aprirne una se esiste già una segnalazione aperta per quel bug/richiesta",
+        custom:    "💖 Vuoi un <strong>preset personalizzato</strong>? Apri una",
+        warning:   "⚠️ Importante",
+        warnText:  "Tutti i preset personalizzati o versioni speciali richiesti dagli utenti verranno pubblicati nel repo e dovranno essere installati manualmente.",
+        warnText2: "La versione o il preset verrà aggiornato in parallelo con la versione pubblica. (Se non fosse possibile aggiornarlo, verrà comunicato nella release principale.)",
+        thanks:    "Grazie per la comprensione ❤️",
       },
     },
     "de": {
@@ -969,6 +1098,18 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csProgressBg: "Fortschritt Hintergrund", csProgressFg: "Fortschritt Farbe",
         csVolumeBg: "Lautstärke Hintergrund", csVolumeFg: "Lautstärke Farbe",
       },
+      footer: {
+        bug:       "🐛 Einen <strong>Fehler</strong> gefunden? Öffne ein",
+        request:   "✨ Hast du einen <strong>Wunsch</strong>? Öffne ein",
+        preset:    "🎨 Möchtest du ein <strong>Preset</strong> vorschlagen? Öffne ein",
+        issue:     "Issue",
+        note:      "aber <em>nicht</em>, wenn bereits ein offenes Issue für diesen Fehler/Wunsch existiert",
+        custom:    "💖 Möchtest du ein <strong>benutzerdefiniertes Preset</strong>? Öffne ein",
+        warning:   "⚠️ Wichtig",
+        warnText:  "Alle benutzerdefinierten Presets oder Sonderversionen werden im Repo veröffentlicht und müssen manuell installiert werden.",
+        warnText2: "Die Version oder das Preset wird parallel zur öffentlichen Version aktualisiert. (Falls nicht möglich, wird dies im Haupt-Release kommuniziert.)",
+        thanks:    "Danke für dein Verständnis ❤️",
+      },
     },
     "fr": {
       subtitle:       "Personnalisez chaque couleur de Spotify en temps réel",
@@ -1012,6 +1153,18 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csNotification: "Notifications",
         csProgressBg: "Fond progression", csProgressFg: "Couleur progression",
         csVolumeBg: "Fond volume", csVolumeFg: "Couleur volume",
+      },
+      footer: {
+        bug:       "🐛 Vous avez trouvé un <strong>bug</strong> ? Ouvrez une",
+        request:   "✨ Vous avez une <strong>demande</strong> ? Ouvrez une",
+        preset:    "🎨 Vous voulez proposer un <strong>preset</strong> ? Ouvrez une",
+        issue:     "issue",
+        note:      "mais <em>n'en ouvrez pas</em> s'il en existe déjà une ouverte pour ce bug/cette demande",
+        custom:    "💖 Vous voulez un <strong>preset personnalisé</strong> ? Ouvrez une",
+        warning:   "⚠️ Important",
+        warnText:  "Tous les presets personnalisés ou versions spéciales demandés seront publiés sur le dépôt et devront être installés manuellement.",
+        warnText2: "La version ou le preset sera mis à jour en parallèle avec la version publique. (Si impossible, cela sera communiqué dans la release principale.)",
+        thanks:    "Merci pour votre compréhension ❤️",
       },
     },
     "es": {
@@ -1057,6 +1210,18 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csProgressBg: "Fondo progreso", csProgressFg: "Color progreso",
         csVolumeBg: "Fondo volumen", csVolumeFg: "Color volumen",
       },
+      footer: {
+        bug:       "🐛 ¿Encontraste un <strong>error</strong>? Abre una",
+        request:   "✨ ¿Tienes una <strong>solicitud</strong>? Abre una",
+        preset:    "🎨 ¿Quieres proponer un <strong>preset</strong>? Abre una",
+        issue:     "issue",
+        note:      "pero <em>no</em> abras una si ya hay una issue abierta para ese error/solicitud",
+        custom:    "💖 ¿Quieres un <strong>preset personalizado</strong>? Abre una",
+        warning:   "⚠️ Importante",
+        warnText:  "Todos los presets personalizados o versiones especiales solicitados se publicarán en el repositorio y deberán instalarse manualmente.",
+        warnText2: "La versión o el preset se actualizará en paralelo con la versión pública. (Si no es posible, se comunicará en la release principal.)",
+        thanks:    "Gracias por tu comprensión ❤️",
+      },
     },
     "uk": {
       subtitle:       "Налаштуйте кожен колір Spotify у реальному часі",
@@ -1100,6 +1265,18 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csNotification: "Сповіщення",
         csProgressBg: "Фон прогресу", csProgressFg: "Колір прогресу",
         csVolumeBg: "Фон гучності", csVolumeFg: "Колір гучності",
+      },
+      footer: {
+        bug:       "🐛 Знайшли <strong>помилку</strong>? Відкрийте",
+        request:   "✨ Маєте <strong>запит</strong>? Відкрийте",
+        preset:    "🎨 Хочете запропонувати <strong>пресет</strong>? Відкрийте",
+        issue:     "issue",
+        note:      "але <em>не відкривайте</em>, якщо вже є відкрите issue для цієї помилки/запиту",
+        custom:    "💖 Хочете <strong>власний пресет</strong>? Відкрийте",
+        warning:   "⚠️ Важливо",
+        warnText:  "Усі користувацькі пресети або спеціальні версії будуть опубліковані у репозиторії та потребуватимуть ручного встановлення.",
+        warnText2: "Версія або пресет оновлюватиметься паралельно з публічною версією. (Якщо неможливо, про це буде повідомлено в основному релізі.)",
+        thanks:    "Дякуємо за розуміння ❤️",
       },
     },
     "ru": {
@@ -1145,6 +1322,18 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csProgressBg: "Фон прогресса", csProgressFg: "Цвет прогресса",
         csVolumeBg: "Фон громкости", csVolumeFg: "Цвет громкости",
       },
+      footer: {
+        bug:       "🐛 Нашли <strong>ошибку</strong>? Откройте",
+        request:   "✨ Есть <strong>пожелание</strong>? Откройте",
+        preset:    "🎨 Хотите предложить <strong>пресет</strong>? Откройте",
+        issue:     "issue",
+        note:      "но <em>не открывайте</em>, если уже есть открытое issue для этой ошибки/пожелания",
+        custom:    "💖 Хотите <strong>собственный пресет</strong>? Откройте",
+        warning:   "⚠️ Важно",
+        warnText:  "Все пользовательские пресеты или специальные версии будут опубликованы в репозитории и потребуют ручной установки.",
+        warnText2: "Версия или пресет будет обновляться параллельно с публичной версией. (Если невозможно — будет сообщено в основном релизе.)",
+        thanks:    "Спасибо за понимание ❤️",
+      },
     },
     "zh": {
       subtitle:       "实时自定义 Spotify 的每种颜色",
@@ -1189,6 +1378,18 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csProgressBg: "进度背景", csProgressFg: "进度颜色",
         csVolumeBg: "音量背景", csVolumeFg: "音量颜色",
       },
+      footer: {
+        bug:       "🐛 发现了<strong>错误</strong>？请提交",
+        request:   "✨ 有<strong>功能请求</strong>？请提交",
+        preset:    "🎨 想提议一个<strong>预设</strong>？请提交",
+        issue:     "Issue",
+        note:      "但如果已有相同的 Issue，<em>请勿</em>重复提交",
+        custom:    "💖 想要<strong>自定义预设</strong>？请提交",
+        warning:   "⚠️ 重要",
+        warnText:  "所有用户请求的自定义预设或特殊版本将发布到仓库，需手动安装。",
+        warnText2: "版本或预设将与公开版本同步更新。（如无法更新，将在主要发布说明中告知。）",
+        thanks:    "感谢您的理解 ❤️",
+      },
     },
   };
 
@@ -1225,7 +1426,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     let activePresetKey = loadPreset();
     let activeSliderPop = null;
 
-    // Inject adaptive UI styles
     let uiStyle = document.getElementById("cs4-ui-style");
     if (!uiStyle) { uiStyle = document.createElement("style"); uiStyle.id = "cs4-ui-style"; document.head.appendChild(uiStyle); }
 
@@ -1251,6 +1451,15 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 .cs4-swatch{width:18px;height:18px;border-radius:50%;border:1.5px solid rgba(255,255,255,.1);flex-shrink:0}
 .cs4-preset-name{font-size:13px;font-weight:700;color:${txt};display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .cs4-preset-badge{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:${accDim}33;color:${acc};margin-left:auto}
+.cs4-preset-badge-community{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:#5865F233;color:#5865F2;margin-left:auto}
+.cs4-community-row{display:flex;align-items:center;justify-content:space-between;background:${card};border-radius:12px;padding:12px 16px;margin-bottom:14px;gap:12px}
+.cs4-community-label{font-size:12px;font-weight:600;color:${sub};display:flex;align-items:center;gap:6px}
+.cs4-community-toggle{position:relative;width:40px;height:22px;flex-shrink:0}
+.cs4-community-toggle input{opacity:0;width:0;height:0;position:absolute}
+.cs4-community-slider{position:absolute;inset:0;background:${hlEl};border-radius:11px;cursor:pointer;transition:background .2s}
+.cs4-community-toggle input:checked + .cs4-community-slider{background:${acc}}
+.cs4-community-slider:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .2s}
+.cs4-community-toggle input:checked + .cs4-community-slider:before{transform:translateX(18px)}
 .cs4-preset-del{position:absolute;top:8px;right:8px;width:21px;height:21px;border-radius:50%;border:none;background:rgba(255,80,80,.15);color:#ff6b6b;font-size:11px;cursor:pointer;display:none;align-items:center;justify-content:center;transition:background .14s}
 .cs4-preset-card:hover .cs4-preset-del{display:flex}
 .cs4-preset-del:hover{background:rgba(255,80,80,.3)}
@@ -1308,8 +1517,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 #cs4-toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(70px);background:${bgEl};color:${txt};border:1px solid ${hlEl};border-left:3px solid ${acc};padding:11px 22px;border-radius:10px;font-size:13px;font-weight:600;z-index:999999;opacity:0;pointer-events:none;white-space:nowrap;transition:opacity .22s,transform .28s cubic-bezier(.34,1.56,.64,1)}
 #cs4-toast.cs4-show{opacity:1;transform:translateX(-50%) translateY(0)}
 `;
-
-    // ── Build root DOM ──
     const tr = t();
     container.innerHTML = `
 <div class="cs4-header">
@@ -1326,6 +1533,13 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
   <button class="cs4-tab" data-panel="editor">${tr.tabEditor}</button>
 </div>
 <div class="cs4-panel cs4-active" id="cs4-panel-presets">
+  <div class="cs4-community-row">
+    <span class="cs4-community-label">🌐 Enable community presets?</span>
+    <label class="cs4-community-toggle">
+      <input type="checkbox" id="cs4-community-chk" ${isCommunityEnabled() ? "checked" : ""}>
+      <span class="cs4-community-slider"></span>
+    </label>
+  </div>
   <div class="cs4-presets-grid" id="cs4-grid"></div>
   <div class="cs4-save-row">
     <input class="cs4-name-input" id="cs4-pname" placeholder="${tr.presetNamePh}" maxlength="32">
@@ -1341,23 +1555,20 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
   </div>
 </div>
 <div class="cs4-footer">
-  <span>🐛 Have you found a <strong>bug</strong>? Open an <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">issue</a></span>
-  <span>✨ Have a <strong>request</strong>? Open an <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">issue</a></span>
-  <span>🎨 Want to propose a <strong>preset</strong>? Open an <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">issue</a></span>
-  <span class="cs4-footer-note">but <em>don't</em> open one if there's already an open issue for that bug/request</span>
+  <span>${tr.footer.bug} <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">${tr.footer.issue}</a></span>
+  <span>${tr.footer.request} <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">${tr.footer.issue}</a></span>
+  <span>${tr.footer.preset} <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">${tr.footer.issue}</a></span>
+  <span class="cs4-footer-note">${tr.footer.note}</span>
 </div>
 
 <div class="cs4-footer">
-  <span>💖 Do you want a <b>custom preset</b>? open an <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">issue</a></span>
-  <span>⚠️ Important</span>
-  <span>Any custom presets or special versions requested by users will be published on the repo and will need to be installed manually.</span>
-  <span>The version or preset will be updated in parallel with the public version. (If it isn't possible to update, this will be communicated in the main release.)</span>
-  <br></br>
-  <span>Thanks fot the compriention❤️</span>
+  <span>${tr.footer.custom} <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">${tr.footer.issue}</a></span>
+  <span><strong>${tr.footer.warning}</strong></span>
+  <span>${tr.footer.warnText}</span>
+  <span>${tr.footer.warnText2}</span>
+  <span class="cs4-footer-note">${tr.footer.thanks}</span>
 </div>
 `;
-
-    // Toast
     let toastEl = document.getElementById("cs4-toast");
     if (!toastEl) { toastEl = document.createElement("div"); toastEl.id = "cs4-toast"; document.body.appendChild(toastEl); }
     function toast(msg) {
@@ -1366,8 +1577,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
       clearTimeout(toastEl._t);
       toastEl._t = setTimeout(() => toastEl.classList.remove("cs4-show"), 2800);
     }
-
-    // Language buttons
     container.querySelectorAll(".cs4-lang-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         setLang(btn.dataset.lang);
@@ -1375,8 +1584,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         if (s) renderUI(s);
       });
     });
-
-    // Tabs
     container.querySelectorAll(".cs4-tab").forEach(tab => {
       tab.addEventListener("click", () => {
         container.querySelectorAll(".cs4-tab").forEach(t => t.classList.remove("cs4-active"));
@@ -1385,8 +1592,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         document.getElementById(`cs4-panel-${tab.dataset.panel}`).classList.add("cs4-active");
       });
     });
-
-    // ── Presets ──
     function renderPresets() {
       const grid = document.getElementById("cs4-grid");
       if (!grid) return;
@@ -1402,10 +1607,9 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
           <div class="cs4-preset-name">
             <span>${preset.emoji||"🎨"}</span>
             <span>${preset.builtin ? (t().presetNames?.[key] || preset.name) : preset.name}</span>
-            ${!preset.builtin?`<span class="cs4-preset-badge">custom</span>`:""}
+            ${preset.community ? `<span class="cs4-preset-badge-community">community</span>` : !preset.builtin ? `<span class="cs4-preset-badge">custom</span>` : ""}
           </div>
-          ${!preset.builtin?`<button class="cs4-preset-del" title="Elimina">✕</button>`:""}
-        `;
+          ${!preset.builtin && !preset.community ? `<button class="cs4-preset-del" title="Elimina">✕</button>` : ""}`;
         el.addEventListener("click", e => {
           if (e.target.closest(".cs4-preset-del")) return;
           editColors = { ...preset.colors };
@@ -1415,7 +1619,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
           savePreset(key);
           renderPresets();
           syncPickers();
-          // Rebuild UI to adapt colors
           setTimeout(() => { const s = document.getElementById(SECTION_ID); if (s) renderUI(s); }, 80);
           toast(t().toastPresetApplied(preset.builtin ? (t().presetNames?.[key] || preset.name) : preset.name));
         });
@@ -1436,6 +1639,36 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     }
     renderPresets();
 
+    const communityChk = document.getElementById("cs4-community-chk");
+    if (communityChk) {
+      communityChk.addEventListener("change", async () => {
+        const enabled = communityChk.checked;
+        setCommunityEnabled(enabled);
+        if (enabled) {
+          communityChk.disabled = true;
+          communityChk.parentElement.style.opacity = "0.5";
+          const presets = await fetchCommunityPresets();
+          communityChk.disabled = false;
+          communityChk.parentElement.style.opacity = "1";
+          if (presets && Object.keys(presets).length > 0) {
+            saveCommunityPresets(presets);
+          } else {
+            toast("No community presets found.");
+            setCommunityEnabled(false);
+            communityChk.checked = false;
+            return;
+          }
+        } else {
+          saveCommunityPresets({});
+        }
+        setTimeout(() => {
+          try { Spicetify.Platform.reload(); } catch (_) {
+            try { window.location.reload(); } catch (__) {}
+          }
+        }, 400);
+      });
+    }
+
     document.getElementById("cs4-save-btn").addEventListener("click", () => {
       const ni = document.getElementById("cs4-pname");
       const name = ni.value.trim();
@@ -1450,8 +1683,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
       renderPresets();
       toast(t().toastPresetSaved(name));
     });
-
-    // ── Color editor ──
     const editorEl = document.getElementById("cs4-editor");
     const pickerRefs = {};
 
@@ -1529,8 +1760,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         r.hexInp.classList.remove("cs4-invalid");
       });
     }
-
-    // Slider popup
     function openSlider(key, anchor) {
       if (activeSliderPop) { activeSliderPop.remove(); activeSliderPop = null; }
       const hex = editColors[key] || "#1db954";
@@ -1601,8 +1830,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     }
 
     buildEditor();
-
-    // Action buttons
     document.getElementById("cs4-apply").addEventListener("click", () => {
       applyColors(editColors); saveColors(editColors); toast(t().toastSaved);
     });
@@ -1621,9 +1848,9 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     });
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // NAVIGATION
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   function tryMount() { if (!document.getElementById(SECTION_ID)) buildUI(); }
 
@@ -1634,14 +1861,14 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     Spicetify.Platform.History.listen(() => setTimeout(tryMount, 400));
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // AUTO-UPDATER
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
-  const CURRENT_VERSION  = "2.5.3";
+  const CURRENT_VERSION  = "3.0.0";
   const RELEASES_API     = "https://api.github.com/repos/stefaceriani/chromashift/releases/latest";
   const RELEASES_PAGE    = "https://github.com/stefaceriani/chromashift/releases";
-  const UPDATE_INTERVAL  = 60 * 60 * 1000; // 1 ora
+  const UPDATE_INTERVAL  = 60 * 60 * 1000;
 
   function parseSemver(v) {
     return (v || "").replace(/^v/, "").split(".").map(Number);
@@ -1691,26 +1918,18 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     `;
 
     document.body.appendChild(badge);
-
-    // Click on badge → purge jsdelivr cache then restart
     badge.addEventListener("click", async (e) => {
       if (e.target.id === "cs4-badge-close") { badge.remove(); return; }
       const msgEl = badge.querySelector("span:not(#cs4-badge-close)");
       msgEl.textContent = "Clearing cache…";
-
-      // Purge jsdelivr cache before reload
       try {
         await fetch("https://purge.jsdelivr.net/gh/stefaceriani/chromashift@main/chromashift.js");
       } catch (_) {}
 
       msgEl.textContent = "Restarting…";
       await new Promise(r => setTimeout(r, 800));
-
-      // Method 1: Spicetify Platform reload
       try { Spicetify.Platform.reload(); return; } catch (_) {}
-      // Method 2: window.location reload
       try { window.location.reload(); return; } catch (_) {}
-      // Method 3: open releases page if no method works
       window.open(RELEASES_PAGE, "_blank");
     });
 
@@ -1718,8 +1937,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
       e.stopPropagation();
       badge.remove();
     });
-
-    // Auto-hide after 15s
     setTimeout(() => badge?.remove(), 15000);
   }
 
@@ -1737,13 +1954,12 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     } catch (_) {}
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
   // BOOT
-  // ═══════════════════════════════════════════════════════════
+  // ===========================================================
 
   applyColors(loadColors());
   setTimeout(() => { tryMount(); runAllFixes(); }, 800);
-  // Check for updates on boot then every hour
   setTimeout(checkForUpdates, 5000);
   setInterval(checkForUpdates, UPDATE_INTERVAL);
   window.addEventListener("load", () => setTimeout(runAllFixes, 500));
