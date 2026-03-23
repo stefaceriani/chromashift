@@ -25,6 +25,6 @@
         csProgressFg: "#f5c518", 
         csVolumeBg: "#3d3318",
         csVolumeFg: "#fcd97a"
-      }
+      },
     },
   
