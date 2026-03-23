@@ -2,7 +2,6 @@ name: Discord Notification
 
 permissions:
   contents: read
-
 on:
   push:
     branches: ["main"]
