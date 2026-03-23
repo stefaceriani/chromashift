@@ -5,7 +5,7 @@
 
 golden: {
   name: "Golden Hour",
-  emoji: ":moon:",
+  emoji: "🌙",
   builtin: true,
   colors: {
     csText: "#fff8e7", 
