@@ -1,2 +1,2 @@
 paths-ignore:
-  - custom_preset/
+  - custom_preset/**
