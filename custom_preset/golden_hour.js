@@ -4,7 +4,7 @@
 // PRESET VERSION: 1.0.0
 
     golden: {
-      name: "Golden Hour", emoji: "🌙", builtin: true,
+      name: "Golden Hour", emoji: "🌙", builtin: "true",
       colors: {
         csText: "#fff8e7", 
         csSubtext: "#fcd97a",
@@ -24,7 +24,7 @@
         csProgressBg: "#3d3318", 
         csProgressFg: "#f5c518", 
         csVolumeBg: "#3d3318",
-        csVolumeFg: "#fcd97a",
+        csVolumeFg: "#fcd97a"
       }
     },
   
