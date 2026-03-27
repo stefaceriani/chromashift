@@ -4,7 +4,7 @@
 
 | Version    | Supported | Notes              |
 | ---------- | --------- | ------------------ |
-| 3.0.0      | ✅         | Fully supported    |
+| 3.0.0      | ✅         | Fully supported for 2.42.14 NOT 2.42.15-beta-1    |
 | 2.5.3 or < | ❌         | Outdated, not safe |
 | 2.0.0 or < | ❌         | Outdated, not safe |
 | 1.0.0 or < | ❌         | Outdated, not safe |
