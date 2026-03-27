@@ -1,4 +1,5 @@
 # 🎨 ChromaShift - v3.0.0
+# ❌ NOT SUPPORTED spicetify 2.42.15-beta-1 (Spotify 1.2.86)
 
 > Customize every Spotify color from the Settings page — in real time.
 
