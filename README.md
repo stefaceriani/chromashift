@@ -143,6 +143,3 @@ Open a issue or join our community https://discord.gg/pVZHxKW5KN
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)](https://spicetify.app/docs/)
 [![Report Bug](https://img.shields.io/badge/Report-Bug-red?logo=github)](https://github.com/stefaceriani/chromashift/issues)
 [![Request Feature](https://img.shields.io/badge/Request-Feature-blue?logo=github)](https://github.com/stefaceriani/chromashift/issues)
-[![Phare badge](https://img.shields.io/endpoint?url=https%3
-A%2F%2Fstatus.phare.io%2Fshield-badges%2Fstatus.json&style=
-flat)](https://chromashift.status.phare.io/)
