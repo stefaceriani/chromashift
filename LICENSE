@@ -7,26 +7,37 @@
      /______/ /___/ \_____/ /_____/ /__/ |__/ /_____/  /_________/   
 -|-----------------------------------------------------------------------|-
 
-# Extension License
+ChromaShift License
 
-© 2026 Stefano Ceriani
+Copyright (c) 2026 Stefano Ceriani
 All rights reserved.
 
-All content displayed in this Extension, is the property of Stefano Ceriani, unless otherwise stated.
+1. Ownership
 
-# Use of content
+All content included in this repository, including but not limited to code, assets, and documentation (the “Software”), is the exclusive property of Stefano Ceriani, unless otherwise explicitly stated.
 
-- Permitted:
+2. Permissions
 
-Viewing the content;
+Subject to the terms of this license, you are granted the following rights:
+Use: You may view, use, and run the Software for personal and commercial purposes.
+Integration: You may incorporate the Software into your own projects, provided that you comply with all restrictions outlined below.
 
-Personal and commercial use.
+3. Restrictions
 
-- Not permitted:
+You are not permitted to:
+Modify, adapt, or create derivative works based on the Software;
+Redistribute, sublicense, or share the Software, in whole or in part, to third parties without explicit permission;
+Remove or alter any copyright or attribution notices;
+Claim ownership or authorship of the Software or any part of it.
 
-Modification and adaptation of the works by the purchaser.
+4. Third-Party Use
 
-Retention, reuse, or redistribution of the content by unauthorized third parties;
+Any use, retention, reuse, or distribution of the Software by unauthorized third parties is strictly prohibited unless prior written consent is obtained from the copyright holder.
 
-Claiming authorship of the works by parties other than the creator, unless explicitly agreed.
+5. Attribution
 
+Proper credit must be given to Stefano Ceriani in any allowed usage of the Software, unless otherwise agreed in writing.
+
+6. Disclaimer
+
+The Software is provided “as is”, without warranty of any kind, express or implied. The author shall not be held liable for any damages arising from the use of the Software.
