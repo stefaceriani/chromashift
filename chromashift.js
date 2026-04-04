@@ -437,8 +437,6 @@ body.cs4-sbl-active .main-view-container__scroll-node:not(:has(.lyrics-lyrics-co
 body.cs4-sbl-active [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)):not(:has(.lyrics-lyrics-container)){background-color:${bg}!important}
 .Root__now-playing-bar,.now-playing-bar,[class*="nowPlayingBar"],
 footer{background-color:${play}!important}
-
-/* ── Top bar: solid on all pages (JS overrides for home) ── */
 .Root__top-bar{
   background-color:${bg}!important;
   background-image:none!important;
@@ -457,16 +455,12 @@ footer{background-color:${play}!important}
   -webkit-backdrop-filter:none!important;
   box-shadow:none!important;
 }
-
-/* ── Progress bar (playback) ── */
 [data-testid="progress-bar"]{cursor:pointer}
 .x-progressBar-background{background-color:${progBg}!important;height:4px!important;border-radius:2px!important}
 .x-progressBar-middleground{background-color:${progBg}!important}
 .x-progressBar-foreground{background-color:${progFg}!important;height:4px!important;border-radius:2px!important;min-width:2px!important}
 .x-progressBar-handle{background-color:${progFg}!important;width:12px!important;height:12px!important;border-radius:50%!important;opacity:0!important;transition:opacity .1s!important}
 [data-testid="progress-bar"]:hover .x-progressBar-handle{opacity:1!important}
-
-/* ── Volume bar ── */
 [data-testid="volume-bar"] .x-progressBar-background,
 [data-testid="volume-bar"] ~ * .x-progressBar-background,
 [class*="volume"] .x-progressBar-background{background-color:${volBg}!important}
@@ -477,10 +471,6 @@ footer{background-color:${play}!important}
 [class*="volume"]:hover .x-progressBar-foreground{background-color:${adjustColor(volFg, 0.1)}!important}
 [data-testid="volume-bar"] .x-progressBar-handle,
 [class*="volume"] .x-progressBar-handle{background-color:${volFg}!important}
-
-/* ── ALL play button circles: hidden at rest, visible only on parent hover ── */
-/* Global rule: any .main-playButton-PlayButton or [data-testid="play-button"]
-   that is NOT in the player bar and NOT in the tracklist → hidden by default */
 .main-playButton-PlayButton:not([data-testid="control-button-playpause"]),
 [data-testid="play-button"]{
   opacity:0!important;
@@ -490,7 +480,6 @@ footer{background-color:${play}!important}
   pointer-events:none!important;
   transition:opacity .15s,transform .15s!important;
 }
-/* Hover on direct or indirect parent → visible */
 *:hover > .main-playButton-PlayButton,
 *:hover > [data-testid="play-button"],
 *:hover .main-playButton-PlayButton,
@@ -499,16 +488,11 @@ footer{background-color:${play}!important}
   transform:scale(1)!important;
   pointer-events:all!important;
 }
-
-/* ── Home: hide coloured circle on ALL card play buttons at rest ── */
-/* Covers both large cards and compact rectangular cards (recently played shortcuts) */
-/* Force transparent background on ALL home play buttons except player bar and actionBar */
 [data-testid="home-page"] .main-playButton-PlayButton:not([data-testid="control-button-playpause"]),
 [data-testid="home-page"] [data-testid="play-button"]{
   background-color:transparent!important;
   box-shadow:none!important;
 }
-/* Player bar play/pause: always visible with accent colour */
 [data-testid="control-button-playpause"]{
   background-color:${pbtn}!important;color:${pbtnText}!important;
   border-radius:50%!important;border:none!important;
@@ -520,7 +504,6 @@ footer{background-color:${play}!important}
 [data-testid="control-button-playpause"] svg{
   fill:${pbtnText}!important;color:${pbtnText}!important;
 }
-/* Header playlist/album play button: always visible with accent colour */
 .main-actionBar-ActionBar .main-playButton-PlayButton,
 .main-actionBar-ActionBar [data-testid="play-button"],
 [class*="actionBar"] .main-playButton-PlayButton,
@@ -541,7 +524,6 @@ footer{background-color:${play}!important}
 [class*="EntityHeader"] .main-playButton-PlayButton svg{
   fill:${pbtnText}!important;color:${pbtnText}!important;
 }
-/* Separate hover colour on card and actionBar play button */
 [class*="actionBar"] .main-playButton-PlayButton:hover,
 [class*="ActionBar"] .main-playButton-PlayButton:hover,
 [class*="entityHeader"] .main-playButton-PlayButton:hover,
@@ -555,8 +537,6 @@ footer{background-color:${play}!important}
 
 [class*="heart"][aria-checked="true"],[class*="follow"][data-encore-id][class*="active"],
 [class*="Button--is-active"]{color:${acc}!important}
-
-/* ── Card backgrounds ── */
 .main-card-card,[class*="CardComponent"],
 [data-testid="card-container"]{background-color:${card}!important;transition:background-color .2s,transform .18s,box-shadow .2s!important}
 .main-card-card:hover,[class*="CardComponent"]:hover,
@@ -565,8 +545,6 @@ footer{background-color:${play}!important}
 transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0,0,.45)!important}
 [class*="gridItem"]:hover [data-testid="card-container"] *,
 [class*="gridItem"]:hover [class*="CardComponent"] *{transform:none!important}
-
-/* ── Card description tooltip/overlay: transparent ── */
 [class*="cardDescription"],[class*="CardDescription"],
 [class*="card-description"],[class*="cardFooter"],[class*="CardFooter"],
 [data-testid="card-container"] [class*="description"],
@@ -576,50 +554,37 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
   background-color:transparent!important;
   background:transparent!important;
 }
-
-/* ── Filter bar (Tutto/Musica/Podcast): transparent at rest, solid on scroll ── */
 .search-searchCategory-contentArea,
 [class*="search-searchCategory-contentArea"]{
   background-color:transparent!important;
   background:transparent!important;
 }
-
-/* ── Tracklist rows ── */
 [class*="TrackListRow"]:hover,[class*="tracklist-row"]:hover,
 .main-trackList-trackListRow:hover{background-color:${hl}!important}
 [class*="TrackListRow"][aria-selected="true"],
 .main-trackList-trackListRow[aria-selected="true"]{background-color:${hlEl}!important}
 [class*="contextMenu"],[class*="ContextMenu"],
 [data-testid*="context-menu"]{background-color:${bgEl}!important}
-
-/* ── Text ── */
 [class*="Type__"],[class*="encore-text"],.main-trackList-rowTitle,
 .main-trackList-rowSectionStart{color:${t}!important}
 [class*="encore-text-subdued"],[class*="Type__subdued"],
 .main-trackList-rowSubTitle,
 [data-testid="tracklist-row"] [class*="encore-text"]:not([class*="bold"]){color:${sub}!important}
-
-/* ── Equalizer variables ── */
 :root,[class*="Root__"]{
   --spice-equalizer:${acc}!important;
   --progress-bar-color:${acc}!important;
   --progress-bar-handle-color:${acc}!important;
 }
-
-/* ── Tracklist icon accent ── */
 .main-trackList-trackListRow:hover .main-trackList-rowSectionIndex svg,
 [data-testid="tracklist-row"]:hover [class*="rowIndex"] svg,
 [data-testid="queue-row"]:hover [class*="trackNumber"] svg,
 [data-testid="queue-row"][aria-current] [class*="trackNumber"] svg{
   color:${acc}!important;fill:${acc}!important}
-
-/* ── ButtonPrimary ── */
 [class*="ButtonPrimary"]:not([class*="play"]):not([data-testid*="play"]),
 [data-encore-id="buttonPrimary"]:not([class*="play"]):not([data-testid*="play"]){
   background-color:${btn}!important;color:${btnText}!important;border-radius:500px!important}
 [class*="ButtonPrimary"]:not([class*="play"]):hover,
 [data-encore-id="buttonPrimary"]:not([class*="play"]):hover{background-color:${btnActive}!important}
-
 ::-webkit-scrollbar{width:8px!important}
 ::-webkit-scrollbar-track{background:${bg}!important}
 ::-webkit-scrollbar-thumb{background:${hl}!important;border-radius:4px!important}
@@ -930,18 +895,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csProgressBg: "Progress background", csProgressFg: "Progress color",
         csVolumeBg: "Volume background", csVolumeFg: "Volume color",
       },
-      footer: {
-        bug:       "🐛 Have you found a <strong>bug</strong>? Open an",
-        request:   "✨ Have a <strong>request</strong>? Open an",
-        preset:    "🎨 Want to propose a <strong>preset</strong>? Open an",
-        issue:     "issue",
-        note:      "but <em>don't</em> open one if there's already an open issue for that bug/request",
-        custom:    "💖 Do you want a <strong>custom preset</strong>? Open an",
-        warning:   "⚠️ Important",
-        warnText:  "Any custom presets or special versions requested by users will be published on the repo and will need to be installed manually.",
-        warnText2: "The version or preset will be updated in parallel with the public version. (If it isn't possible to update, this will be communicated in the main release.)",
-        thanks:    "Thanks for your understanding ❤️",
-      },
     },
     "en-US": {
       subtitle:       "Customize every Spotify color in real time",
@@ -985,19 +938,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csNotification: "Notifications",
         csProgressBg: "Progress background", csProgressFg: "Progress color",
         csVolumeBg: "Volume background", csVolumeFg: "Volume color",
-      },
-      footer: {
-        bug:       "🐛 Have you found a <strong>bug</strong>? Open an",
-        request:   "✨ Have a <strong>request</strong>? Open an",
-        preset:    "🎨 Want to propose a <strong>preset</strong>? Open an",
-        issue:     "issue",
-        note:      "but <em>don't</em> open one if there's already an open issue for that bug/request",
-        custom:    "💖 Do you want a <strong>custom preset</strong>? Open an",
-        warning:   "⚠️ Important",
-        warnText:  "Any custom presets or special versions requested by users will be published on the repo and will need to be installed manually.",
-        warnText2: "The version or preset will be updated in parallel with the public version. (If it isn't possible to update, this will be communicated in the main release.)",
-        thanks:    "Thanks for your understanding ❤️",
-      },
     },
     "it": {
       subtitle:       "Personalizza ogni colore di Spotify in tempo reale",
@@ -1041,18 +981,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csNotification: "Notifiche",
         csProgressBg: "Avanzamento sfondo", csProgressFg: "Avanzamento colore",
         csVolumeBg: "Volume sfondo", csVolumeFg: "Volume colore",
-      },
-      footer: {
-        bug:       "🐛 Hai trovato un <strong>bug</strong>? Apri una",
-        request:   "✨ Hai una <strong>richiesta</strong>? Apri una",
-        preset:    "🎨 Vuoi proporre un <strong>preset</strong>? Apri una",
-        issue:     "segnalazione",
-        note:      "ma <em>non</em> aprirne una se esiste già una segnalazione aperta per quel bug/richiesta",
-        custom:    "💖 Vuoi un <strong>preset personalizzato</strong>? Apri una",
-        warning:   "⚠️ Importante",
-        warnText:  "Tutti i preset personalizzati o versioni speciali richiesti dagli utenti verranno pubblicati nel repo e dovranno essere installati manualmente.",
-        warnText2: "La versione o il preset verrà aggiornato in parallelo con la versione pubblica. (Se non fosse possibile aggiornarlo, verrà comunicato nella release principale.)",
-        thanks:    "Grazie per la comprensione ❤️",
       },
     },
     "de": {
@@ -1098,18 +1026,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csProgressBg: "Fortschritt Hintergrund", csProgressFg: "Fortschritt Farbe",
         csVolumeBg: "Lautstärke Hintergrund", csVolumeFg: "Lautstärke Farbe",
       },
-      footer: {
-        bug:       "🐛 Einen <strong>Fehler</strong> gefunden? Öffne ein",
-        request:   "✨ Hast du einen <strong>Wunsch</strong>? Öffne ein",
-        preset:    "🎨 Möchtest du ein <strong>Preset</strong> vorschlagen? Öffne ein",
-        issue:     "Issue",
-        note:      "aber <em>nicht</em>, wenn bereits ein offenes Issue für diesen Fehler/Wunsch existiert",
-        custom:    "💖 Möchtest du ein <strong>benutzerdefiniertes Preset</strong>? Öffne ein",
-        warning:   "⚠️ Wichtig",
-        warnText:  "Alle benutzerdefinierten Presets oder Sonderversionen werden im Repo veröffentlicht und müssen manuell installiert werden.",
-        warnText2: "Die Version oder das Preset wird parallel zur öffentlichen Version aktualisiert. (Falls nicht möglich, wird dies im Haupt-Release kommuniziert.)",
-        thanks:    "Danke für dein Verständnis ❤️",
-      },
     },
     "fr": {
       subtitle:       "Personnalisez chaque couleur de Spotify en temps réel",
@@ -1153,18 +1069,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csNotification: "Notifications",
         csProgressBg: "Fond progression", csProgressFg: "Couleur progression",
         csVolumeBg: "Fond volume", csVolumeFg: "Couleur volume",
-      },
-      footer: {
-        bug:       "🐛 Vous avez trouvé un <strong>bug</strong> ? Ouvrez une",
-        request:   "✨ Vous avez une <strong>demande</strong> ? Ouvrez une",
-        preset:    "🎨 Vous voulez proposer un <strong>preset</strong> ? Ouvrez une",
-        issue:     "issue",
-        note:      "mais <em>n'en ouvrez pas</em> s'il en existe déjà une ouverte pour ce bug/cette demande",
-        custom:    "💖 Vous voulez un <strong>preset personnalisé</strong> ? Ouvrez une",
-        warning:   "⚠️ Important",
-        warnText:  "Tous les presets personnalisés ou versions spéciales demandés seront publiés sur le dépôt et devront être installés manuellement.",
-        warnText2: "La version ou le preset sera mis à jour en parallèle avec la version publique. (Si impossible, cela sera communiqué dans la release principale.)",
-        thanks:    "Merci pour votre compréhension ❤️",
       },
     },
     "es": {
@@ -1210,18 +1114,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csProgressBg: "Fondo progreso", csProgressFg: "Color progreso",
         csVolumeBg: "Fondo volumen", csVolumeFg: "Color volumen",
       },
-      footer: {
-        bug:       "🐛 ¿Encontraste un <strong>error</strong>? Abre una",
-        request:   "✨ ¿Tienes una <strong>solicitud</strong>? Abre una",
-        preset:    "🎨 ¿Quieres proponer un <strong>preset</strong>? Abre una",
-        issue:     "issue",
-        note:      "pero <em>no</em> abras una si ya hay una issue abierta para ese error/solicitud",
-        custom:    "💖 ¿Quieres un <strong>preset personalizado</strong>? Abre una",
-        warning:   "⚠️ Importante",
-        warnText:  "Todos los presets personalizados o versiones especiales solicitados se publicarán en el repositorio y deberán instalarse manualmente.",
-        warnText2: "La versión o el preset se actualizará en paralelo con la versión pública. (Si no es posible, se comunicará en la release principal.)",
-        thanks:    "Gracias por tu comprensión ❤️",
-      },
     },
     "uk": {
       subtitle:       "Налаштуйте кожен колір Spotify у реальному часі",
@@ -1265,18 +1157,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csNotification: "Сповіщення",
         csProgressBg: "Фон прогресу", csProgressFg: "Колір прогресу",
         csVolumeBg: "Фон гучності", csVolumeFg: "Колір гучності",
-      },
-      footer: {
-        bug:       "🐛 Знайшли <strong>помилку</strong>? Відкрийте",
-        request:   "✨ Маєте <strong>запит</strong>? Відкрийте",
-        preset:    "🎨 Хочете запропонувати <strong>пресет</strong>? Відкрийте",
-        issue:     "issue",
-        note:      "але <em>не відкривайте</em>, якщо вже є відкрите issue для цієї помилки/запиту",
-        custom:    "💖 Хочете <strong>власний пресет</strong>? Відкрийте",
-        warning:   "⚠️ Важливо",
-        warnText:  "Усі користувацькі пресети або спеціальні версії будуть опубліковані у репозиторії та потребуватимуть ручного встановлення.",
-        warnText2: "Версія або пресет оновлюватиметься паралельно з публічною версією. (Якщо неможливо, про це буде повідомлено в основному релізі.)",
-        thanks:    "Дякуємо за розуміння ❤️",
       },
     },
     "ru": {
@@ -1322,18 +1202,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csProgressBg: "Фон прогресса", csProgressFg: "Цвет прогресса",
         csVolumeBg: "Фон громкости", csVolumeFg: "Цвет громкости",
       },
-      footer: {
-        bug:       "🐛 Нашли <strong>ошибку</strong>? Откройте",
-        request:   "✨ Есть <strong>пожелание</strong>? Откройте",
-        preset:    "🎨 Хотите предложить <strong>пресет</strong>? Откройте",
-        issue:     "issue",
-        note:      "но <em>не открывайте</em>, если уже есть открытое issue для этой ошибки/пожелания",
-        custom:    "💖 Хотите <strong>собственный пресет</strong>? Откройте",
-        warning:   "⚠️ Важно",
-        warnText:  "Все пользовательские пресеты или специальные версии будут опубликованы в репозитории и потребуют ручной установки.",
-        warnText2: "Версия или пресет будет обновляться параллельно с публичной версией. (Если невозможно — будет сообщено в основном релизе.)",
-        thanks:    "Спасибо за понимание ❤️",
-      },
     },
     "zh": {
       subtitle:       "实时自定义 Spotify 的每种颜色",
@@ -1377,18 +1245,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csNotification: "通知",
         csProgressBg: "进度背景", csProgressFg: "进度颜色",
         csVolumeBg: "音量背景", csVolumeFg: "音量颜色",
-      },
-      footer: {
-        bug:       "🐛 发现了<strong>错误</strong>？请提交",
-        request:   "✨ 有<strong>功能请求</strong>？请提交",
-        preset:    "🎨 想提议一个<strong>预设</strong>？请提交",
-        issue:     "Issue",
-        note:      "但如果已有相同的 Issue，<em>请勿</em>重复提交",
-        custom:    "💖 想要<strong>自定义预设</strong>？请提交",
-        warning:   "⚠️ 重要",
-        warnText:  "所有用户请求的自定义预设或特殊版本将发布到仓库，需手动安装。",
-        warnText2: "版本或预设将与公开版本同步更新。（如无法更新，将在主要发布说明中告知。）",
-        thanks:    "感谢您的理解 ❤️",
       },
     },
   };
@@ -1442,7 +1298,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 .cs4-tab.cs4-active{color:${accTxt};background:${acc}}
 .cs4-panel{display:none}
 .cs4-panel.cs4-active{display:block}
-/* Presets */
 .cs4-presets-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:9px;margin-bottom:24px}
 .cs4-preset-card{border-radius:14px;border:2px solid transparent;background:${card};padding:15px;cursor:pointer;transition:all .17s;position:relative;overflow:hidden}
 .cs4-preset-card:hover{border-color:${hlEl};transform:translateY(-2px);box-shadow:0 6px 22px rgba(0,0,0,.4)}
@@ -1467,7 +1322,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 .cs4-name-input{flex:1;background:${hl};border:1.5px solid ${hlEl};border-radius:8px;padding:8px 12px;font-size:13px;color:${txt};outline:none;transition:border-color .15s}
 .cs4-name-input::placeholder{color:${sub}}
 .cs4-name-input:focus{border-color:${acc}}
-/* Editor */
 .cs4-group-label{font-size:10px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:${sub};margin:22px 0 10px;padding-bottom:8px;border-bottom:1px solid ${hl}}
 .cs4-group-label:first-child{margin-top:0}
 .cs4-colors-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:8px}
@@ -1483,7 +1337,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 .cs4-hex.cs4-invalid{border-color:#e5534b}
 .cs4-sl-btn{padding:5px 9px;border-radius:7px;border:1.5px solid ${hlEl};background:${bgEl};color:${sub};font-size:11px;cursor:pointer;transition:all .14s;flex-shrink:0}
 .cs4-sl-btn:hover{background:${hl};color:${txt};border-color:${acc}}
-/* Slider popup */
 .cs4-sl-popup{position:fixed;z-index:99999;background:${bgEl};border:1px solid ${hlEl};border-radius:14px;padding:16px 18px;width:236px;box-shadow:0 18px 50px rgba(0,0,0,.75)}
 .cs4-sl-title{font-size:10px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:${sub};margin-bottom:12px}
 .cs4-sl-row{display:flex;align-items:center;gap:9px;margin-bottom:8px}
@@ -1492,13 +1345,11 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 .cs4-sl-track{flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;outline:none;cursor:pointer}
 .cs4-sl-track::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;background:${acc};cursor:pointer;border:2px solid ${bgEl};box-shadow:0 0 6px ${accGlo}}
 .cs4-sl-val{font-size:11px;font-family:'Courier New',monospace;color:${txt};width:26px;text-align:right;flex-shrink:0}
-/* Lang bar */
 .cs4-lang-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:18px}
 .cs4-lang-label{font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:${sub};margin-right:4px}
 .cs4-lang-btn{background:${hl};border:1.5px solid transparent;border-radius:8px;padding:5px 8px;font-size:18px;cursor:pointer;transition:all .14s;line-height:1}
 .cs4-lang-btn:hover{border-color:${hlEl};transform:scale(1.12)}
 .cs4-lang-btn.cs4-lang-active{border-color:${acc};box-shadow:0 0 0 1px ${acc};transform:scale(1.1)}
-/* Actions */
 .cs4-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:26px;padding-top:20px;border-top:1px solid ${hl}}
 .cs4-footer{display:flex;flex-direction:column;gap:6px;margin-top:28px;padding:16px 18px;background:${card};border-radius:12px;border-left:3px solid ${acc}}
 .cs4-footer span{font-size:12px;color:${sub};line-height:1.5}
@@ -1513,7 +1364,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 .cs4-btn-secondary:hover{background:${hlEl};transform:scale(1.02)}
 .cs4-btn-danger{background:rgba(255,80,80,.13);color:#ff6b6b}
 .cs4-btn-danger:hover{background:rgba(255,80,80,.26)}
-/* Toast */
 #cs4-toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(70px);background:${bgEl};color:${txt};border:1px solid ${hlEl};border-left:3px solid ${acc};padding:11px 22px;border-radius:10px;font-size:13px;font-weight:600;z-index:999999;opacity:0;pointer-events:none;white-space:nowrap;transition:opacity .22s,transform .28s cubic-bezier(.34,1.56,.64,1)}
 #cs4-toast.cs4-show{opacity:1;transform:translateX(-50%) translateY(0)}
 `;
@@ -1553,20 +1403,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     <button class="cs4-btn cs4-btn-secondary" id="cs4-reset">${tr.resetBtn}</button>
     <button class="cs4-btn cs4-btn-danger" id="cs4-default">${tr.defaultBtn}</button>
   </div>
-</div>
-<div class="cs4-footer">
-  <span>${tr.footer.bug} <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">${tr.footer.issue}</a></span>
-  <span>${tr.footer.request} <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">${tr.footer.issue}</a></span>
-  <span>${tr.footer.preset} <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">${tr.footer.issue}</a></span>
-  <span class="cs4-footer-note">${tr.footer.note}</span>
-</div>
-
-<div class="cs4-footer">
-  <span>${tr.footer.custom} <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">${tr.footer.issue}</a></span>
-  <span><strong>${tr.footer.warning}</strong></span>
-  <span>${tr.footer.warnText}</span>
-  <span>${tr.footer.warnText2}</span>
-  <span class="cs4-footer-note">${tr.footer.thanks}</span>
 </div>
 `;
     let toastEl = document.getElementById("cs4-toast");
