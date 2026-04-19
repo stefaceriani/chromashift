@@ -18,6 +18,7 @@ ChromaShift is a [Spicetify](https://spicetify.app/) extension that lets you cha
 | **Export / Import** | Share your theme as a `.json` file |
 | **AutoUpdater Checker** | Extension auto check new updates |
 | **Language Traslator** | Available language: 🇬🇧 / 🇺🇸 / 🇮🇹 / 🇩🇪 / 🇫🇷 / 🇪🇸 / 🇷🇺 / 🇨🇳
+| **Online Cloud** | https://chromashift.qzz.io (only after login/refister) |
 
 ---
 
@@ -131,6 +132,7 @@ Open a issue or join our community https://discord.gg/pVZHxKW5KN
 
 ---
 [![Discord](https://img.shields.io/badge/Discord-🎨ChromaShift_Support-5865F2?logo=discord&logoColor=white)](https://discord.gg/rSpeNDRcGx)
+[![Site](https://img.shields.io/badge/Site-chromashift.qzz.io-5fc3cf?logo=site&logoColor=white)](https://chromashift.qzz.io)
 [![Version](https://img.shields.io/github/v/release/stefaceriani/chromashift?logo=github)](https://github.com/stefaceriani/chromashift/releases)
 [![Forks](https://img.shields.io/github/forks/stefaceriani/chromashift?style=social)](https://github.com/stefaceriani/chromashift/fork)
 [![Last Commit](https://img.shields.io/github/last-commit/stefaceriani/chromashift)](https://github.com/stefaceriani/chromashift/commit/)
