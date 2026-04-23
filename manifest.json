@@ -1,6 +1,6 @@
 {
   "name": "ChromaShift",
-  "version": "3.1.0",
+  "version": "3.1.2",
   "description": "Customize Spotify colors directly from the Settings page. Choose from presets or build your own palette: text, backgrounds, accents, buttons, sidebar and more — all in real time.",
   "preview": "preview.png",
   "main": "chromashift.js",
