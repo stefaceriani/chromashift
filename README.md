@@ -18,7 +18,7 @@ If Chromashift doesn't work first check our [status page](https://status.chromas
 | **Export / Import** | Share your theme as a `.json` file |
 | **AutoUpdater Checker** | Extension auto check new updates |
 | **Language Traslator** | Available language: 🇬🇧 / 🇺🇸 / 🇮🇹 / 🇩🇪 / 🇫🇷 / 🇪🇸 / 🇷🇺 / 🇨🇳
-| **Online Cloud** | https://chromashift.qzz.io (only after login/refister) |
+| **Online Cloud** | https://chromashift.qzz.io (only after login/register) |
 
 ---
 
