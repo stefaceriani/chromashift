@@ -1,7 +1,7 @@
 // NAME: ChromaShift
 // AUTHOR: stefaceriani
 // DESCRIPTION: Customise every Spotify colour from the Settings page.
-// VERSION: 3.1.2
+// VERSION: 3.2.0
 
 (function ChromaShift() {
   "use strict";
@@ -209,8 +209,105 @@
   const KEY_CUSTOM_PRESETS    = "cs4_custom_presets";
   const KEY_COMMUNITY_ENABLED = "cs4_community_enabled";
   const KEY_COMMUNITY_PRESETS = "cs4_community_presets";
+
   const COMMUNITY_BASE        = "https://cdn.jsdelivr.net/gh/stefaceriani/chromashift@main/custom_preset";
   const COMMUNITY_INDEX       = COMMUNITY_BASE + "/index.json";
+
+  // ===========================================================
+  // CLOUD SYNC
+  // ===========================================================
+
+  const KEY_CLOUD_EMAIL = "cs4_cloud_email";
+  const KEY_CLOUD_HASH  = "cs4_cloud_hash";
+  const CLOUD_URL = "https://lqnhivdkxjwfadddmgne.supabase.co";
+  const CLOUD_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxxbmhpdmRreGp3ZmFkZGRtZ25lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNjAxMDcsImV4cCI6MjA4OTkzNjEwN30.v9Fab6I7ydYosz80GIqMxjE889B6wRCGNBa-ArtB3aA";
+
+  function csHash(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
+    return h.toString(16);
+  }
+
+  function cloudGetCreds() {
+    const email = Spicetify.LocalStorage.get(KEY_CLOUD_EMAIL);
+    const hash  = Spicetify.LocalStorage.get(KEY_CLOUD_HASH);
+    return (email && hash) ? { email, hash } : null;
+  }
+
+  function cloudSaveCreds(email, pwHash) {
+    Spicetify.LocalStorage.set(KEY_CLOUD_EMAIL, email);
+    Spicetify.LocalStorage.set(KEY_CLOUD_HASH, pwHash);
+  }
+
+  function cloudClearCreds() {
+    Spicetify.LocalStorage.remove(KEY_CLOUD_EMAIL);
+    Spicetify.LocalStorage.remove(KEY_CLOUD_HASH);
+  }
+
+  async function cloudFetch(table, method, body, params) {
+    const res = await fetch(CLOUD_URL + "/rest/v1/" + table + (params || ""), {
+      method: method || "GET",
+      headers: {
+        "apikey": CLOUD_KEY,
+        "Authorization": "Bearer " + CLOUD_KEY,
+        "Content-Type": "application/json",
+        "Prefer": method === "POST" ? "resolution=merge-duplicates,return=representation" : "",
+      },
+      body: body ? JSON.stringify(body) : null,
+    });
+    if (method === "DELETE" || (method === "PATCH" && res.status === 204)) return { ok: true };
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: (data && data.message) || "Server error." };
+    return { ok: true, data };
+  }
+
+  async function cloudLogin(email, password) {
+    email = email.toLowerCase().trim();
+    const res = await cloudFetch("cs_users", "GET", null,
+      "?email=eq." + encodeURIComponent(email) + "&select=email,password_hash");
+    if (!res.ok || !res.data || res.data.length === 0) return { ok: false, error: "No account found." }; // i18n handled at UI
+    if (res.data[0].password_hash !== csHash(password)) return { ok: false, error: "Wrong password." };
+    cloudSaveCreds(email, csHash(password));
+    return { ok: true };
+  }
+
+  async function cloudPush() {
+    const creds = cloudGetCreds();
+    if (!creds) return { ok: false, error: "Not connected." };
+    const customs = loadCustomPresets();
+    const entries = Object.entries(customs);
+    if (entries.length === 0) return { ok: false, error: "No custom presets to push." };
+    let pushed = 0;
+    for (const [key, preset] of entries) {
+      const r = await cloudFetch("cs_presets", "POST", {
+        user_email: creds.email,
+        preset_key: key,
+        name: preset.name,
+        emoji: preset.emoji || "🎨",
+        colors: preset.colors,
+        updated_at: Date.now(),
+      });
+      if (r.ok) pushed++;
+    }
+    return { ok: true, count: pushed, total: entries.length };
+  }
+
+  async function cloudPull() {
+    const creds = cloudGetCreds();
+    if (!creds) return { ok: false, error: "Not connected." };
+    const res = await cloudFetch("cs_presets", "GET", null,
+      "?user_email=eq." + encodeURIComponent(creds.email) + "&select=*&order=updated_at.desc");
+    if (!res.ok || !res.data) return { ok: false, error: "Failed to fetch presets." };
+    if (res.data.length === 0) return { ok: false, error: "No cloud presets found." };
+    const customs = loadCustomPresets();
+    for (const p of res.data) {
+      customs[p.preset_key] = { name: p.name, emoji: p.emoji || "🎨", builtin: false, colors: p.colors };
+    }
+    saveCustomPresets(customs);
+    return { ok: true, count: res.data.length };
+  }
+
+
 
   function loadColors() {
     try {
@@ -438,12 +535,15 @@
   --e-91000-color-essential-bright-accent:${acc}!important;
 }
 .Root__nav-bar,.nav-bar,[class*="navBar"],[class*="sidebar"],
+[class*="globalNav"],[class*="GlobalNav"],
 .LayoutResizer__resize-bar+*{background-color:${side}!important}
 body:not(.cs4-sbl-active) .Root__main-view,
 body:not(.cs4-sbl-active) .main-view-container__scroll-node,
+body:not(.cs4-sbl-active) [class*="scroll-node"]:not([class*="child"]),
 body:not(.cs4-sbl-active) [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)){background-color:${bg}!important}
 body.cs4-sbl-active .Root__main-view:not(:has(.lyrics-lyrics-container)),
 body.cs4-sbl-active .main-view-container__scroll-node:not(:has(.lyrics-lyrics-container)),
+body.cs4-sbl-active [class*="scroll-node"]:not([class*="child"]):not(:has(.lyrics-lyrics-container)),
 body.cs4-sbl-active [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)):not(:has(.lyrics-lyrics-container)){background-color:${bg}!important}
 .Root__now-playing-bar,.now-playing-bar,[class*="nowPlayingBar"]{background-color:${play}!important}
 
@@ -467,15 +567,34 @@ body.cs4-sbl-active [class*="contentSpacing"]:not(:has(.search-searchCategory-co
   box-shadow:none!important;
 }
 
-/* ── Progress bar (playback) ── */
-[data-testid="progress-bar"]{cursor:pointer}
-.x-progressBar-background{background-color:${progBg}!important;height:4px!important;border-radius:2px!important}
-.x-progressBar-middleground{background-color:${progBg}!important}
-.x-progressBar-foreground{background-color:${progFg}!important;height:4px!important;border-radius:2px!important;min-width:2px!important}
-.x-progressBar-handle{background-color:${progFg}!important;width:12px!important;height:12px!important;border-radius:50%!important;opacity:0!important;transition:opacity .1s!important}
-[data-testid="progress-bar"]:hover .x-progressBar-handle{opacity:1!important}
+/* ── Progress/volume bar CSS vars (Spotify internal overrides) ── */
+:root,[class*="Root__"]{
+  --progress-bar-indicator-color:${progFg}!important;
+  --progress-bar-height:4px!important;
+  --volume-bar-color:${volFg}!important;
+}
 
-/* ── Volume bar ── */
+/* ── Progress bar (playback) — always coloured, hover = hover colour ── */
+[data-testid="progress-bar"],[data-testid="playback-progressbar"]{cursor:pointer}
+/* Legacy class names (Spotify pre-1.2.84) */
+.x-progressBar-background{background-color:${progBg}!important;height:4px!important;border-radius:2px!important;transition:height .12s!important}
+.x-progressBar-middleground{background-color:${progBg}!important}
+.x-progressBar-foreground{background-color:${progFg}!important;height:4px!important;border-radius:2px!important;min-width:2px!important;transition:background-color .15s,height .12s!important}
+.x-progressBar-handle{background-color:${progFg}!important;width:12px!important;height:12px!important;border-radius:50%!important;opacity:1!important;transition:transform .12s,background-color .15s!important}
+[data-testid="progress-bar"]:hover .x-progressBar-background,[data-testid="playback-progressbar"]:hover .x-progressBar-background{height:5px!important}
+[data-testid="progress-bar"]:hover .x-progressBar-foreground,[data-testid="playback-progressbar"]:hover .x-progressBar-foreground{background-color:${adjustColor(progFg,0.12)}!important;height:5px!important}
+[data-testid="progress-bar"]:hover .x-progressBar-handle,[data-testid="playback-progressbar"]:hover .x-progressBar-handle{background-color:${adjustColor(progFg,0.12)}!important;transform:scale(1.2)!important}
+/* New class names (Spotify 1.2.84+) */
+.progressBar-background{background-color:${progBg}!important;height:4px!important;border-radius:2px!important;transition:height .12s!important}
+.progressBar-middleground{background-color:${progBg}!important}
+.progressBar-foreground{background-color:${progFg}!important;height:4px!important;border-radius:2px!important;min-width:2px!important;transition:background-color .15s,height .12s!important}
+.progressBar-handle{background-color:${progFg}!important;width:12px!important;height:12px!important;border-radius:50%!important;opacity:1!important;transition:transform .12s,background-color .15s!important}
+[data-testid="progress-bar"]:hover .progressBar-background,[data-testid="playback-progressbar"]:hover .progressBar-background{height:5px!important}
+[data-testid="progress-bar"]:hover .progressBar-foreground,[data-testid="playback-progressbar"]:hover .progressBar-foreground{background-color:${adjustColor(progFg,0.12)}!important;height:5px!important}
+[data-testid="progress-bar"]:hover .progressBar-handle,[data-testid="playback-progressbar"]:hover .progressBar-handle{background-color:${adjustColor(progFg,0.12)}!important;transform:scale(1.2)!important}
+
+/* ── Volume bar — handle always visible, hover brightens ── */
+/* Legacy class names (Spotify pre-1.2.84) */
 [data-testid="volume-bar"] .x-progressBar-background,
 [data-testid="volume-bar"] ~ * .x-progressBar-background,
 [class*="volume"] .x-progressBar-background{background-color:${volBg}!important}
@@ -483,9 +602,24 @@ body.cs4-sbl-active [class*="contentSpacing"]:not(:has(.search-searchCategory-co
 [data-testid="volume-bar"] ~ * .x-progressBar-foreground,
 [class*="volume"] .x-progressBar-foreground{background-color:${volFg}!important;transition:background-color .15s!important}
 [data-testid="volume-bar"]:hover .x-progressBar-foreground,
-[class*="volume"]:hover .x-progressBar-foreground{background-color:${adjustColor(volFg, 0.1)}!important}
+[class*="volume"]:hover .x-progressBar-foreground{background-color:${adjustColor(volFg,0.12)}!important}
 [data-testid="volume-bar"] .x-progressBar-handle,
-[class*="volume"] .x-progressBar-handle{background-color:${volFg}!important}
+[class*="volume"] .x-progressBar-handle{background-color:${volFg}!important;opacity:1!important;transition:background-color .15s,transform .12s!important}
+[data-testid="volume-bar"]:hover .x-progressBar-handle,
+[class*="volume"]:hover .x-progressBar-handle{background-color:${adjustColor(volFg,0.12)}!important;transform:scale(1.15)!important}
+/* New class names (Spotify 1.2.84+) */
+[data-testid="volume-bar"] .progressBar-background,
+[data-testid="volume-bar"] ~ * .progressBar-background,
+[class*="volume"] .progressBar-background{background-color:${volBg}!important}
+[data-testid="volume-bar"] .progressBar-foreground,
+[data-testid="volume-bar"] ~ * .progressBar-foreground,
+[class*="volume"] .progressBar-foreground{background-color:${volFg}!important;transition:background-color .15s!important}
+[data-testid="volume-bar"]:hover .progressBar-foreground,
+[class*="volume"]:hover .progressBar-foreground{background-color:${adjustColor(volFg,0.12)}!important}
+[data-testid="volume-bar"] .progressBar-handle,
+[class*="volume"] .progressBar-handle{background-color:${volFg}!important;opacity:1!important;transition:background-color .15s,transform .12s!important}
+[data-testid="volume-bar"]:hover .progressBar-handle,
+[class*="volume"]:hover .progressBar-handle{background-color:${adjustColor(volFg,0.12)}!important;transform:scale(1.15)!important}
 
 /* ── ALL play button circles: hidden at rest, visible only on parent hover ── */
 /* Global rule: any .main-playButton-PlayButton or [data-testid="play-button"]
@@ -578,8 +712,10 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 
 /* ── Tracklist rows ── */
 [class*="TrackListRow"]:hover,[class*="tracklist-row"]:hover,
+[data-testid="tracklist-row"]:hover,
 .main-trackList-trackListRow:hover{background-color:${hl}!important}
 [class*="TrackListRow"][aria-selected="true"],
+[data-testid="tracklist-row"][aria-selected="true"],
 .main-trackList-trackListRow[aria-selected="true"]{background-color:${hlEl}!important}
 [class*="contextMenu"],[class*="ContextMenu"],
 [data-testid*="context-menu"]{background-color:${bgEl}!important}
@@ -601,6 +737,7 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 /* ── Tracklist icon accent ── */
 .main-trackList-trackListRow:hover .main-trackList-rowSectionIndex svg,
 [data-testid="tracklist-row"]:hover [class*="rowIndex"] svg,
+[data-testid="tracklist-row"]:hover [class*="trackIndex"] svg,
 [data-testid="queue-row"]:hover [class*="trackNumber"] svg,
 [data-testid="queue-row"][aria-current] [class*="trackNumber"] svg{
   color:${acc}!important;fill:${acc}!important}
@@ -612,10 +749,56 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 [class*="ButtonPrimary"]:not([class*="play"]):hover,
 [data-encore-id="buttonPrimary"]:not([class*="play"]):hover{background-color:${btnActive}!important}
 
+/* ── Spicetify extension settings buttons (.x-settings-button) ── */
+/* Spicetify appends this class to every third-party extension button in settings.
+   These are buttonSecondary (not Primary) so previous fix didn't match them. */
+.x-settings-button{
+  background-color:transparent!important;
+  color:${t}!important;
+  border:1px solid ${hlEl}!important;
+  border-radius:500px!important;}
+.x-settings-button:hover{
+  background-color:${hl}!important;
+  border-color:${acc}!important;}
+
 ::-webkit-scrollbar{width:8px!important}
 ::-webkit-scrollbar-track{background:${bg}!important}
 ::-webkit-scrollbar-thumb{background:${hl}!important;border-radius:4px!important}
 ::-webkit-scrollbar-thumb:hover{background:${hlEl}!important}
+
+/* ── Search bar ── */
+/* Reset top bar search shortcut button (Ctrl+L) — do NOT border it */
+[data-testid="search-in-topbar"],
+[class*="SearchInput__topbar"],
+[class*="topBar"] [class*="searchInput"]{
+  background-color:transparent!important;
+  border:none!important;box-shadow:none!important}
+/* Actual search page input */
+[data-testid="search-bar-text-input"],
+input[class*="searchInput"]:not([class*="topbar"]),
+.x-filterBox-filterInput{
+  background-color:${bgEl}!important;color:${t}!important;
+  border:1.5px solid ${hlEl}!important;border-radius:500px!important;
+  transition:border-color .15s,box-shadow .15s!important}
+[data-testid="search-bar-text-input"]:focus,
+input[class*="searchInput"]:focus,
+.x-filterBox-filterInput:focus{
+  border-color:${acc}!important;box-shadow:0 0 0 2px ${acc}33!important;outline:none!important}
+[data-testid="search-bar-text-input"]::placeholder,
+input[class*="searchInput"]::placeholder,
+.x-filterBox-filterInput::placeholder{color:${sub}!important;opacity:1!important}
+/* Search icon (only in search page, not top bar) */
+[data-testid="search-bar-text-input"] ~ [class*="searchIcon"],
+[data-testid="search-bar-text-input"] ~ [data-testid="search-icon"]{
+  color:${sub}!important;fill:${sub}!important}
+/* Category tabs */
+[data-testid="search-category-tab"],[class*="searchCategory-tab"],[class*="categoryTab"]{
+  background-color:${hl}!important;color:${t}!important;
+  border-radius:500px!important;transition:background-color .15s!important}
+[data-testid="search-category-tab"][aria-selected="true"],
+[class*="searchCategory-tab--active"],[class*="categoryTab--active"]{
+  background-color:${acc}!important;color:${contrastColor(acc)}!important}
+
 `;
   }
 
@@ -635,7 +818,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     }
   }
 
-  
   sblCheck();
   new MutationObserver(sblCheck).observe(document.body, { childList: true, subtree: true });
 
@@ -682,6 +864,8 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     const scrollEl =
       document.querySelector(".main-view-container__scroll-node") ||
       document.querySelector("[class*='scrollNode']") ||
+      document.querySelector("[class*='scroll-node']") ||
+      document.querySelector("[data-overlayscrollbars-viewport]") ||
       document.querySelector(".os-viewport");
 
     if (scrollEl && _topBarScrollEl !== scrollEl) {
@@ -806,6 +990,8 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     const scrollEl =
       document.querySelector(".main-view-container__scroll-node") ||
       document.querySelector("[class*='scrollNode']") ||
+      document.querySelector("[class*='scroll-node']") ||
+      document.querySelector("[data-overlayscrollbars-viewport]") ||
       document.querySelector(".os-viewport");
     if (!scrollEl || _filterScrollEl === scrollEl) return;
     if (_filterScrollEl && _filterScrollListener) {
@@ -848,15 +1034,22 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 
     const isSettings =
       window.location.pathname.startsWith("/preferences") ||
+      window.location.pathname.startsWith("/settings") ||
       window.location.hash.includes("preferences") ||
+      window.location.hash.includes("settings") ||
       !!document.querySelector('[data-testid="settings-page"]') ||
-      !!document.querySelector(".x-settings-container");
+      !!document.querySelector('[data-testid="settings"]') ||
+      !!document.querySelector(".x-settings-container") ||
+      !!document.querySelector("[class*='settings-container']");
     if (!isSettings) return;
 
     const target =
       document.querySelector(".x-settings-container") ||
+      document.querySelector("[class*='settings-container']") ||
       document.querySelector('[data-testid="settings-page"]') ||
-      document.querySelector(".main-view-container__scroll-node-child");
+      document.querySelector('[data-testid="settings"]') ||
+      document.querySelector(".main-view-container__scroll-node-child") ||
+      document.querySelector("[class*='scroll-node-child']");
     if (!target) return;
 
     const section = document.createElement("div");
@@ -927,6 +1120,29 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csProgressBg: "Progress background", csProgressFg: "Progress color",
         csVolumeBg: "Volume background", csVolumeFg: "Volume color",
       },
+      tabCloud:           "Cloud",
+      communityLabel:     "🌐 Enable community presets",
+      communityNoneFound: "No community presets found.",
+      cloud: {
+        title:         "Cloud Sync",
+        desc:          "Connect your ChromaShift account to back up and sync presets across devices.",
+        emailLabel:    "Email",
+        pwLabel:       "Password",
+        connectBtn:    "Connect Account",
+        connecting:    "Connecting…",
+        connected:     "Connected",
+        pushBtn:       "Push to Cloud",
+        pushing:       "Pushing…",
+        pullBtn:       "Pull from Cloud",
+        pulling:       "Pulling…",
+        disconnectBtn: "Disconnect",
+        fillFields:    "Please fill in all fields.",
+        pushed:        "preset(s) pushed!",
+        pulled:        "preset(s) pulled! Reloading…",
+      },
+      deleteTitle: "Delete",
+      badgeCommunity: "community",
+      badgeCustom: "custom",
       footer: {
         bug:       "🐛 Have you found a <strong>bug</strong>? Open an",
         request:   "✨ Have a <strong>request</strong>? Open an",
@@ -983,6 +1199,29 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csProgressBg: "Progress background", csProgressFg: "Progress color",
         csVolumeBg: "Volume background", csVolumeFg: "Volume color",
       },
+      tabCloud:           "Cloud",
+      communityLabel:     "🌐 Enable community presets",
+      communityNoneFound: "No community presets found.",
+      cloud: {
+        title:         "Cloud Sync",
+        desc:          "Connect your ChromaShift account to back up and sync presets across devices.",
+        emailLabel:    "Email",
+        pwLabel:       "Password",
+        connectBtn:    "Connect Account",
+        connecting:    "Connecting…",
+        connected:     "Connected",
+        pushBtn:       "Push to Cloud",
+        pushing:       "Pushing…",
+        pullBtn:       "Pull from Cloud",
+        pulling:       "Pulling…",
+        disconnectBtn: "Disconnect",
+        fillFields:    "Please fill in all fields.",
+        pushed:        "preset(s) pushed!",
+        pulled:        "preset(s) pulled! Reloading…",
+      },
+      deleteTitle: "Delete",
+      badgeCommunity: "community",
+      badgeCustom: "custom",
       footer: {
         bug:       "🐛 Have you found a <strong>bug</strong>? Open an",
         request:   "✨ Have a <strong>request</strong>? Open an",
@@ -1039,6 +1278,29 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csProgressBg: "Avanzamento sfondo", csProgressFg: "Avanzamento colore",
         csVolumeBg: "Volume sfondo", csVolumeFg: "Volume colore",
       },
+      tabCloud:           "Cloud",
+      communityLabel:     "🌐 Abilita preset della community",
+      communityNoneFound: "Nessun preset community trovato.",
+      cloud: {
+        title:         "Sincronizzazione Cloud",
+        desc:          "Connetti il tuo account ChromaShift per fare il backup e sincronizzare i preset su più dispositivi.",
+        emailLabel:    "Email",
+        pwLabel:       "Password",
+        connectBtn:    "Connetti account",
+        connecting:    "Connessione…",
+        connected:     "Connesso",
+        pushBtn:       "Carica sul Cloud",
+        pushing:       "Caricamento…",
+        pullBtn:       "Scarica dal Cloud",
+        pulling:       "Download…",
+        disconnectBtn: "Disconnetti",
+        fillFields:    "Compila tutti i campi.",
+        pushed:        "preset caricati!",
+        pulled:        "preset scaricati! Ricaricamento…",
+      },
+      deleteTitle: "Elimina",
+      badgeCommunity: "community",
+      badgeCustom: "personalizzato",
       footer: {
         bug:       "🐛 Hai trovato un <strong>bug</strong>? Apri una",
         request:   "✨ Hai una <strong>richiesta</strong>? Apri una",
@@ -1095,6 +1357,29 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csProgressBg: "Fortschritt Hintergrund", csProgressFg: "Fortschritt Farbe",
         csVolumeBg: "Lautstärke Hintergrund", csVolumeFg: "Lautstärke Farbe",
       },
+      tabCloud:           "Cloud",
+      communityLabel:     "🌐 Community-Presets aktivieren",
+      communityNoneFound: "Keine Community-Presets gefunden.",
+      cloud: {
+        title:         "Cloud-Synchronisation",
+        desc:          "Verbinde dein ChromaShift-Konto, um Presets zu sichern und geräteübergreifend zu synchronisieren.",
+        emailLabel:    "E-Mail",
+        pwLabel:       "Passwort",
+        connectBtn:    "Konto verbinden",
+        connecting:    "Verbinde…",
+        connected:     "Verbunden",
+        pushBtn:       "In die Cloud hochladen",
+        pushing:       "Hochladen…",
+        pullBtn:       "Aus der Cloud herunterladen",
+        pulling:       "Herunterladen…",
+        disconnectBtn: "Trennen",
+        fillFields:    "Bitte alle Felder ausfüllen.",
+        pushed:        "Preset(s) hochgeladen!",
+        pulled:        "Preset(s) heruntergeladen! Neustart…",
+      },
+      deleteTitle: "Löschen",
+      badgeCommunity: "community",
+      badgeCustom: "benutzerdefiniert",
       footer: {
         bug:       "🐛 Einen <strong>Fehler</strong> gefunden? Öffne ein",
         request:   "✨ Hast du einen <strong>Wunsch</strong>? Öffne ein",
@@ -1151,6 +1436,29 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csProgressBg: "Fond progression", csProgressFg: "Couleur progression",
         csVolumeBg: "Fond volume", csVolumeFg: "Couleur volume",
       },
+      tabCloud:           "Cloud",
+      communityLabel:     "🌐 Activer les préréglages communautaires",
+      communityNoneFound: "Aucun préréglage communautaire trouvé.",
+      cloud: {
+        title:         "Synchronisation Cloud",
+        desc:          "Connectez votre compte ChromaShift pour sauvegarder et synchroniser vos préréglages sur tous vos appareils.",
+        emailLabel:    "E-mail",
+        pwLabel:       "Mot de passe",
+        connectBtn:    "Connecter le compte",
+        connecting:    "Connexion…",
+        connected:     "Connecté",
+        pushBtn:       "Envoyer vers le Cloud",
+        pushing:       "Envoi…",
+        pullBtn:       "Récupérer depuis le Cloud",
+        pulling:       "Récupération…",
+        disconnectBtn: "Déconnecter",
+        fillFields:    "Veuillez remplir tous les champs.",
+        pushed:        "préréglage(s) envoyé(s) !",
+        pulled:        "préréglage(s) récupéré(s) ! Rechargement…",
+      },
+      deleteTitle: "Supprimer",
+      badgeCommunity: "communauté",
+      badgeCustom: "personnalisé",
       footer: {
         bug:       "🐛 Vous avez trouvé un <strong>bug</strong> ? Ouvrez une",
         request:   "✨ Vous avez une <strong>demande</strong> ? Ouvrez une",
@@ -1207,6 +1515,29 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csProgressBg: "Fondo progreso", csProgressFg: "Color progreso",
         csVolumeBg: "Fondo volumen", csVolumeFg: "Color volumen",
       },
+      tabCloud:           "Cloud",
+      communityLabel:     "🌐 Activar preajustes de la comunidad",
+      communityNoneFound: "No se encontraron preajustes de la comunidad.",
+      cloud: {
+        title:         "Sincronización en la nube",
+        desc:          "Conecta tu cuenta de ChromaShift para hacer copias de seguridad y sincronizar preajustes en todos tus dispositivos.",
+        emailLabel:    "Correo electrónico",
+        pwLabel:       "Contraseña",
+        connectBtn:    "Conectar cuenta",
+        connecting:    "Conectando…",
+        connected:     "Conectado",
+        pushBtn:       "Subir a la nube",
+        pushing:       "Subiendo…",
+        pullBtn:       "Descargar de la nube",
+        pulling:       "Descargando…",
+        disconnectBtn: "Desconectar",
+        fillFields:    "Por favor, rellena todos los campos.",
+        pushed:        "preajuste(s) subido(s)!",
+        pulled:        "preajuste(s) descargado(s)! Recargando…",
+      },
+      deleteTitle: "Eliminar",
+      badgeCommunity: "comunidad",
+      badgeCustom: "personalizado",
       footer: {
         bug:       "🐛 ¿Encontraste un <strong>error</strong>? Abre una",
         request:   "✨ ¿Tienes una <strong>solicitud</strong>? Abre una",
@@ -1263,6 +1594,29 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csProgressBg: "Фон прогресу", csProgressFg: "Колір прогресу",
         csVolumeBg: "Фон гучності", csVolumeFg: "Колір гучності",
       },
+      tabCloud:           "Хмара",
+      communityLabel:     "🌐 Увімкнути пресети спільноти",
+      communityNoneFound: "Пресети спільноти не знайдено.",
+      cloud: {
+        title:         "Хмарна синхронізація",
+        desc:          "Підключіть свій акаунт ChromaShift для резервного копіювання та синхронізації пресетів на різних пристроях.",
+        emailLabel:    "Електронна пошта",
+        pwLabel:       "Пароль",
+        connectBtn:    "Підключити акаунт",
+        connecting:    "Підключення…",
+        connected:     "Підключено",
+        pushBtn:       "Завантажити в хмару",
+        pushing:       "Завантаження…",
+        pullBtn:       "Отримати з хмари",
+        pulling:       "Отримання…",
+        disconnectBtn: "Відключити",
+        fillFields:    "Будь ласка, заповніть всі поля.",
+        pushed:        "пресет(и) завантажено!",
+        pulled:        "пресет(и) отримано! Перезавантаження…",
+      },
+      deleteTitle: "Видалити",
+      badgeCommunity: "спільнота",
+      badgeCustom: "власний",
       footer: {
         bug:       "🐛 Знайшли <strong>помилку</strong>? Відкрийте",
         request:   "✨ Маєте <strong>запит</strong>? Відкрийте",
@@ -1319,6 +1673,29 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csProgressBg: "Фон прогресса", csProgressFg: "Цвет прогресса",
         csVolumeBg: "Фон громкости", csVolumeFg: "Цвет громкости",
       },
+      tabCloud:           "Облако",
+      communityLabel:     "🌐 Включить пресеты сообщества",
+      communityNoneFound: "Пресеты сообщества не найдены.",
+      cloud: {
+        title:         "Облачная синхронизация",
+        desc:          "Подключите аккаунт ChromaShift для резервного копирования и синхронизации пресетов на всех устройствах.",
+        emailLabel:    "Электронная почта",
+        pwLabel:       "Пароль",
+        connectBtn:    "Подключить аккаунт",
+        connecting:    "Подключение…",
+        connected:     "Подключено",
+        pushBtn:       "Загрузить в облако",
+        pushing:       "Загрузка…",
+        pullBtn:       "Получить из облака",
+        pulling:       "Получение…",
+        disconnectBtn: "Отключить",
+        fillFields:    "Пожалуйста, заполните все поля.",
+        pushed:        "пресет(ов) загружено!",
+        pulled:        "пресет(ов) получено! Перезагрузка…",
+      },
+      deleteTitle: "Удалить",
+      badgeCommunity: "сообщество",
+      badgeCustom: "свой",
       footer: {
         bug:       "🐛 Нашли <strong>ошибку</strong>? Откройте",
         request:   "✨ Есть <strong>пожелание</strong>? Откройте",
@@ -1375,6 +1752,29 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
         csProgressBg: "进度背景", csProgressFg: "进度颜色",
         csVolumeBg: "音量背景", csVolumeFg: "音量颜色",
       },
+      tabCloud:           "云端",
+      communityLabel:     "🌐 启用社区预设",
+      communityNoneFound: "未找到社区预设。",
+      cloud: {
+        title:         "云端同步",
+        desc:          "连接您的 ChromaShift 账户，在所有设备上备份和同步预设。",
+        emailLabel:    "电子邮件",
+        pwLabel:       "密码",
+        connectBtn:    "连接账户",
+        connecting:    "连接中…",
+        connected:     "已连接",
+        pushBtn:       "上传到云端",
+        pushing:       "上传中…",
+        pullBtn:       "从云端下载",
+        pulling:       "下载中…",
+        disconnectBtn: "断开连接",
+        fillFields:    "请填写所有字段。",
+        pushed:        "个预设已上传！",
+        pulled:        "个预设已下载！正在重新加载…",
+      },
+      deleteTitle: "删除",
+      badgeCommunity: "社区",
+      badgeCustom: "自定义",
       footer: {
         bug:       "🐛 发现了<strong>错误</strong>？请提交",
         request:   "✨ 有<strong>功能请求</strong>？请提交",
@@ -1528,10 +1928,11 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 <div class="cs4-tabs">
   <button class="cs4-tab cs4-active" data-panel="presets">${tr.tabPresets}</button>
   <button class="cs4-tab" data-panel="editor">${tr.tabEditor}</button>
+  <button class="cs4-tab" data-panel="cloud">${tr.tabCloud}</button>
 </div>
 <div class="cs4-panel cs4-active" id="cs4-panel-presets">
   <div class="cs4-community-row">
-    <span class="cs4-community-label">🌐 Enable community presets?</span>
+    <span class="cs4-community-label">${tr.communityLabel}</span>
     <label class="cs4-community-toggle">
       <input type="checkbox" id="cs4-community-chk" ${isCommunityEnabled() ? "checked" : ""}>
       <span class="cs4-community-slider"></span>
@@ -1551,8 +1952,11 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     <button class="cs4-btn cs4-btn-danger" id="cs4-default">${tr.defaultBtn}</button>
   </div>
 </div>
+<div class="cs4-panel" id="cs4-panel-cloud">
+  <div id="cs4-cloud-container"></div>
+</div>
 <div class="cs4-footer">
-  <span>${tr.footer.bug} <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">${tr.footer.issue}</a></span>
+  <span>${tr.footer.bug} <a class="cs4-footer-link" href="https://chromashift.qzz.io/contacts" target="_blank">${tr.footer.issue}</a></span>
   <span>${tr.footer.request} <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">${tr.footer.issue}</a></span>
   <span>${tr.footer.preset} <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">${tr.footer.issue}</a></span>
   <span class="cs4-footer-note">${tr.footer.note}</span>
@@ -1596,9 +2000,9 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
           <div class="cs4-preset-name">
             <span>${preset.emoji||"🎨"}</span>
             <span>${preset.builtin ? (t().presetNames?.[key] || preset.name) : preset.name}</span>
-            ${preset.community ? `<span class="cs4-preset-badge-community">community</span>` : !preset.builtin ? `<span class="cs4-preset-badge">custom</span>` : ""}
+            ${preset.community ? `<span class="cs4-preset-badge-community">${t().badgeCommunity}</span>` : !preset.builtin ? `<span class="cs4-preset-badge">${t().badgeCustom}</span>` : ""}
           </div>
-          ${!preset.builtin && !preset.community ? `<button class="cs4-preset-del" title="Elimina">✕</button>` : ""}`;
+          ${!preset.builtin && !preset.community ? `<button class="cs4-preset-del" title="${t().deleteTitle}">✕</button>` : ""}`;
         el.addEventListener("click", e => {
           if (e.target.closest(".cs4-preset-del")) return;
           editColors = { ...preset.colors };
@@ -1642,7 +2046,7 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
           if (presets && Object.keys(presets).length > 0) {
             saveCommunityPresets(presets);
           } else {
-            toast("No community presets found.");
+            toast(t().communityNoneFound);
             setCommunityEnabled(false);
             communityChk.checked = false;
             return;
@@ -1819,6 +2223,141 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
     }
 
     buildEditor();
+    buildCloudPanel();
+
+
+    // ── Cloud UI ──
+    function buildCloudPanel() {
+      const wrap = document.getElementById("cs4-cloud-container");
+      if (!wrap) return;
+      const creds = cloudGetCreds();
+      wrap.innerHTML = creds ? renderConnected(creds.email) : renderLogin();
+      wireCloud();
+    }
+
+    function renderLogin() {
+      const tr2 = t();
+      return `
+        <div style="max-width:380px;padding-top:4px;margin:0 auto;">
+          <div style="background:rgba(29,185,84,.07);border:1px solid rgba(29,185,84,.18);border-radius:12px;padding:14px 16px;margin-bottom:18px;">
+            <div style="font-size:13px;font-weight:700;color:${acc};margin-bottom:5px;">${tr2.cloud.title}</div>
+            <div style="font-size:12px;color:${sub};line-height:1.6;">${tr2.cloud.desc}</div>
+          </div>
+          <div id="cs4-cloud-alert" style="display:none;border-radius:8px;padding:9px 12px;font-size:12px;margin-bottom:12px;font-family:monospace;"></div>
+          <div style="margin-bottom:11px;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:${sub};margin-bottom:5px;">${tr2.cloud.emailLabel}</div>
+            <input id="cs4-cloud-email" type="email" placeholder="you@example.com"
+              style="width:100%;background:${hl};border:1.5px solid ${hlEl};border-radius:8px;padding:9px 12px;font-size:13px;color:${txt};outline:none;box-sizing:border-box;"
+              onfocus="this.style.borderColor='${acc}'" onblur="this.style.borderColor='${hlEl}'">
+          </div>
+          <div style="margin-bottom:16px;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:${sub};margin-bottom:5px;">${tr2.cloud.pwLabel}</div>
+            <input id="cs4-cloud-pw" type="password" placeholder="••••••••"
+              style="width:100%;background:${hl};border:1.5px solid ${hlEl};border-radius:8px;padding:9px 12px;font-size:13px;color:${txt};outline:none;box-sizing:border-box;"
+              onfocus="this.style.borderColor='${acc}'" onblur="this.style.borderColor='${hlEl}'">
+          </div>
+          <button id="cs4-cloud-login" class="cs4-btn cs4-btn-primary" style="width:100%;">${tr2.cloud.connectBtn}</button>
+        </div>`;
+    }
+
+    function renderConnected(email) {
+      const tr2 = t();
+      return `
+        <div style="max-width:380px;padding-top:4px;margin:0 auto;">
+          <div style="background:rgba(29,185,84,.07);border:1px solid rgba(29,185,84,.18);border-radius:12px;padding:14px 16px;margin-bottom:18px;display:flex;align-items:center;gap:11px;">
+            <div style="width:34px;height:34px;border-radius:50%;background:rgba(29,185,84,.15);border:1px solid rgba(29,185,84,.3);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">✓</div>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:${acc};">${tr2.cloud.connected}</div>
+              <div style="font-size:11px;color:${sub};font-family:monospace;margin-top:1px;">${email}</div>
+            </div>
+          </div>
+          <div id="cs4-cloud-alert" style="display:none;border-radius:8px;padding:9px 12px;font-size:12px;margin-bottom:12px;font-family:monospace;"></div>
+          <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:18px;">
+            <button id="cs4-cloud-push" class="cs4-btn cs4-btn-primary" style="width:100%;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              ${tr2.cloud.pushBtn}
+            </button>
+            <button id="cs4-cloud-pull" class="cs4-btn cs4-btn-secondary" style="width:100%;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              ${tr2.cloud.pullBtn}
+            </button>
+          </div>
+          <button id="cs4-cloud-disconnect" class="cs4-btn cs4-btn-danger" style="width:100%;">${tr2.cloud.disconnectBtn}</button>
+        </div>`;
+    }
+
+    function showCloudMsg(type, msg) {
+      const el = document.getElementById("cs4-cloud-alert");
+      if (!el) return;
+      el.textContent = msg;
+      el.style.display = "block";
+      el.style.background = type === "ok" ? "rgba(29,185,84,.1)" : "rgba(232,67,147,.1)";
+      el.style.border     = type === "ok" ? "1px solid rgba(29,185,84,.3)" : "1px solid rgba(232,67,147,.3)";
+      el.style.color      = type === "ok" ? acc : "#e84393";
+      clearTimeout(el._t);
+      el._t = setTimeout(() => { el.style.display = "none"; }, 4000);
+    }
+
+    function wireCloud() {
+      const loginBtn = document.getElementById("cs4-cloud-login");
+      if (loginBtn) {
+        loginBtn.addEventListener("click", async () => {
+          const email = (document.getElementById("cs4-cloud-email") || {}).value || "";
+          const pw    = (document.getElementById("cs4-cloud-pw") || {}).value || "";
+          if (!email || !pw) { showCloudMsg("err", t().cloud.fillFields); return; }
+          loginBtn.textContent = t().cloud.connecting;
+          loginBtn.disabled = true;
+          const res = await cloudLogin(email.trim(), pw);
+          if (!res.ok) {
+            loginBtn.textContent = t().cloud.connectBtn;
+            loginBtn.disabled = false;
+            showCloudMsg("err", res.error);
+            return;
+          }
+          buildCloudPanel();
+        });
+      }
+
+      const pushBtn = document.getElementById("cs4-cloud-push");
+      if (pushBtn) {
+        pushBtn.addEventListener("click", async () => {
+          pushBtn.disabled = true;
+          pushBtn.textContent = t().cloud.pushing;
+          const res = await cloudPush();
+          pushBtn.disabled = false;
+          pushBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> ${t().cloud.pushBtn}`;
+          if (!res.ok) { showCloudMsg("err", res.error); return; }
+          showCloudMsg("ok", res.count + " " + t().cloud.pushed);
+        });
+      }
+
+      const pullBtn = document.getElementById("cs4-cloud-pull");
+      if (pullBtn) {
+        pullBtn.addEventListener("click", async () => {
+          pullBtn.disabled = true;
+          pullBtn.textContent = t().cloud.pulling;
+          const res = await cloudPull();
+          pullBtn.disabled = false;
+          pullBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ${t().cloud.pullBtn}`;
+          if (!res.ok) { showCloudMsg("err", res.error); return; }
+          showCloudMsg("ok", res.count + " " + t().cloud.pulled);
+          setTimeout(() => {
+            try { Spicetify.Platform.reload(); } catch(_) {
+              try { window.location.reload(); } catch(__) {}
+            }
+          }, 1200);
+        });
+      }
+
+      const discBtn = document.getElementById("cs4-cloud-disconnect");
+      if (discBtn) {
+        discBtn.addEventListener("click", () => {
+          cloudClearCreds();
+          buildCloudPanel();
+        });
+      }
+    }
+
     document.getElementById("cs4-apply").addEventListener("click", () => {
       applyColors(editColors); saveColors(editColors); toast(t().toastSaved);
     });
@@ -1854,7 +2393,7 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
   // AUTO-UPDATER
   // ===========================================================
 
-  const CURRENT_VERSION  = "3.1.2";
+  const CURRENT_VERSION  = "3.2.0";
   const RELEASES_API     = "https://api.github.com/repos/stefaceriani/chromashift/releases/latest";
   const RELEASES_PAGE    = "https://github.com/stefaceriani/chromashift/releases";
   const UPDATE_INTERVAL  = 60 * 60 * 1000;
