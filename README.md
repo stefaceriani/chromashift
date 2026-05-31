@@ -81,10 +81,13 @@ spicetify apply
 
 ---
 
-## 📤 Export / Import themes
+## 📤 Clude Import / Export presets
 
-- **Export**: click "Esporta tema" — JSON is copied to your clipboard
-- **Import**: click "Importa tema" — select any `.json` file exported previously
+Login to [https://chromashift.qzz.io/](https://chromashift.qzz.io/)
+Authorise Cloude integration in "Cloud" section
+
+- **Export**: click "Push to cloud" — All presets are put on the web cloud
+- **Import**: click "Pull from cloud" — Presets saved in the cloud that are not already present locally will be added
 
 ---
 
@@ -106,7 +109,9 @@ PRs welcome! If you've created a great color scheme, open a PR to add it as an o
 
 ## 🐛 Bug or Request?
 
-Open a issue or join our community https://discord.gg/pVZHxKW5KN
+- Issue: [github.com/stafaceriani/chromashift/issues](https://github.com/stefaceriani/chromashift/issues)
+- Discord: [.gg/pVZHxKW5KN](https://discord.gg/pVZHxKW5KN)
+- Website: [https://chromashift.qzz.io/](https://chromashift.qzz.io/contacts)
 
 # 📷 Screenshot
 <table>
@@ -131,7 +136,6 @@ Open a issue or join our community https://discord.gg/pVZHxKW5KN
 </table>
 
 ---
-[![Discord](https://img.shields.io/badge/Discord-🎨ChromaShift_Support-5865F2?logo=discord&logoColor=white)](https://discord.gg/rSpeNDRcGx)
 [![Site](https://img.shields.io/badge/Site-chromashift.qzz.io-5fc3cf?logo=site&logoColor=white)](https://chromashift.qzz.io)
 [![Version](https://img.shields.io/github/v/release/stefaceriani/chromashift?logo=github)](https://github.com/stefaceriani/chromashift/releases)
 [![Forks](https://img.shields.io/github/forks/stefaceriani/chromashift?style=social)](https://github.com/stefaceriani/chromashift/fork)
@@ -141,5 +145,3 @@ Open a issue or join our community https://discord.gg/pVZHxKW5KN
 [![Spotify](https://img.shields.io/badge/Spotify-Compatible-1DB954?logo=spotify&logoColor=white)](https://open.spotify.com)
 [![Spicetify](https://img.shields.io/badge/Spicetify-Extension-FF5C00?logo=spotify&logoColor=white)](https://spicetify.app)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)](https://spicetify.app/docs/)
-[![Report Bug](https://img.shields.io/badge/Report-Bug-red?logo=github)](https://github.com/stefaceriani/chromashift/issues)
-[![Request Feature](https://img.shields.io/badge/Request-Feature-blue?logo=github)](https://github.com/stefaceriani/chromashift/issues)
