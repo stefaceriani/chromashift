@@ -1,0 +1,72 @@
+name: 🐞 Bug Report
+description: Report a bug
+labels: ["🐛 bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 📜 Description
+      description: Clearly describe the problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 📝 How to reproduce it
+      description: Clearly describe how to reproduce it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expectation
+    attributes:
+      label: 🗯️ What was your expectation?
+      description: Clearly describe what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 💭 What happened instead?
+      description: Clearly describe what happened.
+    validations:
+      required: true
+
+  - type: input
+    id: spotify-version
+    attributes:
+      label: ⚙️ Spotify version
+    validations:
+      required: true
+
+  - type: input
+    id: spicetify-version
+    attributes:
+      label: ⚙️ Spicetify version
+    validations:
+      required: true
+
+  - type: input
+    id: chromashift-version
+    attributes:
+      label: ⚙️ Chromashift version
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: ➕ Additional Context
+      description: Add any other context, logs, or details about the problem.
+    validations:
+      required: false
+
+  - type: textarea
+    id: possible-solution
+    attributes:
+      label: 💡 Possible Solution (optional)
+      description: If you have an idea for how this could be fixed or improved, describe it.
+    validations:
+      required: false
