@@ -20,3 +20,9 @@ Clearly describe what happened.
 - ⚙️ Spotify version:
 - ⚙️ Spicetify version:
 - ⚙️ Chromashift version:
+
+## ➕ Additional Context
+Add any other context, logs, or details about the problem.
+
+## 💡 Possible Solution (optional)
+If you have an idea for how this could be fixed or improved, describe it.
