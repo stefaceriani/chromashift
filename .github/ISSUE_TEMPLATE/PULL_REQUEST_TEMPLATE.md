@@ -13,6 +13,6 @@ Explains what this PR does.
 
 ## ⚙️ Upload Modified Code
 
-| File name | Modified line(s) | Required/Optional |
-| --------- | ---------------- | ----------------- |
-| README.md | 145 to 147       | Optional          |
+| File name | Modified line(s) | Note |
+| --------- | ---------------- | ---- |
+| README.md | 145 to 147       | ///  |
