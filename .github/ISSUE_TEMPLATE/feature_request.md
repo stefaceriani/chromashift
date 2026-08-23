@@ -1,20 +1,44 @@
----
 name: ✨ Feature Request
-about: Suggest a new feature
-labels: ✨ enhancement
----
+description: Suggest a new feature
+labels: ["✨ enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: 📄 Idea
+      description: Describe the feature.
+    validations:
+      required: true
 
-## 📄 Idea
-Describe the feature.
+  - type: textarea
+    id: why
+    attributes:
+      label: ✒️ Why it's useful
+      description: Explain the value.
+    validations:
+      required: true
 
-## ✒️ Why it's useful
-Explain the value.
+  - type: textarea
+    id: mockup
+    attributes:
+      label: 🖼️ Mockup / reference (optional)
+      description: Screenshot, sketch, or link to something similar elsewhere.
+    validations:
+      required: false
 
-## 🖼️ Mockup / reference (optional)
-Screenshot, sketch, or link to something similar elsewhere.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: ⚖️ Alternatives considered (optional)
+    validations:
+      required: false
 
-## ⚖️ Alternatives considered (optional)
-
-## ✅ Checklist
-- [ ] I searched existing issues to avoid duplicates
-- [ ] I'm using the latest version of ChromaShift
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: ✅ Checklist
+      options:
+        - label: I searched existing issues to avoid duplicates
+          required: true
+        - label: I'm using the latest version of ChromaShift
+          required: true
