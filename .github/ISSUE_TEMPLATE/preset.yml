@@ -1,0 +1,85 @@
+name: ⚙️ Presets/Community Issue
+description: preset/community features issue
+labels: ["🧩 preset"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 📜 Description
+      description: Clearly describe the problem.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: preset-type
+    attributes:
+      label: 📝 Preset type
+      description: Tick ONLY one.
+      options:
+        - Community features (preset)
+        - Community features
+        - Built-in preset
+        - Custom preset
+    validations:
+      required: true
+
+  - type: textarea
+    id: expectation
+    attributes:
+      label: 🗯️ What was your expectation?
+      description: Clearly describe what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 💭 What happened instead?
+      description: Clearly describe what happened.
+    validations:
+      required: true
+
+  - type: input
+    id: spotify-version
+    attributes:
+      label: ⚙️ Spotify version
+    validations:
+      required: true
+
+  - type: input
+    id: spicetify-version
+    attributes:
+      label: ⚙️ Spicetify version
+    validations:
+      required: true
+
+  - type: input
+    id: chromashift-version
+    attributes:
+      label: ⚙️ Chromashift version
+    validations:
+      required: true
+
+  - type: input
+    id: community-preset-version
+    attributes:
+      label: ⚙️ Community preset version
+      description: "If it's a community preset. You can find it at the top of the preset file: https://github.com/stefaceriani/chromashift/tree/main/custom_preset"
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: ➕ Additional Context
+      description: Add any other context, logs, or details about the problem.
+    validations:
+      required: false
+
+  - type: textarea
+    id: possible-solution
+    attributes:
+      label: 💡 Possible Solution (optional)
+      description: If you have an idea for how this could be fixed or improved, describe it.
+    validations:
+      required: false
