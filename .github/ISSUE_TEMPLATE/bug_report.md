@@ -11,11 +11,12 @@ Clearly describe the problem.
 ## 📝 How to reproduce it
 1. ➡️ Go to...
 2. 👆 Click...
-3. 🗑️ Crash
+3. ❌ Crash
 
 ## 🗯️ Expected behavior
 - ❔What should happen?
 
 ## 💻 Environment
-- ⚙️ OS:
-- ⚙️ Version:
+- ⚙️ Spotify version:
+- ⚙️ Spicetify version:
+- ⚙️ Chromashift version:
