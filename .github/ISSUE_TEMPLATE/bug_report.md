@@ -9,12 +9,13 @@ labels: bug
 Clearly describe the problem.
 
 ## 📝 How to reproduce it
-1. ➡️ Go to...
-2. 👆 Click...
-3. ❌ Crash
+Clearly describe how to reproduce it.
 
-## 🗯️ Expected behavior
-- ❔What should happen?
+## 🗯️ What was your expectation?
+Clearly describe what you expected to happen.
+
+## 💭 What happened instead?
+Clearly describe what happened.
 
 ## 💻 Environment
 - ⚙️ Spotify version:
