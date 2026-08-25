@@ -1,4 +1,4 @@
-# 🎨 ChromaShift - v3.2.0
+# 🎨 ChromaShift - v3.2.0 
 
 > Customize every Spotify color from the Settings page — in real time.
 
@@ -113,35 +113,5 @@ PRs welcome! If you've created a great color scheme, open a PR to add it as an o
 - Discord: [.gg/pVZHxKW5KN](https://discord.gg/pVZHxKW5KN)
 - Website: [https://chromashift.qzz.io/](https://chromashift.qzz.io/contacts)
 
-# 📷 Screenshot
-<table>
-  <tr>
-    <td><img src="img/Preset - 1.png" width="600"/></td>
-    <td><img src="img/Preset - 2.png" width="600"/></td>
-  </tr>
-  <tr>
-    <td><img src="img/Preset - 3.png" width="600"/></td>
-    <td><img src="img/Preset - 4.png" width="600"/></td>
-  </tr>
-</table>
-
-<table>
-  <tr>
-    <td><img src="img/Preset - 5.png" width="600"/></td>
-    <td><img src="img/Preset - 6.png" width="600"/></td>
-  </tr>
-    <tr>
-    <td><img src="img/Custom.png" width="600"/></td>
-  </tr>
-</table>
-
 ---
-[![Site](https://img.shields.io/badge/Site-chromashift.qzz.io-5fc3cf?logo=site&logoColor=white)](https://chromashift.qzz.io)
-[![Version](https://img.shields.io/github/v/release/stefaceriani/chromashift?logo=github)](https://github.com/stefaceriani/chromashift/releases)
-[![Forks](https://img.shields.io/github/forks/stefaceriani/chromashift?style=social)](https://github.com/stefaceriani/chromashift/fork)
-[![Last Commit](https://img.shields.io/github/last-commit/stefaceriani/chromashift)](https://github.com/stefaceriani/chromashift/commit/)
-[![Issues](https://img.shields.io/github/issues/stefaceriani/chromashift)](https://github.com/stefaceriani/chromashift/issues)
-[![Pull Requests](https://img.shields.io/github/issues-pr/stefaceriani/chromashift)](https://github.com/stefaceriani/chromashift/pulls)
-[![Spotify](https://img.shields.io/badge/Spotify-Compatible-1DB954?logo=spotify&logoColor=white)](https://open.spotify.com)
-[![Spicetify](https://img.shields.io/badge/Spicetify-Extension-FF5C00?logo=spotify&logoColor=white)](https://spicetify.app)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)](https://spicetify.app/docs/)
+[![Version](https://img.shields.io/github/v/release/stefaceriani/chromashift?logo=github)](https://github.com/stefaceriani/chromashift/releases) [![Forks](https://img.shields.io/github/forks/stefaceriani/chromashift?style=social)](https://github.com/stefaceriani/chromashift/fork) [![Issues](https://img.shields.io/github/issues/stefaceriani/chromashift)](https://github.com/stefaceriani/chromashift/issues)
