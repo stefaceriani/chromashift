@@ -16,7 +16,7 @@ If Chromashift doesn't work first check our [status page](https://status.chromas
 | **Full override** | Overrides both legacy `--spice-*` and modern `--encore-*` Spotify tokens |
 | **Persistent** | Colors are saved via `Spicetify.LocalStorage` and applied on every launch |
 | **Export / Import** | Share your theme as a `.json` file |
-| **AutoUpdater Checker** | Extension auto check new updates |
+| **AutoUpdater Checker** | Extension auto check new updates and notify you |
 | **Language Traslator** | Available language: 🇬🇧 / 🇺🇸 / 🇮🇹 / 🇩🇪 / 🇫🇷 / 🇪🇸 / 🇷🇺 / 🇨🇳
 | **Online Cloud** | https://chromashift.qzz.io (only after login/register) |
 
@@ -68,7 +68,7 @@ spicetify apply
 - **Cards**
 - **Notifications**
 
-### & more
+#### & more
 
 ---
 
@@ -81,13 +81,13 @@ spicetify apply
 
 ---
 
-## 📤 Clude Import / Export presets
+## 📤 Cloud Import / Export presets
 
 Login to [https://chromashift.qzz.io/](https://chromashift.qzz.io/)
 Authorise Cloude integration in "Cloud" section
 
-- **Export**: click "Push to cloud" — All presets are put on the web cloud
-- **Import**: click "Pull from cloud" — Presets saved in the cloud that are not already present locally will be added
+- **Export**: click "Push to cloud" — Presets not yet on the cloud will be added.
+- **Import**: click "Pull from cloud" — Presets saved in the cloud that are not already present locally will be added to spotify.
 
 ---
 
@@ -105,7 +105,7 @@ This ensures changes apply to every visible element in the UI.
 
 ## 🤝 Contributing
 
-PRs welcome! If you've created a great color scheme, open a PR to add it as an official preset and if you want your name will be added to the preset list.
+Thanks for contributing ❤️; if you want to know how, read this 👉 [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## 🐛 Bug or Request?
 
