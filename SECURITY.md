@@ -4,6 +4,7 @@
 
 | Version    | Supported | Notes              |
 | ---------- | --------- | ------------------ |
+| 3.2.43-beta| ⚠️         | Partialy supported |
 | 3.2.0      | ✅         | Fully supported    |
 | 3.1.2 or < | ❌         | Outdated, not safe |
 | 3.0.0 or < | ❌         | Outdated, not safe |
@@ -18,6 +19,9 @@ If you discover a security vulnerability, please **do not open a public issue**.
 Instead, report it privately by contacting:
 
 * Email: [stefano.ceriani@blu.it](mailto:stefano.ceriani@blu.it)
+* Discord: [.fanoschio](https://discord.com/users/1236578850255933450)
+* Instagram: [stefa.ceriani](https://www.instagram.com/stefa.ceriani/)
+* Site: [chromashift.qzz.io](https://chromashift.qzz.io/contacts)
 
 Please include:
 
