@@ -2,7 +2,6 @@
 // AUTHOR: stefaceriani
 // DESCRIPTION: Customise every Spotify colour from the Settings page.
 // VERSION: 3.2.43
-// SPICETIFY: 2.44.0
 
 (function ChromaShift() {
   "use strict";
