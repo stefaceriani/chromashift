@@ -1,7 +1,8 @@
 // NAME: ChromaShift
 // AUTHOR: stefaceriani
 // DESCRIPTION: Customise every Spotify colour from the Settings page.
-// VERSION: 3.2.0
+// VERSION: 3.2.43
+// SPICETIFY: 2.44.0
 
 (function ChromaShift() {
   "use strict";
@@ -101,7 +102,7 @@
         csAccent: "#1db954", csPlayButton: "#1db954", csPlayButtonHover: "#1ed760",
         csButtonDisabled: "#535353", csSidebar: "#000000",
         csPlayer: "#121212", csCard: "#181818", csCardHover: "#282828",
-        csNotification: "#3d91f4", csProgressBg: "#3e3e3e", csProgressFg: "#1db954", csVolumeBg: "#3e3e3e", csVolumeFg: "#1db954",
+        csNotification: "#3d91f4", csNotificationText: "#000000", csProgressBg: "#3e3e3e", csProgressFg: "#1db954", csVolumeBg: "#3e3e3e", csVolumeFg: "#1db954",
       },
     },
     midnight: {
@@ -113,7 +114,7 @@
         csAccent: "#5c6bc0", csPlayButton: "#5c6bc0", csPlayButtonHover: "#7986cb",
         csButtonDisabled: "#37474f", csSidebar: "#070b14",
         csPlayer: "#0a0e1a", csCard: "#111827", csCardHover: "#1e2d45",
-        csNotification: "#5c6bc0", csProgressBg: "#253050", csProgressFg: "#5c6bc0", csVolumeBg: "#253050", csVolumeFg: "#5c6bc0",
+        csNotification: "#5c6bc0", csNotificationText: "#000000", csProgressBg: "#253050", csProgressFg: "#5c6bc0", csVolumeBg: "#253050", csVolumeFg: "#5c6bc0",
       },
     },
     rose: {
@@ -125,7 +126,7 @@
         csAccent: "#e879a0", csPlayButton: "#e879a0", csPlayButtonHover: "#f48fb1",
         csButtonDisabled: "#4a2030", csSidebar: "#110508",
         csPlayer: "#1a0a0f", csCard: "#21101a", csCardHover: "#3d1a2a",
-        csNotification: "#e879a0", csProgressBg: "#5c2535", csProgressFg: "#e879a0", csVolumeBg: "#5c2535", csVolumeFg: "#e879a0",
+        csNotification: "#e879a0", csNotificationText: "#000000", csProgressBg: "#5c2535", csProgressFg: "#e879a0", csVolumeBg: "#5c2535", csVolumeFg: "#e879a0",
       },
     },
     forest: {
@@ -137,7 +138,7 @@
         csAccent: "#22c55e", csPlayButton: "#22c55e", csPlayButtonHover: "#4ade80",
         csButtonDisabled: "#1a3320", csSidebar: "#040f08",
         csPlayer: "#071a0e", csCard: "#0e2117", csCardHover: "#1a3825",
-        csNotification: "#22c55e", csProgressBg: "#1e4d2c", csProgressFg: "#22c55e", csVolumeBg: "#1e4d2c", csVolumeFg: "#22c55e",
+        csNotification: "#22c55e", csNotificationText: "#000000", csProgressBg: "#1e4d2c", csProgressFg: "#22c55e", csVolumeBg: "#1e4d2c", csVolumeFg: "#22c55e",
       },
     },
     cyber: {
@@ -149,7 +150,7 @@
         csAccent: "#06b6d4", csPlayButton: "#06b6d4", csPlayButtonHover: "#22d3ee",
         csButtonDisabled: "#0e3040", csSidebar: "#030609",
         csPlayer: "#050a10", csCard: "#091420", csCardHover: "#0e2030",
-        csNotification: "#f59e0b", csProgressBg: "#102030", csProgressFg: "#06b6d4", csVolumeBg: "#102030", csVolumeFg: "#f59e0b",
+        csNotification: "#f59e0b", csNotificationText: "#000000", csProgressBg: "#102030", csProgressFg: "#06b6d4", csVolumeBg: "#102030", csVolumeFg: "#f59e0b",
       },
     },
     monochrome: {
@@ -161,7 +162,7 @@
         csAccent: "#ffffff", csPlayButton: "#ffffff", csPlayButtonHover: "#dddddd",
         csButtonDisabled: "#555555", csSidebar: "#000000",
         csPlayer: "#0d0d0d", csCard: "#161616", csCardHover: "#2a2a2a",
-        csNotification: "#ffffff", csProgressBg: "#333333", csProgressFg: "#ffffff", csVolumeBg: "#333333", csVolumeFg: "#bbbbbb",
+        csNotification: "#ffffff", csNotificationText: "#000000", csProgressBg: "#333333", csProgressFg: "#ffffff", csVolumeBg: "#333333", csVolumeFg: "#bbbbbb",
       },
     },
     light: {
@@ -173,7 +174,7 @@
         csAccent: "#1db954", csPlayButton: "#1db954", csPlayButtonHover: "#1ed760",
         csButtonDisabled: "#aaaaaa", csSidebar: "#f5f5f5",
         csPlayer: "#ffffff", csCard: "#f8f8f8", csCardHover: "#ebebeb",
-        csNotification: "#3d91f4", csProgressBg: "#cccccc", csProgressFg: "#1db954", csVolumeBg: "#cccccc", csVolumeFg: "#1db954",
+        csNotification: "#3d91f4", csNotificationText: "#000000", csProgressBg: "#cccccc", csProgressFg: "#1db954", csVolumeBg: "#cccccc", csVolumeFg: "#1db954",
       },
     },
   };
@@ -194,6 +195,7 @@
     { key: "csCard",              labelKey: "csCard",              group: "groupStructure" },
     { key: "csCardHover",         labelKey: "csCardHover",         group: "groupStructure" },
     { key: "csNotification",      labelKey: "csNotification",      group: "groupStructure" },
+    { key: "csNotificationText",  labelKey: "csNotificationText",  group: "groupStructure" },
     { key: "csProgressBg",        labelKey: "csProgressBg",        group: "groupPlayer" },
     { key: "csProgressFg",        labelKey: "csProgressFg",        group: "groupPlayer" },
     { key: "csVolumeBg",          labelKey: "csVolumeBg",          group: "groupPlayer" },
@@ -431,7 +433,7 @@
     const hlEl     = c.csHighlightElevated || "#3e3e3e";
     const acc      = c.csAccent            || "#1db954";
     const btn      = luminance(acc) > 0.179 ? adjustColor(acc, -0.15) : adjustColor(acc, 0.15);
-    const pbtn     = c.csPlayButton        || acc;
+    const pbtn     = c.csPlayButton        || c.csButton || "#1db954";
     const pbtnHov  = c.csPlayButtonHover   || adjustColor(pbtn, 0.1);
     const btnD     = c.csButtonDisabled    || "#535353";
     const side     = c.csSidebar           || "#000000";
@@ -439,6 +441,8 @@
     const card     = c.csCard              || "#181818";
     const cardHov  = c.csCardHover         || adjustColor(card, 0.08);
     const notif    = c.csNotification      || "#3d91f4";
+    const notifBg   = "#ffffff";
+    const notifText = c.csNotificationText || "#000000";
     const progBg   = c.csProgressBg        || hl;
     const progFg   = c.csProgressFg        || acc;
     const volBg    = c.csVolumeBg          || hl;
@@ -461,6 +465,7 @@
   --spice-extratext:${sub}!important;--spice-main:${bg}!important;
   --spice-main-elevated:${bgEl}!important;--spice-main-transition:${bg}!important;
   --spice-highlight:${hl}!important;--spice-highlight-elevated:${hlEl}!important;
+  --background-highlight:${hl}!important;
   --spice-sidebar:${side}!important;--spice-player:${play}!important;
   --spice-card:${card}!important;--spice-button:${btn}!important;
   --spice-button-active:${btnActive}!important;--spice-button-disabled:${btnD}!important;
@@ -475,6 +480,36 @@
   --spice-rgb-card:${hexToRgb(card)}!important;--spice-rgb-button:${hexToRgb(btn)}!important;
   --spice-rgb-button-active:${hexToRgb(btnActive)}!important;
   --spice-rgb-accent:${hexToRgb(acc)}!important;--spice-rgb-notification:${hexToRgb(notif)}!important;
+}
+/* Spotify's own .encore-dark-theme rule redefines --background-highlight locally
+   (= var(--spice-main-elevated)) on that exact class — used directly by context
+   menus, settings panels, and other portal-rendered dropdowns. A direct redefinition
+   on an element always overrides an inherited :root value, !important or not, so
+   the :root fallback above never reaches them. Target the class directly too,
+   touching ONLY this one property — everything else stays on :root as before. */
+.encore-dark-theme{
+  --background-highlight:${hl}!important;
+}
+/* .encore-bright-accent-set redefines --background-highlight directly on itself
+   (inside Spotify's own @layer encore rules), which overrides the inherited :root
+   value regardless of !important — a direct declaration on an element always wins
+   over an inherited one. This class is reused on lots of unrelated things (settings
+   sliders, the "DJ" card, etc.), so match it ONLY when the exact same element is
+   also a play button — compound selector, no ancestor/descendant matching. */
+.encore-bright-accent-set.view-homeShortcutsGrid-playButton,
+.encore-bright-accent-set[class*="playButton"],
+.encore-bright-accent-set[class*="PlayButton"],
+.encore-bright-accent-set[data-testid="play-button"]{
+  --background-highlight:${pbtnHov}!important;
+}
+/* Settings → Zoom: Spotify's own CSS sets border-color: var(--essential-bright-accent)
+   on hover/active for the size radio circles. We never override that bare variable
+   globally (it's also used for icon fills and the onboarding gradient elsewhere, so
+   recoloring it everywhere would be risky) — instead cancel just the border-color
+   on these two specific states. */
+.x-settings-zoomRadioCircle:hover,
+.x-settings-zoomRadioCircle:active{
+  border-color:transparent!important;
 }
 :root,[class*="encore-"]{
   --encore-base-color-text-base:${t}!important;
@@ -534,17 +569,67 @@
   --e-91000-color-essential-subdued:${sub}!important;
   --e-91000-color-essential-bright-accent:${acc}!important;
 }
+/* Native Spotify toast notifications (e.g. "Added to queue") render inside an
+   explicit .encore-light-theme box — confirmed via live DOM inspection
+   (.notistack-Snackbar > [data-encore-id="box"].encore-light-theme) — meant to
+   stay light/legible regardless of the app's active theme. The blanket override
+   above also matches that class (it contains "encore-") and overwrites its text/
+   background variables with the app's dark theme colours, which is what made the
+   notification text unreadable. Re-scope those same variables to .encore-light-theme
+   using the dedicated Notification background/text colours instead. */
+.encore-light-theme{
+  --encore-base-color-text-base:${notifText}!important;
+  --encore-base-color-text-subdued:${notifText}!important;
+  --encore-base-color-essential-base:${notifText}!important;
+  --encore-base-color-background-base:${notifBg}!important;
+  --encore-base-color-background-elevated-base:${notifBg}!important;
+  --encore-color-text-base:${notifText}!important;
+  --encore-color-essential-base:${notifText}!important;
+  --encore-color-background-base:${notifBg}!important;
+  --encore-color-background-elevated-base:${notifBg}!important;
+  --e-91000-color-text-base:${notifText}!important;
+  --e-91000-color-essential-base:${notifText}!important;
+  --e-91000-color-background-base:${notifBg}!important;
+  --e-91000-color-background-elevated-base:${notifBg}!important;
+}
+.notistack-Snackbar [data-encore-id="box"]{
+  background-color:${notifBg}!important;
+}
+.notistack-Snackbar [data-encore-id="text"],
+.notistack-Snackbar [data-encore-id="box"] *{
+  color:${notifText}!important;
+}
 .Root__nav-bar,.nav-bar,[class*="navBar"],[class*="sidebar"],
-[class*="globalNav"],[class*="GlobalNav"],
+[class*="globalNav"]:not(.Root__globalNav):not(.main-globalNav-searchSection),
+[class*="GlobalNav"]:not(.Root__globalNav):not(.main-globalNav-searchSection),
 .LayoutResizer__resize-bar+*{background-color:${side}!important}
 body:not(.cs4-sbl-active) .Root__main-view,
-body:not(.cs4-sbl-active) .main-view-container__scroll-node,
-body:not(.cs4-sbl-active) [class*="scroll-node"]:not([class*="child"]),
+body:not(.cs4-sbl-active) .main-view-container__scroll-node:not(:has(.main-entityHeader-withBackgroundImage)),
+body:not(.cs4-sbl-active) [class*="scroll-node"]:not([class*="child"]):not(:has(.main-entityHeader-withBackgroundImage)),
 body:not(.cs4-sbl-active) [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)){background-color:${bg}!important}
 body.cs4-sbl-active .Root__main-view:not(:has(.lyrics-lyrics-container)),
-body.cs4-sbl-active .main-view-container__scroll-node:not(:has(.lyrics-lyrics-container)),
-body.cs4-sbl-active [class*="scroll-node"]:not([class*="child"]):not(:has(.lyrics-lyrics-container)),
+body.cs4-sbl-active .main-view-container__scroll-node:not(:has(.lyrics-lyrics-container)):not(:has(.main-entityHeader-withBackgroundImage)),
+body.cs4-sbl-active [class*="scroll-node"]:not([class*="child"]):not(:has(.lyrics-lyrics-container)):not(:has(.main-entityHeader-withBackgroundImage)),
 body.cs4-sbl-active [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)):not(:has(.lyrics-lyrics-container)){background-color:${bg}!important}
+/* Artist/album pages with a banner photo (.main-entityHeader-withBackgroundImage):
+   the scroll-node container visually overlaps the banner area on these pages, so
+   forcing an opaque background-color on it (as done above for normal pages) was
+   painting over the artist photo, hiding it entirely. Keep it transparent here so
+   the real banner image shows through, confirmed via live DOM inspection. */
+body:not(.cs4-sbl-active) .main-view-container__scroll-node:has(.main-entityHeader-withBackgroundImage),
+body.cs4-sbl-active .main-view-container__scroll-node:has(.main-entityHeader-withBackgroundImage){
+  background-color:transparent!important;
+}
+/* Same issue, opposite nesting direction: on these banner pages, the header's own
+   text wrapper (title/verified badge/monthly listeners) also carries a
+   "contentSpacing" class matched by the wildcard rule above — but here it's a
+   DESCENDANT of the banner container, not an ancestor, so :has() doesn't apply.
+   Confirmed via live DOM inspection: this opaque wrapper was painting a solid
+   black box over the banner photo behind the artist name. */
+body:not(.cs4-sbl-active) .main-entityHeader-withBackgroundImage [class*="contentSpacing"],
+body.cs4-sbl-active .main-entityHeader-withBackgroundImage [class*="contentSpacing"]{
+  background-color:transparent!important;
+}
 .Root__now-playing-bar,.now-playing-bar,[class*="nowPlayingBar"]{background-color:${play}!important}
 
 /* ── Top bar: solid on all pages (JS overrides for home) ── */
@@ -576,25 +661,60 @@ body.cs4-sbl-active [class*="contentSpacing"]:not(:has(.search-searchCategory-co
 
 /* ── Progress bar (playback) — always coloured, hover = hover colour ── */
 [data-testid="progress-bar"],[data-testid="playback-progressbar"]{cursor:pointer}
-/* Legacy class names (Spotify pre-1.2.84) */
+/* Legacy class names (Spotify pre-1.2.84) — kept as harmless fallback */
 .x-progressBar-background{background-color:${progBg}!important;height:4px!important;border-radius:2px!important;transition:height .12s!important}
 .x-progressBar-middleground{background-color:${progBg}!important}
 .x-progressBar-foreground{background-color:${progFg}!important;height:4px!important;border-radius:2px!important;min-width:2px!important;transition:background-color .15s,height .12s!important}
 .x-progressBar-handle{background-color:${progFg}!important;width:12px!important;height:12px!important;border-radius:50%!important;opacity:1!important;transition:transform .12s,background-color .15s!important}
 [data-testid="progress-bar"]:hover .x-progressBar-background,[data-testid="playback-progressbar"]:hover .x-progressBar-background{height:5px!important}
 [data-testid="progress-bar"]:hover .x-progressBar-foreground,[data-testid="playback-progressbar"]:hover .x-progressBar-foreground{background-color:${adjustColor(progFg,0.12)}!important;height:5px!important}
-[data-testid="progress-bar"]:hover .x-progressBar-handle,[data-testid="playback-progressbar"]:hover .x-progressBar-handle{background-color:${adjustColor(progFg,0.12)}!important;transform:scale(1.2)!important}
-/* New class names (Spotify 1.2.84+) */
+[data-testid="progress-bar"]:hover .x-progressBar-handle,[data-testid="playback-progressbar"]:hover .x-progressBar-handle{background-color:${adjustColor(progFg,0.12)}!important}
+/* New class names (Spotify 1.2.84+) — kept as harmless fallback */
 .progressBar-background{background-color:${progBg}!important;height:4px!important;border-radius:2px!important;transition:height .12s!important}
 .progressBar-middleground{background-color:${progBg}!important}
 .progressBar-foreground{background-color:${progFg}!important;height:4px!important;border-radius:2px!important;min-width:2px!important;transition:background-color .15s,height .12s!important}
 .progressBar-handle{background-color:${progFg}!important;width:12px!important;height:12px!important;border-radius:50%!important;opacity:1!important;transition:transform .12s,background-color .15s!important}
 [data-testid="progress-bar"]:hover .progressBar-background,[data-testid="playback-progressbar"]:hover .progressBar-background{height:5px!important}
 [data-testid="progress-bar"]:hover .progressBar-foreground,[data-testid="playback-progressbar"]:hover .progressBar-foreground{background-color:${adjustColor(progFg,0.12)}!important;height:5px!important}
-[data-testid="progress-bar"]:hover .progressBar-handle,[data-testid="playback-progressbar"]:hover .progressBar-handle{background-color:${adjustColor(progFg,0.12)}!important;transform:scale(1.2)!important}
+[data-testid="progress-bar"]:hover .progressBar-handle,[data-testid="playback-progressbar"]:hover .progressBar-handle{background-color:${adjustColor(progFg,0.12)}!important}
+/* REAL class names confirmed from live DOM (Spotify 1.2.89+): [data-testid="progress-bar"]
+   > .x-progressBar-progressBarBg [data-testid="progress-bar-background"]   (outer wrapper)
+       > .x-progressBar-sliderArea > .x-progressBar-progressFillColor      (full-width track/background)
+       > .x-progressBar-sliderArea > .x-progressBar-fillColor              (actual elapsed fill, on top, scaled)
+       > .progress-bar__slider [data-testid="progress-bar-handle"]         (handle)
+   NOTE: progressFillColor is NOT a hover preview — it's the full-width background track,
+   so it must use progBg (user's background colour), not progFg, or the whole bar looks
+   like one solid colour with no visible distinction between played/unplayed. */
+[data-testid="progress-bar"] .x-progressBar-progressBarBg,
+[data-testid="playback-progressbar"] .x-progressBar-progressBarBg,
+[data-testid="progress-bar-background"]{
+  background-color:${progBg}!important;transition:background-color .15s!important;
+}
+[data-testid="progress-bar"] .x-progressBar-progressFillColor,
+[data-testid="playback-progressbar"] .x-progressBar-progressFillColor{
+  background-color:${progBg}!important;transition:background-color .15s!important;
+}
+[data-testid="progress-bar"] .x-progressBar-fillColor,
+[data-testid="playback-progressbar"] .x-progressBar-fillColor{
+  background-color:${progFg}!important;transition:background-color .15s!important;
+}
+[data-testid="progress-bar"] .progress-bar__slider,
+[data-testid="playback-progressbar"] .progress-bar__slider,
+[data-testid="progress-bar-handle"]{
+  background-color:${progFg}!important;opacity:1!important;
+  transition:background-color .15s,transform .12s!important;
+}
+[data-testid="progress-bar"]:hover .x-progressBar-fillColor,
+[data-testid="playback-progressbar"]:hover .x-progressBar-fillColor{
+  background-color:${adjustColor(progFg,0.12)}!important;
+}
+[data-testid="progress-bar"]:hover .progress-bar__slider,
+[data-testid="playback-progressbar"]:hover .progress-bar__slider{
+  background-color:${adjustColor(progFg,0.12)}!important;
+}
 
-/* ── Volume bar — handle always visible, hover brightens ── */
-/* Legacy class names (Spotify pre-1.2.84) */
+/* ── Volume bar — always coloured, hover = hover colour ── */
+/* Legacy class names (Spotify pre-1.2.84) — kept as harmless fallback */
 [data-testid="volume-bar"] .x-progressBar-background,
 [data-testid="volume-bar"] ~ * .x-progressBar-background,
 [class*="volume"] .x-progressBar-background{background-color:${volBg}!important}
@@ -606,8 +726,8 @@ body.cs4-sbl-active [class*="contentSpacing"]:not(:has(.search-searchCategory-co
 [data-testid="volume-bar"] .x-progressBar-handle,
 [class*="volume"] .x-progressBar-handle{background-color:${volFg}!important;opacity:1!important;transition:background-color .15s,transform .12s!important}
 [data-testid="volume-bar"]:hover .x-progressBar-handle,
-[class*="volume"]:hover .x-progressBar-handle{background-color:${adjustColor(volFg,0.12)}!important;transform:scale(1.15)!important}
-/* New class names (Spotify 1.2.84+) */
+[class*="volume"]:hover .x-progressBar-handle{background-color:${adjustColor(volFg,0.12)}!important}
+/* New class names (Spotify 1.2.84+) — kept as harmless fallback */
 [data-testid="volume-bar"] .progressBar-background,
 [data-testid="volume-bar"] ~ * .progressBar-background,
 [class*="volume"] .progressBar-background{background-color:${volBg}!important}
@@ -619,7 +739,21 @@ body.cs4-sbl-active [class*="contentSpacing"]:not(:has(.search-searchCategory-co
 [data-testid="volume-bar"] .progressBar-handle,
 [class*="volume"] .progressBar-handle{background-color:${volFg}!important;opacity:1!important;transition:background-color .15s,transform .12s!important}
 [data-testid="volume-bar"]:hover .progressBar-handle,
-[class*="volume"]:hover .progressBar-handle{background-color:${adjustColor(volFg,0.12)}!important;transform:scale(1.15)!important}
+[class*="volume"]:hover .progressBar-handle{background-color:${adjustColor(volFg,0.12)}!important}
+/* REAL class names confirmed from live DOM — the volume slider reuses the same component as the
+   progress bar. progressFillColor = full-width track (volBg), fillColor = elapsed fill (volFg). */
+[data-testid="volume-bar"] .x-progressBar-progressBarBg,
+[class*="volume"] .x-progressBar-progressBarBg{background-color:${volBg}!important}
+[data-testid="volume-bar"] .x-progressBar-progressFillColor,
+[class*="volume"] .x-progressBar-progressFillColor{background-color:${volBg}!important;transition:background-color .15s!important}
+[data-testid="volume-bar"] .x-progressBar-fillColor,
+[class*="volume"] .x-progressBar-fillColor{background-color:${volFg}!important;transition:background-color .15s!important}
+[data-testid="volume-bar"] .progress-bar__slider,
+[class*="volume"] .progress-bar__slider{background-color:${volFg}!important;opacity:1!important;transition:background-color .15s,transform .12s!important}
+[data-testid="volume-bar"]:hover .x-progressBar-fillColor,
+[class*="volume"]:hover .x-progressBar-fillColor{background-color:${adjustColor(volFg,0.12)}!important}
+[data-testid="volume-bar"]:hover .progress-bar__slider,
+[class*="volume"]:hover .progress-bar__slider{background-color:${adjustColor(volFg,0.12)}!important}
 
 /* ── ALL play button circles: hidden at rest, visible only on parent hover ── */
 /* Global rule: any .main-playButton-PlayButton or [data-testid="play-button"]
@@ -650,6 +784,15 @@ body.cs4-sbl-active [class*="contentSpacing"]:not(:has(.search-searchCategory-co
 [data-testid="home-page"] [data-testid="play-button"]{
   background-color:transparent!important;
   box-shadow:none!important;
+}
+/* Shortcuts grid (recently played tiles): the generic "*:hover ancestor" reveal-rule
+   above also fires when the shared grid wrapper is hovered, lighting up every card's
+   play button at once. Re-scope strictly to the single card under the cursor. */
+[data-testid="home-page"] .view-homeShortcutsGrid-shortcut .main-playButton-PlayButton{
+  opacity:0!important;
+}
+[data-testid="home-page"] .view-homeShortcutsGrid-shortcut:hover .main-playButton-PlayButton{
+  opacity:1!important;
 }
 /* Player bar play/pause: always visible with accent colour */
 [data-testid="control-button-playpause"]{
@@ -719,6 +862,27 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 .main-trackList-trackListRow[aria-selected="true"]{background-color:${hlEl}!important}
 [class*="contextMenu"],[class*="ContextMenu"],
 [data-testid*="context-menu"]{background-color:${bgEl}!important}
+/* Context menu item hover: the menu is rendered as a portal outside the main React
+   tree, so CSS variable overrides on .encore-dark-theme don't reach it. Target the
+   item directly with the stable class seen in live DOM inspection.
+   IMPORTANT: submenus (data-tippy-root) are DOM children of their triggering <li>,
+   so native :hover cascades up to ALL ancestor rows whenever any nested submenu
+   item is hovered. Rules keyed off ".main-contextMenu-menuItem:hover" (the <li>)
+   fire on that cascade too, lighting up every ancestor row at once when browsing
+   deep into a submenu. Scope every rule to the BUTTON's own :hover/:focus instead
+   — that only matches when the cursor is truly over that specific row. */
+.main-contextMenu-menuItemButton:hover,
+.main-contextMenu-menuItemButton:focus,
+.main-contextMenu-menuItemButton:hover .main-contextMenu-menuItemLabel,
+.main-contextMenu-menuItemButton:focus .main-contextMenu-menuItemLabel,
+.main-contextMenu-menuItemButton:hover > div,
+.main-contextMenu-menuItemButton:focus > div,
+.main-contextMenu-menuItemButton:hover .main-contextMenu-menuItemIconWrapper,
+.main-contextMenu-menuItemButton:focus .main-contextMenu-menuItemIconWrapper,
+.main-contextMenu-menuItemButton:hover .main-contextMenu-menuItemIconWrapper *,
+.main-contextMenu-menuItemButton:focus .main-contextMenu-menuItemIconWrapper *{
+  background-color:${hl}!important;
+}
 
 /* ── Text ── */
 [class*="Type__"],[class*="encore-text"],.main-trackList-rowTitle,
@@ -749,30 +913,29 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 [class*="ButtonPrimary"]:not([class*="play"]):hover,
 [data-encore-id="buttonPrimary"]:not([class*="play"]):hover{background-color:${btnActive}!important}
 
-/* ── Spicetify extension settings buttons (.x-settings-button) ── */
-/* Spicetify appends this class to every third-party extension button in settings.
-   These are buttonSecondary (not Primary) so previous fix didn't match them. */
-.x-settings-button{
-  background-color:transparent!important;
-  color:${t}!important;
-  border:1px solid ${hlEl}!important;
-  border-radius:500px!important;}
-.x-settings-button:hover{
-  background-color:${hl}!important;
-  border-color:${acc}!important;}
-
 ::-webkit-scrollbar{width:8px!important}
 ::-webkit-scrollbar-track{background:${bg}!important}
 ::-webkit-scrollbar-thumb{background:${hl}!important;border-radius:4px!important}
 ::-webkit-scrollbar-thumb:hover{background:${hlEl}!important}
 
-/* ── Search bar ── */
-/* Reset top bar search shortcut button (Ctrl+L) — do NOT border it */
-[data-testid="search-in-topbar"],
-[class*="SearchInput__topbar"],
-[class*="topBar"] [class*="searchInput"]{
+/* ── Search bar (top bar) ── */
+/* The overlay holding the placeholder text + "Ctrl L" shortcut hint sits on top
+   of the search input with its own opaque dark background — make it transparent
+   so only the input's own background shows through evenly underneath.
+   The "Ctrl"/"L" keycaps (<kbd>) are deliberately left untouched: Spotify's own
+   rule already gives them a clean 1px inset border with no background of their
+   own, which is exactly the "frame only, no extra fill" look that was wanted. */
+.main-globalNav-searchInputTextWrapper,
+.main-globalNav-searchInputTextWrapper *:not(kbd):not(kbd *){
   background-color:transparent!important;
-  border:none!important;box-shadow:none!important}
+  box-shadow:none!important;
+}
+/* Same overlay treatment for the "browse categories" button next to the search bar */
+.main-globalNav-browseButtonWrapper,
+.main-globalNav-browseButtonWrapper *{
+  background-color:transparent!important;
+  box-shadow:none!important;
+}
 /* Actual search page input */
 [data-testid="search-bar-text-input"],
 input[class*="searchInput"]:not([class*="topbar"]),
@@ -835,6 +998,8 @@ input[class*="searchInput"]::placeholder,
     ".main-topBar-container",
     ".main-topBar-background",
     "[data-testid='topbar-background']",
+    ".Root__globalNav",
+    ".main-globalNav-searchSection",
   ];
 
   let _topBarScrollEl = null;
@@ -1117,6 +1282,7 @@ input[class*="searchInput"]::placeholder,
         csSidebar: "Sidebar", csPlayer: "Player bar",
         csCard: "Card", csCardHover: "Card hover",
         csNotification: "Notifications",
+        csNotificationText: "Notification text",
         csProgressBg: "Progress background", csProgressFg: "Progress color",
         csVolumeBg: "Volume background", csVolumeFg: "Volume color",
       },
@@ -1196,6 +1362,7 @@ input[class*="searchInput"]::placeholder,
         csSidebar: "Sidebar", csPlayer: "Player bar",
         csCard: "Card", csCardHover: "Card hover",
         csNotification: "Notifications",
+        csNotificationText: "Notification text",
         csProgressBg: "Progress background", csProgressFg: "Progress color",
         csVolumeBg: "Volume background", csVolumeFg: "Volume color",
       },
@@ -1275,6 +1442,7 @@ input[class*="searchInput"]::placeholder,
         csSidebar: "Sidebar", csPlayer: "Player bar",
         csCard: "Card", csCardHover: "Card hover",
         csNotification: "Notifiche",
+        csNotificationText: "Testo notifiche",
         csProgressBg: "Avanzamento sfondo", csProgressFg: "Avanzamento colore",
         csVolumeBg: "Volume sfondo", csVolumeFg: "Volume colore",
       },
@@ -1354,6 +1522,7 @@ input[class*="searchInput"]::placeholder,
         csSidebar: "Seitenleiste", csPlayer: "Player-Leiste",
         csCard: "Karte", csCardHover: "Karten-Hover",
         csNotification: "Benachrichtigungen",
+        csNotificationText: "Benachrichtigung Text",
         csProgressBg: "Fortschritt Hintergrund", csProgressFg: "Fortschritt Farbe",
         csVolumeBg: "Lautstärke Hintergrund", csVolumeFg: "Lautstärke Farbe",
       },
@@ -1433,6 +1602,7 @@ input[class*="searchInput"]::placeholder,
         csSidebar: "Barre latérale", csPlayer: "Barre du lecteur",
         csCard: "Carte", csCardHover: "Survol carte",
         csNotification: "Notifications",
+        csNotificationText: "Texte notification",
         csProgressBg: "Fond progression", csProgressFg: "Couleur progression",
         csVolumeBg: "Fond volume", csVolumeFg: "Couleur volume",
       },
@@ -1512,6 +1682,7 @@ input[class*="searchInput"]::placeholder,
         csSidebar: "Barra lateral", csPlayer: "Barra del reproductor",
         csCard: "Tarjeta", csCardHover: "Hover tarjeta",
         csNotification: "Notificaciones",
+        csNotificationText: "Texto notificación",
         csProgressBg: "Fondo progreso", csProgressFg: "Color progreso",
         csVolumeBg: "Fondo volumen", csVolumeFg: "Color volumen",
       },
@@ -1591,6 +1762,7 @@ input[class*="searchInput"]::placeholder,
         csSidebar: "Бічна панель", csPlayer: "Панель плеєра",
         csCard: "Картка", csCardHover: "Наведення картки",
         csNotification: "Сповіщення",
+        csNotificationText: "Текст сповіщення",
         csProgressBg: "Фон прогресу", csProgressFg: "Колір прогресу",
         csVolumeBg: "Фон гучності", csVolumeFg: "Колір гучності",
       },
@@ -1670,6 +1842,7 @@ input[class*="searchInput"]::placeholder,
         csSidebar: "Боковая панель", csPlayer: "Панель плеера",
         csCard: "Карточка", csCardHover: "Наведение карточки",
         csNotification: "Уведомления",
+        csNotificationText: "Текст уведомления",
         csProgressBg: "Фон прогресса", csProgressFg: "Цвет прогресса",
         csVolumeBg: "Фон громкости", csVolumeFg: "Цвет громкости",
       },
@@ -1749,6 +1922,7 @@ input[class*="searchInput"]::placeholder,
         csSidebar: "侧边栏", csPlayer: "播放器栏",
         csCard: "卡片", csCardHover: "卡片悬停",
         csNotification: "通知",
+        csNotificationText: "通知文字",
         csProgressBg: "进度背景", csProgressFg: "进度颜色",
         csVolumeBg: "音量背景", csVolumeFg: "音量颜色",
       },
@@ -2393,7 +2567,7 @@ input[class*="searchInput"]::placeholder,
   // AUTO-UPDATER
   // ===========================================================
 
-  const CURRENT_VERSION  = "3.2.0";
+  const CURRENT_VERSION  = "3.2.43";
   const RELEASES_API     = "https://api.github.com/repos/stefaceriani/chromashift/releases/latest";
   const RELEASES_PAGE    = "https://github.com/stefaceriani/chromashift/releases";
   const UPDATE_INTERVAL  = 60 * 60 * 1000;
