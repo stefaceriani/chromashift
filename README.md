@@ -1,4 +1,4 @@
-# 🎨 ChromaShift - v3.2.0 
+# 🎨 ChromaShift - v3.2.43-beta
 
 > Customize every Spotify color from the Settings page — in real time.
 
