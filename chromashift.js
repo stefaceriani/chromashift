@@ -1,7 +1,7 @@
 // NAME: ChromaShift
 // AUTHOR: stefaceriani
 // DESCRIPTION: Customise every Spotify colour from the Settings page.
-// VERSION: 3.2.43
+// VERSION: 3.2.44
 
 (function ChromaShift() {
   "use strict";
@@ -591,16 +591,20 @@
   --e-91000-color-background-base:${notifBg}!important;
   --e-91000-color-background-elevated-base:${notifBg}!important;
 }
-.notistack-Snackbar [data-encore-id="box"]{
+.notistack-Snackbar [data-encore-id="box"],
+[role="dialog"] .encore-light-theme{
   background-color:${notifBg}!important;
 }
 .notistack-Snackbar [data-encore-id="text"],
-.notistack-Snackbar [data-encore-id="box"] *{
+.notistack-Snackbar [data-encore-id="box"] *,
+[role="dialog"] .encore-light-theme [data-encore-id="text"]{
   color:${notifText}!important;
 }
+[role="dialog"] .encore-light-theme [data-encore-id="buttonTertiary"]{
+  color:${sub}!important;
+}
 .Root__nav-bar,.nav-bar,[class*="navBar"],[class*="sidebar"],
-[class*="globalNav"]:not(.Root__globalNav):not(.main-globalNav-searchSection),
-[class*="GlobalNav"]:not(.Root__globalNav):not(.main-globalNav-searchSection),
+[class*="globalNav"],[class*="GlobalNav"],
 .LayoutResizer__resize-bar+*{background-color:${side}!important}
 body:not(.cs4-sbl-active) .Root__main-view,
 body:not(.cs4-sbl-active) .main-view-container__scroll-node:not(:has(.main-entityHeader-withBackgroundImage)),
@@ -629,6 +633,31 @@ body:not(.cs4-sbl-active) .main-entityHeader-withBackgroundImage [class*="conten
 body.cs4-sbl-active .main-entityHeader-withBackgroundImage [class*="contentSpacing"]{
   background-color:transparent!important;
 }
+/* Action bar (Play/Explore/Shuffle/Follow row right under the banner): its
+   container carries both "main-view-container__scroll-node" and
+   "main-actionBar-ActionBarContainer" on the same element (confirmed via live
+   HTML), which is why the scroll-node rule above already makes IT transparent —
+   but the inner ".main-actionBar-ActionBar" row has its own separate
+   "contentSpacing" class caught by the wildcard fill, blocking the fade/gradient
+   that should continue from the banner. */
+body:not(.cs4-sbl-active) .main-actionBar-ActionBarContainer:has(.main-entityHeader-withBackgroundImage) .main-actionBar-ActionBar,
+body.cs4-sbl-active .main-actionBar-ActionBarContainer:has(.main-entityHeader-withBackgroundImage) .main-actionBar-ActionBar{
+  background-color:transparent!important;
+}
+/* Generalized version of the two fixes above: on a banner page, ANY element
+   carrying "contentSpacing" within the page's scrollable container (header text,
+   action bar, the "Popolari"/discography content wrapper further down, etc.)
+   should stay transparent so the fade from the banner can continue down the page,
+   instead of needing a one-off exception for every single section that uses it. */
+body:not(.cs4-sbl-active) .main-view-container__scroll-node:has(.main-entityHeader-withBackgroundImage) [class*="contentSpacing"],
+body.cs4-sbl-active .main-view-container__scroll-node:has(.main-entityHeader-withBackgroundImage) [class*="contentSpacing"]{
+  background-color:transparent!important;
+}
+/* Sticky topbar title+play-button box (shown once scrolled past an entity header):
+   also carries "contentSpacing", also caught by the wildcard fill rule, painting a
+   solid bar over the banner even before scrolling. CSS safety net for first paint;
+   fixTopBarContent() in JS handles the home-page exception dynamically. */
+.main-topBar-topbarContentContainer{background-color:transparent!important}
 .Root__now-playing-bar,.now-playing-bar,[class*="nowPlayingBar"]{background-color:${play}!important}
 
 /* ── Top bar: solid on all pages (JS overrides for home) ── */
@@ -889,6 +918,11 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 [class*="encore-text-subdued"],[class*="Type__subdued"],
 .main-trackList-rowSubTitle,
 [data-testid="tracklist-row"] [class*="encore-text"]:not([class*="bold"]){color:${sub}!important}
+/* Small badge label (e.g. "From <album>") that sits on a light pill background
+   equal to the main text colour, making default text invisible there. Force
+   Notification text colour for guaranteed contrast, confirmed via live DOM
+   inspection (parent pill background = --text-base, same as this text's colour). */
+.main-image-image + .standalone-ellipsis-one-line{color:${notifText}!important}
 
 /* ── Equalizer variables ── */
 :root,[class*="Root__"]{
@@ -997,8 +1031,6 @@ input[class*="searchInput"]::placeholder,
     ".main-topBar-container",
     ".main-topBar-background",
     "[data-testid='topbar-background']",
-    ".Root__globalNav",
-    ".main-globalNav-searchSection",
   ];
 
   let _topBarScrollEl = null;
@@ -1043,6 +1075,25 @@ input[class*="searchInput"]::placeholder,
     const scrolled = _topBarScrollEl ? _topBarScrollEl.scrollTop > 10 : false;
     const color = (isHomePage() || !scrolled) ? "transparent" : bg;
     applyTopBarColor(color);
+  }
+
+  /* .main-topBar-topbarContentContainer (title + play button shown once scrolled
+     past an entity header) carries the generic "contentSpacing" class, which the
+     general wildcard CSS rule fills with a solid opaque background at all times —
+     confirmed via live DOM inspection this painted a solid bar over the banner
+     even before any scrolling happened. Keep it transparent on every page except
+     home, independent of scroll: Spotify's own logic already handles fading the
+     title/button text in and out, we just need this box to never have its own
+     opaque fill. */
+  function fixTopBarContent() {
+    document.querySelectorAll(".main-topBar-topbarContentContainer").forEach(el => {
+      const color = isHomePage() ? "" : "transparent";
+      if (color) {
+        el.style.setProperty("background-color", color, "important");
+      } else {
+        el.style.removeProperty("background-color");
+      }
+    });
   }
 
 
@@ -1173,7 +1224,7 @@ input[class*="searchInput"]::placeholder,
     attachFilterScrollObserver();
   }
 
-  function runAllFixes() { fixTopBar(); fixPlayButtons(); fixFilterBar(); sblCheck(); }
+  function runAllFixes() { fixTopBar(); fixTopBarContent(); fixPlayButtons(); fixFilterBar(); sblCheck(); }
 
   const domObserver = new MutationObserver(() => {
     clearTimeout(domObserver._t);
@@ -2566,7 +2617,7 @@ input[class*="searchInput"]::placeholder,
   // AUTO-UPDATER
   // ===========================================================
 
-  const CURRENT_VERSION  = "3.2.43";
+  const CURRENT_VERSION  = "3.2.44";
   const RELEASES_API     = "https://api.github.com/repos/stefaceriani/chromashift/releases/latest";
   const RELEASES_PAGE    = "https://github.com/stefaceriani/chromashift/releases";
   const UPDATE_INTERVAL  = 60 * 60 * 1000;
