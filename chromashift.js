@@ -1,7 +1,7 @@
 // NAME: ChromaShift
 // AUTHOR: stefaceriani
 // DESCRIPTION: Customise every Spotify colour from the Settings page.
-// VERSION: 3.3.4
+// VERSION: 3.3.3-beta
 
 (function ChromaShift() {
   "use strict";
