@@ -2643,7 +2643,7 @@ input[class*="searchInput"]::placeholder,
   // AUTO-UPDATER
   // ===========================================================
 
-  const CURRENT_VERSION  = "3.3.4";
+  const CURRENT_VERSION  = "3.3.3";
   const RELEASES_API     = "https://api.github.com/repos/stefaceriani/chromashift/releases/latest";
   const RELEASES_PAGE    = "https://github.com/stefaceriani/chromashift/releases";
   const UPDATE_INTERVAL  = 60 * 60 * 1000;
