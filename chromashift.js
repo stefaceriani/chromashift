@@ -1,7 +1,7 @@
 // NAME: ChromaShift
 // AUTHOR: stefaceriani
 // DESCRIPTION: Customise every Spotify colour from the Settings page.
-// VERSION: 3.2.44
+// VERSION: 3.3.4
 
 (function ChromaShift() {
   "use strict";
@@ -495,7 +495,6 @@
    over an inherited one. This class is reused on lots of unrelated things (settings
    sliders, the "DJ" card, etc.), so match it ONLY when the exact same element is
    also a play button — compound selector, no ancestor/descendant matching. */
-.encore-bright-accent-set.view-homeShortcutsGrid-playButton,
 .encore-bright-accent-set[class*="playButton"],
 .encore-bright-accent-set[class*="PlayButton"],
 .encore-bright-accent-set[data-testid="play-button"]{
@@ -607,50 +606,35 @@
 [class*="globalNav"],[class*="GlobalNav"],
 .LayoutResizer__resize-bar+*{background-color:${side}!important}
 body:not(.cs4-sbl-active) .Root__main-view,
-body:not(.cs4-sbl-active) .main-view-container__scroll-node:not(:has(.main-entityHeader-withBackgroundImage)),
-body:not(.cs4-sbl-active) [class*="scroll-node"]:not([class*="child"]):not(:has(.main-entityHeader-withBackgroundImage)),
+body:not(.cs4-sbl-active) .main-view-container__scroll-node:not(:has(.before-scroll-node)),
+body:not(.cs4-sbl-active) [class*="scroll-node"]:not([class*="child"]):not(:has(.before-scroll-node)),
 body:not(.cs4-sbl-active) [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)){background-color:${bg}!important}
 body.cs4-sbl-active .Root__main-view:not(:has(.lyrics-lyrics-container)),
-body.cs4-sbl-active .main-view-container__scroll-node:not(:has(.lyrics-lyrics-container)):not(:has(.main-entityHeader-withBackgroundImage)),
-body.cs4-sbl-active [class*="scroll-node"]:not([class*="child"]):not(:has(.lyrics-lyrics-container)):not(:has(.main-entityHeader-withBackgroundImage)),
+body.cs4-sbl-active .main-view-container__scroll-node:not(:has(.lyrics-lyrics-container)):not(:has(.before-scroll-node)),
+body.cs4-sbl-active [class*="scroll-node"]:not([class*="child"]):not(:has(.lyrics-lyrics-container)):not(:has(.before-scroll-node)),
 body.cs4-sbl-active [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)):not(:has(.lyrics-lyrics-container)){background-color:${bg}!important}
-/* Artist/album pages with a banner photo (.main-entityHeader-withBackgroundImage):
-   the scroll-node container visually overlaps the banner area on these pages, so
-   forcing an opaque background-color on it (as done above for normal pages) was
-   painting over the artist photo, hiding it entirely. Keep it transparent here so
-   the real banner image shows through, confirmed via live DOM inspection. */
-body:not(.cs4-sbl-active) .main-view-container__scroll-node:has(.main-entityHeader-withBackgroundImage),
-body.cs4-sbl-active .main-view-container__scroll-node:has(.main-entityHeader-withBackgroundImage){
+/* Artist/album pages with a banner photo: Spotify 1.3.0.277 restructured this
+   area — the banner now sits in a ".before-scroll-node" wrapper, a SIBLING of
+   the scrollable content area (.main-view-container__scroll-node), not nested
+   inside it as before. Both share a common ancestor, .main-view-container,
+   confirmed via live DOM inspection. Kept the scroll-node exclusion above as a
+   safe fallback (harmless no-op now that they're no longer nested), and anchor
+   the transparency fixes on the shared ancestor instead. Any element carrying
+   "contentSpacing" on a banner page (header text, action bar, the
+   "Popolari"/discography wrapper further down, etc.) stays transparent so the
+   fade from the banner can continue down the page. */
+body:not(.cs4-sbl-active) .main-view-container:has(.before-scroll-node) [class*="contentSpacing"],
+body.cs4-sbl-active .main-view-container:has(.before-scroll-node) [class*="contentSpacing"]{
   background-color:transparent!important;
 }
-/* Same issue, opposite nesting direction: on these banner pages, the header's own
-   text wrapper (title/verified badge/monthly listeners) also carries a
-   "contentSpacing" class matched by the wildcard rule above — but here it's a
-   DESCENDANT of the banner container, not an ancestor, so :has() doesn't apply.
-   Confirmed via live DOM inspection: this opaque wrapper was painting a solid
-   black box over the banner photo behind the artist name. */
-body:not(.cs4-sbl-active) .main-entityHeader-withBackgroundImage [class*="contentSpacing"],
-body.cs4-sbl-active .main-entityHeader-withBackgroundImage [class*="contentSpacing"]{
-  background-color:transparent!important;
-}
-/* Action bar (Play/Explore/Shuffle/Follow row right under the banner): its
-   container carries both "main-view-container__scroll-node" and
-   "main-actionBar-ActionBarContainer" on the same element (confirmed via live
-   HTML), which is why the scroll-node rule above already makes IT transparent —
-   but the inner ".main-actionBar-ActionBar" row has its own separate
-   "contentSpacing" class caught by the wildcard fill, blocking the fade/gradient
-   that should continue from the banner. */
-body:not(.cs4-sbl-active) .main-actionBar-ActionBarContainer:has(.main-entityHeader-withBackgroundImage) .main-actionBar-ActionBar,
-body.cs4-sbl-active .main-actionBar-ActionBarContainer:has(.main-entityHeader-withBackgroundImage) .main-actionBar-ActionBar{
-  background-color:transparent!important;
-}
-/* Generalized version of the two fixes above: on a banner page, ANY element
-   carrying "contentSpacing" within the page's scrollable container (header text,
-   action bar, the "Popolari"/discography content wrapper further down, etc.)
-   should stay transparent so the fade from the banner can continue down the page,
-   instead of needing a one-off exception for every single section that uses it. */
-body:not(.cs4-sbl-active) .main-view-container__scroll-node:has(.main-entityHeader-withBackgroundImage) [class*="contentSpacing"],
-body.cs4-sbl-active .main-view-container__scroll-node:has(.main-entityHeader-withBackgroundImage) [class*="contentSpacing"]{
+/* The scroll-node's OWN background (main-view-container__scroll-node, which also
+   carries main-actionBar-ActionBarContainer) is a SIBLING of before-scroll-node,
+   not its ancestor, so the :has(.before-scroll-node) exclusion on lines above
+   (checking for a DESCENDANT) never matches it — it kept the solid page-bg fill
+   from the wildcard rule, painting over the header text/banner area. Exclude it
+   too, anchored the same way as the working contentSpacing fix above. */
+body:not(.cs4-sbl-active) .main-view-container:has(.before-scroll-node) .main-view-container__scroll-node,
+body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-container__scroll-node{
   background-color:transparent!important;
 }
 /* Sticky topbar title+play-button box (shown once scrolled past an entity header):
@@ -815,11 +799,15 @@ body.cs4-sbl-active .main-view-container__scroll-node:has(.main-entityHeader-wit
 }
 /* Shortcuts grid (recently played tiles): the generic "*:hover ancestor" reveal-rule
    above also fires when the shared grid wrapper is hovered, lighting up every card's
-   play button at once. Re-scope strictly to the single card under the cursor. */
-[data-testid="home-page"] .view-homeShortcutsGrid-shortcut .main-playButton-PlayButton{
+   play button at once. Re-scope strictly to the single card under the cursor.
+   NOTE: Spotify 1.3.0.277 renamed .view-homeShortcutsGrid-shortcut to a hashed
+   class (confirmed via live DOM inspection, 8/8 samples specific to this strip).
+   Hashed classes change on future updates — if this breaks again, re-run the same
+   diagnostic (inspect a play button's card ancestor chain on the home page). */
+[data-testid="home-page"] .kyJXPKlxWxJleoZlsuUa .main-playButton-PlayButton{
   opacity:0!important;
 }
-[data-testid="home-page"] .view-homeShortcutsGrid-shortcut:hover .main-playButton-PlayButton{
+[data-testid="home-page"] .kyJXPKlxWxJleoZlsuUa:hover .main-playButton-PlayButton{
   opacity:1!important;
 }
 /* Player bar play/pause: always visible with accent colour */
@@ -1146,7 +1134,7 @@ input[class*="searchInput"]::placeholder,
 
       if (!btn.dataset.cs4Hooked) {
         btn.dataset.cs4Hooked = "1";
-        const cardAnchor =
+        let cardAnchor =
           btn.closest(".main-card-card") ||
           btn.closest("[class*='CardComponent']") ||
           btn.closest("[data-testid='card-container']") ||
@@ -1155,9 +1143,35 @@ input[class*="searchInput"]::placeholder,
           btn.closest("[class*='Shortcut']") ||
           btn.closest("[class*='recentlyPlayed']") ||
           btn.closest("[class*='RecentlyPlayed']") ||
-          btn.closest("[class*='gridItem']") ||
-          btn.parentElement;
+          btn.closest("[class*='gridItem']");
+        // Fallback, future-proof against Spotify renaming its wrapper classes:
+        // walk up from the button and skip any ancestor Spotify has marked
+        // pointer-events:none (its own native hidden/shown state for this
+        // component) — such an ancestor can never receive real mouse events,
+        // so a listener on it would never fire. Stop at the first interactive
+        // one, confirmed via live DevTools inspection to be the true hover root.
+        if (!cardAnchor) {
+          let el = btn.parentElement;
+          for (let i = 0; i < 6 && el; i++) {
+            if (getComputedStyle(el).pointerEvents !== "none") { cardAnchor = el; break; }
+            el = el.parentElement;
+          }
+        }
+        if (!cardAnchor) cardAnchor = btn.parentElement;
         if (cardAnchor) {
+          // Shortcuts grid cards: our stylesheet opacity rule loses to a native
+          // Spotify rule inside a CSS @layer (which, combined with !important,
+          // beats even higher specificity per the cascade-layers spec) — so the
+          // hide-until-hover behaviour never triggered from the whole card, only
+          // from the exact button pixel, and without our colour. Bypass the
+          // layer battle entirely via inline style !important (always wins),
+          // driven from cardAnchor so hovering anywhere on the card reveals it.
+          const isShortcutCard = !!btn.closest(".kyJXPKlxWxJleoZlsuUa");
+          if (isShortcutCard) {
+            btn.style.setProperty("opacity", "0", "important");
+            cardAnchor.addEventListener("mouseenter", () => btn.style.setProperty("opacity", "1", "important"));
+            cardAnchor.addEventListener("mouseleave", () => btn.style.setProperty("opacity", "0", "important"));
+          }
           cardAnchor.addEventListener("mouseenter", () => {
             btn.style.setProperty("background-color", pbtn, "important");
           });
@@ -1337,6 +1351,7 @@ input[class*="searchInput"]::placeholder,
         csVolumeBg: "Volume background", csVolumeFg: "Volume color",
       },
       tabCloud:           "Cloud",
+      tabSettings: "Settings",
       communityLabel:     "🌐 Enable community presets",
       communityNoneFound: "No community presets found.",
       cloud: {
@@ -1417,6 +1432,7 @@ input[class*="searchInput"]::placeholder,
         csVolumeBg: "Volume background", csVolumeFg: "Volume color",
       },
       tabCloud:           "Cloud",
+      tabSettings: "Settings",
       communityLabel:     "🌐 Enable community presets",
       communityNoneFound: "No community presets found.",
       cloud: {
@@ -1497,6 +1513,7 @@ input[class*="searchInput"]::placeholder,
         csVolumeBg: "Volume sfondo", csVolumeFg: "Volume colore",
       },
       tabCloud:           "Cloud",
+      tabSettings: "Impostazioni",
       communityLabel:     "🌐 Abilita preset della community",
       communityNoneFound: "Nessun preset community trovato.",
       cloud: {
@@ -1577,6 +1594,7 @@ input[class*="searchInput"]::placeholder,
         csVolumeBg: "Lautstärke Hintergrund", csVolumeFg: "Lautstärke Farbe",
       },
       tabCloud:           "Cloud",
+      tabSettings: "Einstellungen",
       communityLabel:     "🌐 Community-Presets aktivieren",
       communityNoneFound: "Keine Community-Presets gefunden.",
       cloud: {
@@ -1657,6 +1675,7 @@ input[class*="searchInput"]::placeholder,
         csVolumeBg: "Fond volume", csVolumeFg: "Couleur volume",
       },
       tabCloud:           "Cloud",
+      tabSettings: "Paramètres",
       communityLabel:     "🌐 Activer les préréglages communautaires",
       communityNoneFound: "Aucun préréglage communautaire trouvé.",
       cloud: {
@@ -1737,6 +1756,7 @@ input[class*="searchInput"]::placeholder,
         csVolumeBg: "Fondo volumen", csVolumeFg: "Color volumen",
       },
       tabCloud:           "Cloud",
+      tabSettings: "Ajustes",
       communityLabel:     "🌐 Activar preajustes de la comunidad",
       communityNoneFound: "No se encontraron preajustes de la comunidad.",
       cloud: {
@@ -1817,6 +1837,7 @@ input[class*="searchInput"]::placeholder,
         csVolumeBg: "Фон гучності", csVolumeFg: "Колір гучності",
       },
       tabCloud:           "Хмара",
+      tabSettings: "Налаштування",
       communityLabel:     "🌐 Увімкнути пресети спільноти",
       communityNoneFound: "Пресети спільноти не знайдено.",
       cloud: {
@@ -1897,6 +1918,7 @@ input[class*="searchInput"]::placeholder,
         csVolumeBg: "Фон громкости", csVolumeFg: "Цвет громкости",
       },
       tabCloud:           "Облако",
+      tabSettings: "Настройки",
       communityLabel:     "🌐 Включить пресеты сообщества",
       communityNoneFound: "Пресеты сообщества не найдены.",
       cloud: {
@@ -1977,6 +1999,7 @@ input[class*="searchInput"]::placeholder,
         csVolumeBg: "音量背景", csVolumeFg: "音量颜色",
       },
       tabCloud:           "云端",
+      tabSettings: "设置",
       communityLabel:     "🌐 启用社区预设",
       communityNoneFound: "未找到社区预设。",
       cloud: {
@@ -2153,15 +2176,9 @@ input[class*="searchInput"]::placeholder,
   <button class="cs4-tab cs4-active" data-panel="presets">${tr.tabPresets}</button>
   <button class="cs4-tab" data-panel="editor">${tr.tabEditor}</button>
   <button class="cs4-tab" data-panel="cloud">${tr.tabCloud}</button>
+  <button class="cs4-tab" data-panel="settings">${tr.tabSettings}</button>
 </div>
 <div class="cs4-panel cs4-active" id="cs4-panel-presets">
-  <div class="cs4-community-row">
-    <span class="cs4-community-label">${tr.communityLabel}</span>
-    <label class="cs4-community-toggle">
-      <input type="checkbox" id="cs4-community-chk" ${isCommunityEnabled() ? "checked" : ""}>
-      <span class="cs4-community-slider"></span>
-    </label>
-  </div>
   <div class="cs4-presets-grid" id="cs4-grid"></div>
   <div class="cs4-save-row">
     <input class="cs4-name-input" id="cs4-pname" placeholder="${tr.presetNamePh}" maxlength="32">
@@ -2178,6 +2195,15 @@ input[class*="searchInput"]::placeholder,
 </div>
 <div class="cs4-panel" id="cs4-panel-cloud">
   <div id="cs4-cloud-container"></div>
+</div>
+<div class="cs4-panel" id="cs4-panel-settings">
+  <div class="cs4-community-row">
+    <span class="cs4-community-label">${tr.communityLabel}</span>
+    <label class="cs4-community-toggle">
+      <input type="checkbox" id="cs4-community-chk" ${isCommunityEnabled() ? "checked" : ""}>
+      <span class="cs4-community-slider"></span>
+    </label>
+  </div>
 </div>
 <div class="cs4-footer">
   <span>${tr.footer.bug} <a class="cs4-footer-link" href="https://chromashift.qzz.io/contacts" target="_blank">${tr.footer.issue}</a></span>
@@ -2617,7 +2643,7 @@ input[class*="searchInput"]::placeholder,
   // AUTO-UPDATER
   // ===========================================================
 
-  const CURRENT_VERSION  = "3.2.44";
+  const CURRENT_VERSION  = "3.3.4";
   const RELEASES_API     = "https://api.github.com/repos/stefaceriani/chromashift/releases/latest";
   const RELEASES_PAGE    = "https://github.com/stefaceriani/chromashift/releases";
   const UPDATE_INTERVAL  = 60 * 60 * 1000;
