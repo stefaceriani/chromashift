@@ -550,14 +550,6 @@
   --e-91000-color-essential-subdued:${sub}!important;
   --e-91000-color-essential-bright-accent:${acc}!important;
 }
-/* Native Spotify toast notifications (e.g. "Added to queue") render inside an
-   explicit .encore-light-theme box — confirmed via live DOM inspection
-   (.notistack-Snackbar > [data-encore-id="box"].encore-light-theme) — meant to
-   stay light/legible regardless of the app's active theme. The blanket override
-   above also matches that class (it contains "encore-") and overwrites its text/
-   background variables with the app's dark theme colours, which is what made the
-   notification text unreadable. Re-scope those same variables to .encore-light-theme
-   using the dedicated Notification background/text colours instead. */
 .encore-light-theme{
   --encore-base-color-text-base:${notifText}!important;
   --encore-base-color-text-subdued:${notifText}!important;
@@ -596,38 +588,16 @@ body.cs4-sbl-active .Root__main-view:not(:has(.lyrics-lyrics-container)),
 body.cs4-sbl-active .main-view-container__scroll-node:not(:has(.lyrics-lyrics-container)):not(:has(.before-scroll-node)),
 body.cs4-sbl-active [class*="scroll-node"]:not([class*="child"]):not(:has(.lyrics-lyrics-container)):not(:has(.before-scroll-node)),
 body.cs4-sbl-active [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)):not(:has(.lyrics-lyrics-container)){background-color:${bg}!important}
-/* Artist/album pages with a banner photo: Spotify 1.3.0.277 restructured this
-   area — the banner now sits in a ".before-scroll-node" wrapper, a SIBLING of
-   the scrollable content area (.main-view-container__scroll-node), not nested
-   inside it as before. Both share a common ancestor, .main-view-container,
-   confirmed via live DOM inspection. Kept the scroll-node exclusion above as a
-   safe fallback (harmless no-op now that they're no longer nested), and anchor
-   the transparency fixes on the shared ancestor instead. Any element carrying
-   "contentSpacing" on a banner page (header text, action bar, the
-   "Popolari"/discography wrapper further down, etc.) stays transparent so the
-   fade from the banner can continue down the page. */
 body:not(.cs4-sbl-active) .main-view-container:has(.before-scroll-node) [class*="contentSpacing"],
 body.cs4-sbl-active .main-view-container:has(.before-scroll-node) [class*="contentSpacing"]{
   background-color:transparent!important;
 }
-/* The scroll-node's OWN background (main-view-container__scroll-node, which also
-   carries main-actionBar-ActionBarContainer) is a SIBLING of before-scroll-node,
-   not its ancestor, so the :has(.before-scroll-node) exclusion on lines above
-   (checking for a DESCENDANT) never matches it — it kept the solid page-bg fill
-   from the wildcard rule, painting over the header text/banner area. Exclude it
-   too, anchored the same way as the working contentSpacing fix above. */
 body:not(.cs4-sbl-active) .main-view-container:has(.before-scroll-node) .main-view-container__scroll-node,
 body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-container__scroll-node{
   background-color:transparent!important;
 }
-/* Sticky topbar title+play-button box (shown once scrolled past an entity header):
-   also carries "contentSpacing", also caught by the wildcard fill rule, painting a
-   solid bar over the banner even before scrolling. CSS safety net for first paint;
-   fixTopBarContent() in JS handles the home-page exception dynamically. */
 .main-topBar-topbarContentContainer{background-color:transparent!important}
 .Root__now-playing-bar,.now-playing-bar,[class*="nowPlayingBar"]{background-color:${play}!important}
-
-/* ── Top bar: solid on all pages (JS overrides for home) ── */
 .Root__top-bar{
   background-color:transparent!important;
   background-image:none!important;
@@ -646,8 +616,6 @@ body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-con
   -webkit-backdrop-filter:none!important;
   box-shadow:none!important;
 }
-
-/* ── Progress/volume bar CSS vars (Spotify internal overrides) ── */
 :root,[class*="Root__"]{
   --progress-bar-indicator-color:${progFg}!important;
   --progress-bar-height:4px!important;
