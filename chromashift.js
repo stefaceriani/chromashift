@@ -480,31 +480,14 @@
   --spice-rgb-button-active:${hexToRgb(btnActive)}!important;
   --spice-rgb-accent:${hexToRgb(acc)}!important;--spice-rgb-notification:${hexToRgb(notif)}!important;
 }
-/* Spotify's own .encore-dark-theme rule redefines --background-highlight locally
-   (= var(--spice-main-elevated)) on that exact class — used directly by context
-   menus, settings panels, and other portal-rendered dropdowns. A direct redefinition
-   on an element always overrides an inherited :root value, !important or not, so
-   the :root fallback above never reaches them. Target the class directly too,
-   touching ONLY this one property — everything else stays on :root as before. */
 .encore-dark-theme{
   --background-highlight:${hl}!important;
 }
-/* .encore-bright-accent-set redefines --background-highlight directly on itself
-   (inside Spotify's own @layer encore rules), which overrides the inherited :root
-   value regardless of !important — a direct declaration on an element always wins
-   over an inherited one. This class is reused on lots of unrelated things (settings
-   sliders, the "DJ" card, etc.), so match it ONLY when the exact same element is
-   also a play button — compound selector, no ancestor/descendant matching. */
 .encore-bright-accent-set[class*="playButton"],
 .encore-bright-accent-set[class*="PlayButton"],
 .encore-bright-accent-set[data-testid="play-button"]{
   --background-highlight:${pbtnHov}!important;
 }
-/* Settings → Zoom: Spotify's own CSS sets border-color: var(--essential-bright-accent)
-   on hover/active for the size radio circles. We never override that bare variable
-   globally (it's also used for icon fills and the onboarding gradient elsewhere, so
-   recoloring it everywhere would be risky) — instead cancel just the border-color
-   on these two specific states. */
 .x-settings-zoomRadioCircle:hover,
 .x-settings-zoomRadioCircle:active{
   border-color:transparent!important;
