@@ -1,4 +1,4 @@
-# 🎨 ChromaShift - v3.2.44
+# 🎨 ChromaShift - v3.3.4
 
 > Customize every Spotify color from the Settings page — in real time.
 
@@ -110,7 +110,6 @@ Thanks for contributing ❤️; if you want to know how, read this 👉 [CONTRIB
 ## 🐛 Bug or Request?
 
 - Issue: [github.com/stafaceriani/chromashift/issues](https://github.com/stefaceriani/chromashift/issues)
-- Discord: [.gg/pVZHxKW5KN](https://discord.gg/pVZHxKW5KN)
 - Website: [https://chromashift.qzz.io/](https://chromashift.qzz.io/contacts)
 
 ---
