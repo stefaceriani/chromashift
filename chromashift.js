@@ -1,7 +1,7 @@
 // NAME: ChromaShift
 // AUTHOR: stefaceriani
 // DESCRIPTION: Customise every Spotify colour from the Settings page.
-// VERSION: 3.3.3-beta
+// VERSION: 3.3.4
 
 (function ChromaShift() {
   "use strict";
@@ -10,6 +10,7 @@
     setTimeout(ChromaShift, 300);
     return;
   }
+
 
   // ===========================================================
   // UTILITIES
@@ -86,6 +87,7 @@
     if (v.length === 3) v = v.split("").map(c => c + c).join("");
     return "#" + v.toLowerCase();
   }
+
 
   // ===========================================================
   // PRESETS
@@ -201,6 +203,7 @@
     { key: "csVolumeFg",          labelKey: "csVolumeFg",          group: "groupPlayer" },
   ];
 
+
   // ===========================================================
   // STORAGE
   // ===========================================================
@@ -213,6 +216,7 @@
 
   const COMMUNITY_BASE        = "https://cdn.jsdelivr.net/gh/stefaceriani/chromashift@main/custom_preset";
   const COMMUNITY_INDEX       = COMMUNITY_BASE + "/index.json";
+
 
   // ===========================================================
   // CLOUD SYNC
@@ -266,7 +270,7 @@
     email = email.toLowerCase().trim();
     const res = await cloudFetch("cs_users", "GET", null,
       "?email=eq." + encodeURIComponent(email) + "&select=email,password_hash");
-    if (!res.ok || !res.data || res.data.length === 0) return { ok: false, error: "No account found." }; // i18n handled at UI
+    if (!res.ok || !res.data || res.data.length === 0) return { ok: false, error: "No account found." };
     if (res.data[0].password_hash !== csHash(password)) return { ok: false, error: "Wrong password." };
     cloudSaveCreds(email, csHash(password));
     return { ok: true };
@@ -411,6 +415,7 @@
     const community = isCommunityEnabled() ? loadCommunityPresets() : {};
     return { ...BUILTIN_PRESETS, ...community, ...loadCustomPresets() };
   }
+
 
   // ===========================================================
   // CSS INJECTION
@@ -598,6 +603,7 @@ body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-con
 }
 .main-topBar-topbarContentContainer{background-color:transparent!important}
 .Root__now-playing-bar,.now-playing-bar,[class*="nowPlayingBar"]{background-color:${play}!important}
+
 .Root__top-bar{
   background-color:transparent!important;
   background-image:none!important;
@@ -616,15 +622,14 @@ body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-con
   -webkit-backdrop-filter:none!important;
   box-shadow:none!important;
 }
+
 :root,[class*="Root__"]{
   --progress-bar-indicator-color:${progFg}!important;
   --progress-bar-height:4px!important;
   --volume-bar-color:${volFg}!important;
 }
 
-/* ── Progress bar (playback) — always coloured, hover = hover colour ── */
 [data-testid="progress-bar"],[data-testid="playback-progressbar"]{cursor:pointer}
-/* Legacy class names (Spotify pre-1.2.84) — kept as harmless fallback */
 .x-progressBar-background{background-color:${progBg}!important;height:4px!important;border-radius:2px!important;transition:height .12s!important}
 .x-progressBar-middleground{background-color:${progBg}!important}
 .x-progressBar-foreground{background-color:${progFg}!important;height:4px!important;border-radius:2px!important;min-width:2px!important;transition:background-color .15s,height .12s!important}
@@ -632,7 +637,6 @@ body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-con
 [data-testid="progress-bar"]:hover .x-progressBar-background,[data-testid="playback-progressbar"]:hover .x-progressBar-background{height:5px!important}
 [data-testid="progress-bar"]:hover .x-progressBar-foreground,[data-testid="playback-progressbar"]:hover .x-progressBar-foreground{background-color:${adjustColor(progFg,0.12)}!important;height:5px!important}
 [data-testid="progress-bar"]:hover .x-progressBar-handle,[data-testid="playback-progressbar"]:hover .x-progressBar-handle{background-color:${adjustColor(progFg,0.12)}!important}
-/* New class names (Spotify 1.2.84+) — kept as harmless fallback */
 .progressBar-background{background-color:${progBg}!important;height:4px!important;border-radius:2px!important;transition:height .12s!important}
 .progressBar-middleground{background-color:${progBg}!important}
 .progressBar-foreground{background-color:${progFg}!important;height:4px!important;border-radius:2px!important;min-width:2px!important;transition:background-color .15s,height .12s!important}
@@ -640,14 +644,6 @@ body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-con
 [data-testid="progress-bar"]:hover .progressBar-background,[data-testid="playback-progressbar"]:hover .progressBar-background{height:5px!important}
 [data-testid="progress-bar"]:hover .progressBar-foreground,[data-testid="playback-progressbar"]:hover .progressBar-foreground{background-color:${adjustColor(progFg,0.12)}!important;height:5px!important}
 [data-testid="progress-bar"]:hover .progressBar-handle,[data-testid="playback-progressbar"]:hover .progressBar-handle{background-color:${adjustColor(progFg,0.12)}!important}
-/* REAL class names confirmed from live DOM (Spotify 1.2.89+): [data-testid="progress-bar"]
-   > .x-progressBar-progressBarBg [data-testid="progress-bar-background"]   (outer wrapper)
-       > .x-progressBar-sliderArea > .x-progressBar-progressFillColor      (full-width track/background)
-       > .x-progressBar-sliderArea > .x-progressBar-fillColor              (actual elapsed fill, on top, scaled)
-       > .progress-bar__slider [data-testid="progress-bar-handle"]         (handle)
-   NOTE: progressFillColor is NOT a hover preview — it's the full-width background track,
-   so it must use progBg (user's background colour), not progFg, or the whole bar looks
-   like one solid colour with no visible distinction between played/unplayed. */
 [data-testid="progress-bar"] .x-progressBar-progressBarBg,
 [data-testid="playback-progressbar"] .x-progressBar-progressBarBg,
 [data-testid="progress-bar-background"]{
@@ -676,8 +672,6 @@ body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-con
   background-color:${adjustColor(progFg,0.12)}!important;
 }
 
-/* ── Volume bar — always coloured, hover = hover colour ── */
-/* Legacy class names (Spotify pre-1.2.84) — kept as harmless fallback */
 [data-testid="volume-bar"] .x-progressBar-background,
 [data-testid="volume-bar"] ~ * .x-progressBar-background,
 [class*="volume"] .x-progressBar-background{background-color:${volBg}!important}
@@ -690,7 +684,6 @@ body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-con
 [class*="volume"] .x-progressBar-handle{background-color:${volFg}!important;opacity:1!important;transition:background-color .15s,transform .12s!important}
 [data-testid="volume-bar"]:hover .x-progressBar-handle,
 [class*="volume"]:hover .x-progressBar-handle{background-color:${adjustColor(volFg,0.12)}!important}
-/* New class names (Spotify 1.2.84+) — kept as harmless fallback */
 [data-testid="volume-bar"] .progressBar-background,
 [data-testid="volume-bar"] ~ * .progressBar-background,
 [class*="volume"] .progressBar-background{background-color:${volBg}!important}
@@ -703,8 +696,6 @@ body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-con
 [class*="volume"] .progressBar-handle{background-color:${volFg}!important;opacity:1!important;transition:background-color .15s,transform .12s!important}
 [data-testid="volume-bar"]:hover .progressBar-handle,
 [class*="volume"]:hover .progressBar-handle{background-color:${adjustColor(volFg,0.12)}!important}
-/* REAL class names confirmed from live DOM — the volume slider reuses the same component as the
-   progress bar. progressFillColor = full-width track (volBg), fillColor = elapsed fill (volFg). */
 [data-testid="volume-bar"] .x-progressBar-progressBarBg,
 [class*="volume"] .x-progressBar-progressBarBg{background-color:${volBg}!important}
 [data-testid="volume-bar"] .x-progressBar-progressFillColor,
@@ -718,9 +709,6 @@ body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-con
 [data-testid="volume-bar"]:hover .progress-bar__slider,
 [class*="volume"]:hover .progress-bar__slider{background-color:${adjustColor(volFg,0.12)}!important}
 
-/* ── ALL play button circles: hidden at rest, visible only on parent hover ── */
-/* Global rule: any .main-playButton-PlayButton or [data-testid="play-button"]
-   that is NOT in the player bar and NOT in the tracklist → hidden by default */
 .main-playButton-PlayButton:not([data-testid="control-button-playpause"]),
 [data-testid="play-button"]{
   opacity:0!important;
@@ -730,7 +718,6 @@ body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-con
   pointer-events:none!important;
   transition:opacity .15s,transform .15s!important;
 }
-/* Hover on direct or indirect parent → visible */
 *:hover > .main-playButton-PlayButton,
 *:hover > [data-testid="play-button"],
 *:hover .main-playButton-PlayButton,
@@ -740,28 +727,17 @@ body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-con
   pointer-events:all!important;
 }
 
-/* ── Home: hide coloured circle on ALL card play buttons at rest ── */
-/* Covers both large cards and compact rectangular cards (recently played shortcuts) */
-/* Force transparent background on ALL home play buttons except player bar and actionBar */
 [data-testid="home-page"] .main-playButton-PlayButton:not([data-testid="control-button-playpause"]),
 [data-testid="home-page"] [data-testid="play-button"]{
   background-color:transparent!important;
   box-shadow:none!important;
 }
-/* Shortcuts grid (recently played tiles): the generic "*:hover ancestor" reveal-rule
-   above also fires when the shared grid wrapper is hovered, lighting up every card's
-   play button at once. Re-scope strictly to the single card under the cursor.
-   NOTE: Spotify 1.3.0.277 renamed .view-homeShortcutsGrid-shortcut to a hashed
-   class (confirmed via live DOM inspection, 8/8 samples specific to this strip).
-   Hashed classes change on future updates — if this breaks again, re-run the same
-   diagnostic (inspect a play button's card ancestor chain on the home page). */
 [data-testid="home-page"] .kyJXPKlxWxJleoZlsuUa .main-playButton-PlayButton{
   opacity:0!important;
 }
 [data-testid="home-page"] .kyJXPKlxWxJleoZlsuUa:hover .main-playButton-PlayButton{
   opacity:1!important;
 }
-/* Player bar play/pause: always visible with accent colour */
 [data-testid="control-button-playpause"]{
   background-color:${pbtn}!important;color:${pbtnText}!important;
   border-radius:50%!important;border:none!important;
@@ -773,7 +749,6 @@ body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-con
 [data-testid="control-button-playpause"] svg{
   fill:${pbtnText}!important;color:${pbtnText}!important;
 }
-/* Header playlist/album play button: always visible with accent colour */
 .main-actionBar-ActionBar .main-playButton-PlayButton,
 .main-actionBar-ActionBar [data-testid="play-button"],
 [class*="actionBar"] .main-playButton-PlayButton,
@@ -794,7 +769,6 @@ body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-con
 [class*="EntityHeader"] .main-playButton-PlayButton svg{
   fill:${pbtnText}!important;color:${pbtnText}!important;
 }
-/* Separate hover colour on card and actionBar play button */
 [class*="actionBar"] .main-playButton-PlayButton:hover,
 [class*="ActionBar"] .main-playButton-PlayButton:hover,
 [class*="entityHeader"] .main-playButton-PlayButton:hover,
@@ -809,7 +783,6 @@ body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-con
 [class*="heart"][aria-checked="true"],[class*="follow"][data-encore-id][class*="active"],
 [class*="Button--is-active"]{color:${acc}!important}
 
-/* ── Card backgrounds ── */
 .main-card-card,[class*="CardComponent"],
 [data-testid="card-container"]{background-color:${card}!important;transition:background-color .2s,transform .18s,box-shadow .2s!important}
 .main-card-card:hover,[class*="CardComponent"]:hover,
@@ -820,7 +793,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 [class*="gridItem"]:hover [class*="CardComponent"] *{transform:none!important}
 
 
-/* ── Tracklist rows ── */
 [class*="TrackListRow"]:hover,[class*="tracklist-row"]:hover,
 [data-testid="tracklist-row"]:hover,
 .main-trackList-trackListRow:hover{background-color:${hl}!important}
@@ -829,15 +801,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 .main-trackList-trackListRow[aria-selected="true"]{background-color:${hlEl}!important}
 [class*="contextMenu"],[class*="ContextMenu"],
 [data-testid*="context-menu"]{background-color:${bgEl}!important}
-/* Context menu item hover: the menu is rendered as a portal outside the main React
-   tree, so CSS variable overrides on .encore-dark-theme don't reach it. Target the
-   item directly with the stable class seen in live DOM inspection.
-   IMPORTANT: submenus (data-tippy-root) are DOM children of their triggering <li>,
-   so native :hover cascades up to ALL ancestor rows whenever any nested submenu
-   item is hovered. Rules keyed off ".main-contextMenu-menuItem:hover" (the <li>)
-   fire on that cascade too, lighting up every ancestor row at once when browsing
-   deep into a submenu. Scope every rule to the BUTTON's own :hover/:focus instead
-   — that only matches when the cursor is truly over that specific row. */
 .main-contextMenu-menuItemButton:hover,
 .main-contextMenu-menuItemButton:focus,
 .main-contextMenu-menuItemButton:hover .main-contextMenu-menuItemLabel,
@@ -851,26 +814,19 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
   background-color:${hl}!important;
 }
 
-/* ── Text ── */
 [class*="Type__"],[class*="encore-text"],.main-trackList-rowTitle,
 .main-trackList-rowSectionStart{color:${t}!important}
 [class*="encore-text-subdued"],[class*="Type__subdued"],
 .main-trackList-rowSubTitle,
 [data-testid="tracklist-row"] [class*="encore-text"]:not([class*="bold"]){color:${sub}!important}
-/* Small badge label (e.g. "From <album>") that sits on a light pill background
-   equal to the main text colour, making default text invisible there. Force
-   Notification text colour for guaranteed contrast, confirmed via live DOM
-   inspection (parent pill background = --text-base, same as this text's colour). */
 .main-image-image + .standalone-ellipsis-one-line{color:${notifText}!important}
 
-/* ── Equalizer variables ── */
 :root,[class*="Root__"]{
   --spice-equalizer:${acc}!important;
   --progress-bar-color:${acc}!important;
   --progress-bar-handle-color:${acc}!important;
 }
 
-/* ── Tracklist icon accent ── */
 .main-trackList-trackListRow:hover .main-trackList-rowSectionIndex svg,
 [data-testid="tracklist-row"]:hover [class*="rowIndex"] svg,
 [data-testid="tracklist-row"]:hover [class*="trackIndex"] svg,
@@ -878,7 +834,6 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 [data-testid="queue-row"][aria-current] [class*="trackNumber"] svg{
   color:${acc}!important;fill:${acc}!important}
 
-/* ── ButtonPrimary ── */
 [class*="ButtonPrimary"]:not([class*="play"]):not([data-testid*="play"]),
 [data-encore-id="buttonPrimary"]:not([class*="play"]):not([data-testid*="play"]){
   background-color:${btn}!important;color:${btnText}!important;border-radius:500px!important}
@@ -890,25 +845,16 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 ::-webkit-scrollbar-thumb{background:${hl}!important;border-radius:4px!important}
 ::-webkit-scrollbar-thumb:hover{background:${hlEl}!important}
 
-/* ── Search bar (top bar) ── */
-/* The overlay holding the placeholder text + "Ctrl L" shortcut hint sits on top
-   of the search input with its own opaque dark background — make it transparent
-   so only the input's own background shows through evenly underneath.
-   The "Ctrl"/"L" keycaps (<kbd>) are deliberately left untouched: Spotify's own
-   rule already gives them a clean 1px inset border with no background of their
-   own, which is exactly the "frame only, no extra fill" look that was wanted. */
 .main-globalNav-searchInputTextWrapper,
 .main-globalNav-searchInputTextWrapper *:not(kbd):not(kbd *){
   background-color:transparent!important;
   box-shadow:none!important;
 }
-/* Same overlay treatment for the "browse categories" button next to the search bar */
 .main-globalNav-browseButtonWrapper,
 .main-globalNav-browseButtonWrapper *{
   background-color:transparent!important;
   box-shadow:none!important;
 }
-/* Actual search page input */
 [data-testid="search-bar-text-input"],
 input[class*="searchInput"]:not([class*="topbar"]),
 .x-filterBox-filterInput{
@@ -922,11 +868,9 @@ input[class*="searchInput"]:focus,
 [data-testid="search-bar-text-input"]::placeholder,
 input[class*="searchInput"]::placeholder,
 .x-filterBox-filterInput::placeholder{color:${sub}!important;opacity:1!important}
-/* Search icon (only in search page, not top bar) */
 [data-testid="search-bar-text-input"] ~ [class*="searchIcon"],
 [data-testid="search-bar-text-input"] ~ [data-testid="search-icon"]{
   color:${sub}!important;fill:${sub}!important}
-/* Category tabs */
 [data-testid="search-category-tab"],[class*="searchCategory-tab"],[class*="categoryTab"]{
   background-color:${hl}!important;color:${t}!important;
   border-radius:500px!important;transition:background-color .15s!important}
@@ -939,11 +883,12 @@ input[class*="searchInput"]::placeholder,
 
   function applyCSS(colors) { styleEl.textContent = buildCSS(colors); }
 
+
+  const SBL_BODY_CLASS = "cs4-sbl-active";
+
   // ===========================================================
   // SIMPLE BEAUTIFUL LYRICS COMPATIBILITY
   // ===========================================================
-
-  const SBL_BODY_CLASS = "cs4-sbl-active";
 
   function sblCheck() {
     if (document.querySelector(".lyrics-lyrics-container")) {
@@ -1016,14 +961,6 @@ input[class*="searchInput"]::placeholder,
     applyTopBarColor(color);
   }
 
-  /* .main-topBar-topbarContentContainer (title + play button shown once scrolled
-     past an entity header) carries the generic "contentSpacing" class, which the
-     general wildcard CSS rule fills with a solid opaque background at all times —
-     confirmed via live DOM inspection this painted a solid bar over the banner
-     even before any scrolling happened. Keep it transparent on every page except
-     home, independent of scroll: Spotify's own logic already handles fading the
-     title/button text in and out, we just need this box to never have its own
-     opaque fill. */
   function fixTopBarContent() {
     document.querySelectorAll(".main-topBar-topbarContentContainer").forEach(el => {
       const color = isHomePage() ? "" : "transparent";
@@ -1095,12 +1032,6 @@ input[class*="searchInput"]::placeholder,
           btn.closest("[class*='recentlyPlayed']") ||
           btn.closest("[class*='RecentlyPlayed']") ||
           btn.closest("[class*='gridItem']");
-        // Fallback, future-proof against Spotify renaming its wrapper classes:
-        // walk up from the button and skip any ancestor Spotify has marked
-        // pointer-events:none (its own native hidden/shown state for this
-        // component) — such an ancestor can never receive real mouse events,
-        // so a listener on it would never fire. Stop at the first interactive
-        // one, confirmed via live DevTools inspection to be the true hover root.
         if (!cardAnchor) {
           let el = btn.parentElement;
           for (let i = 0; i < 6 && el; i++) {
@@ -1110,13 +1041,6 @@ input[class*="searchInput"]::placeholder,
         }
         if (!cardAnchor) cardAnchor = btn.parentElement;
         if (cardAnchor) {
-          // Shortcuts grid cards: our stylesheet opacity rule loses to a native
-          // Spotify rule inside a CSS @layer (which, combined with !important,
-          // beats even higher specificity per the cascade-layers spec) — so the
-          // hide-until-hover behaviour never triggered from the whole card, only
-          // from the exact button pixel, and without our colour. Bypass the
-          // layer battle entirely via inline style !important (always wins),
-          // driven from cardAnchor so hovering anywhere on the card reveals it.
           const isShortcutCard = !!btn.closest(".kyJXPKlxWxJleoZlsuUa");
           if (isShortcutCard) {
             btn.style.setProperty("opacity", "0", "important");
@@ -1135,6 +1059,7 @@ input[class*="searchInput"]::placeholder,
       }
     });
   }
+
 
   // ===========================================================
   // FILTER BAR (Home): transparent at rest, solid on scroll
@@ -1203,11 +1128,12 @@ input[class*="searchInput"]::placeholder,
     setTimeout(runAllFixes, 50);
   }
 
+
+  const SECTION_ID = "cs4-section";
+
   // ===========================================================
   // UI
   // ===========================================================
-
-  const SECTION_ID = "cs4-section";
 
   function buildUI() {
     if (document.getElementById(SECTION_ID)) return;
@@ -1238,11 +1164,12 @@ input[class*="searchInput"]::placeholder,
     renderUI(section);
   }
 
+
+  const KEY_LANG = "cs4_lang";
+
   // ===========================================================
   // LANG
   // ===========================================================
-
-  const KEY_LANG = "cs4_lang";
 
   const LANGUAGES = [
     { code: "en-GB", flag: "🇬🇧", name: "English (UK)" },
@@ -1304,6 +1231,7 @@ input[class*="searchInput"]::placeholder,
       tabCloud:           "Cloud",
       tabSettings: "Settings",
       communityLabel:     "🌐 Enable community presets",
+      versionsLabel: "⚙️ App versions", versionsCopyBtn: "Copy", versionsCopyTitle: "Copy Spotify / Spicetify / ChromaShift versions", versionsCopied: "Versions copied to clipboard", undoTitle: "Undo", redoTitle: "Redo",
       communityNoneFound: "No community presets found.",
       cloud: {
         title:         "Cloud Sync",
@@ -1325,18 +1253,7 @@ input[class*="searchInput"]::placeholder,
       deleteTitle: "Delete",
       badgeCommunity: "community",
       badgeCustom: "custom",
-      footer: {
-        bug:       "🐛 Have you found a <strong>bug</strong>? Open an",
-        request:   "✨ Have a <strong>request</strong>? Open an",
-        preset:    "🎨 Want to propose a <strong>preset</strong>? Open an",
-        issue:     "issue",
-        note:      "but <em>don't</em> open one if there's already an open issue for that bug/request",
-        custom:    "💖 Do you want a <strong>custom preset</strong>? Open an",
-        warning:   "⚠️ Important",
-        warnText:  "Any custom presets or special versions requested by users will be published on the repo and will need to be installed manually.",
-        warnText2: "The version or preset will be updated in parallel with the public version. (If it isn't possible to update, this will be communicated in the main release.)",
-        thanks:    "Thanks for your understanding ❤️",
-      },
+      footerLink: "Report an issue",
     },
     "en-US": {
       subtitle:       "Customize every Spotify color in real time",
@@ -1385,6 +1302,7 @@ input[class*="searchInput"]::placeholder,
       tabCloud:           "Cloud",
       tabSettings: "Settings",
       communityLabel:     "🌐 Enable community presets",
+      versionsLabel: "⚙️ App versions", versionsCopyBtn: "Copy", versionsCopyTitle: "Copy Spotify / Spicetify / ChromaShift versions", versionsCopied: "Versions copied to clipboard", undoTitle: "Undo", redoTitle: "Redo",
       communityNoneFound: "No community presets found.",
       cloud: {
         title:         "Cloud Sync",
@@ -1406,18 +1324,7 @@ input[class*="searchInput"]::placeholder,
       deleteTitle: "Delete",
       badgeCommunity: "community",
       badgeCustom: "custom",
-      footer: {
-        bug:       "🐛 Have you found a <strong>bug</strong>? Open an",
-        request:   "✨ Have a <strong>request</strong>? Open an",
-        preset:    "🎨 Want to propose a <strong>preset</strong>? Open an",
-        issue:     "issue",
-        note:      "but <em>don't</em> open one if there's already an open issue for that bug/request",
-        custom:    "💖 Do you want a <strong>custom preset</strong>? Open an",
-        warning:   "⚠️ Important",
-        warnText:  "Any custom presets or special versions requested by users will be published on the repo and will need to be installed manually.",
-        warnText2: "The version or preset will be updated in parallel with the public version. (If it isn't possible to update, this will be communicated in the main release.)",
-        thanks:    "Thanks for your understanding ❤️",
-      },
+      footerLink: "Report an issue",
     },
     "it": {
       subtitle:       "Personalizza ogni colore di Spotify in tempo reale",
@@ -1466,6 +1373,7 @@ input[class*="searchInput"]::placeholder,
       tabCloud:           "Cloud",
       tabSettings: "Impostazioni",
       communityLabel:     "🌐 Abilita preset della community",
+      versionsLabel: "⚙️ Versioni app", versionsCopyBtn: "Copia", versionsCopyTitle: "Copia versioni Spotify / Spicetify / ChromaShift", versionsCopied: "Versioni copiate negli appunti", undoTitle: "Annulla", redoTitle: "Ripeti",
       communityNoneFound: "Nessun preset community trovato.",
       cloud: {
         title:         "Sincronizzazione Cloud",
@@ -1487,18 +1395,7 @@ input[class*="searchInput"]::placeholder,
       deleteTitle: "Elimina",
       badgeCommunity: "community",
       badgeCustom: "personalizzato",
-      footer: {
-        bug:       "🐛 Hai trovato un <strong>bug</strong>? Apri una",
-        request:   "✨ Hai una <strong>richiesta</strong>? Apri una",
-        preset:    "🎨 Vuoi proporre un <strong>preset</strong>? Apri una",
-        issue:     "segnalazione",
-        note:      "ma <em>non</em> aprirne una se esiste già una segnalazione aperta per quel bug/richiesta",
-        custom:    "💖 Vuoi un <strong>preset personalizzato</strong>? Apri una",
-        warning:   "⚠️ Importante",
-        warnText:  "Tutti i preset personalizzati o versioni speciali richiesti dagli utenti verranno pubblicati nel repo e dovranno essere installati manualmente.",
-        warnText2: "La versione o il preset verrà aggiornato in parallelo con la versione pubblica. (Se non fosse possibile aggiornarlo, verrà comunicato nella release principale.)",
-        thanks:    "Grazie per la comprensione ❤️",
-      },
+      footerLink: "Segnala un problema",
     },
     "de": {
       subtitle:       "Passe jede Spotify-Farbe in Echtzeit an",
@@ -1547,6 +1444,7 @@ input[class*="searchInput"]::placeholder,
       tabCloud:           "Cloud",
       tabSettings: "Einstellungen",
       communityLabel:     "🌐 Community-Presets aktivieren",
+      versionsLabel: "⚙️ App-Versionen", versionsCopyBtn: "Kopieren", versionsCopyTitle: "Spotify-/Spicetify-/ChromaShift-Versionen kopieren", versionsCopied: "Versionen in die Zwischenablage kopiert", undoTitle: "Rückgängig", redoTitle: "Wiederholen",
       communityNoneFound: "Keine Community-Presets gefunden.",
       cloud: {
         title:         "Cloud-Synchronisation",
@@ -1568,18 +1466,7 @@ input[class*="searchInput"]::placeholder,
       deleteTitle: "Löschen",
       badgeCommunity: "community",
       badgeCustom: "benutzerdefiniert",
-      footer: {
-        bug:       "🐛 Einen <strong>Fehler</strong> gefunden? Öffne ein",
-        request:   "✨ Hast du einen <strong>Wunsch</strong>? Öffne ein",
-        preset:    "🎨 Möchtest du ein <strong>Preset</strong> vorschlagen? Öffne ein",
-        issue:     "Issue",
-        note:      "aber <em>nicht</em>, wenn bereits ein offenes Issue für diesen Fehler/Wunsch existiert",
-        custom:    "💖 Möchtest du ein <strong>benutzerdefiniertes Preset</strong>? Öffne ein",
-        warning:   "⚠️ Wichtig",
-        warnText:  "Alle benutzerdefinierten Presets oder Sonderversionen werden im Repo veröffentlicht und müssen manuell installiert werden.",
-        warnText2: "Die Version oder das Preset wird parallel zur öffentlichen Version aktualisiert. (Falls nicht möglich, wird dies im Haupt-Release kommuniziert.)",
-        thanks:    "Danke für dein Verständnis ❤️",
-      },
+      footerLink: "Melde ein Problem",
     },
     "fr": {
       subtitle:       "Personnalisez chaque couleur de Spotify en temps réel",
@@ -1628,6 +1515,7 @@ input[class*="searchInput"]::placeholder,
       tabCloud:           "Cloud",
       tabSettings: "Paramètres",
       communityLabel:     "🌐 Activer les préréglages communautaires",
+      versionsLabel: "⚙️ Versions de l'app", versionsCopyBtn: "Copier", versionsCopyTitle: "Copier les versions Spotify / Spicetify / ChromaShift", versionsCopied: "Versions copiées dans le presse-papiers", undoTitle: "Annuler", redoTitle: "Rétablir",
       communityNoneFound: "Aucun préréglage communautaire trouvé.",
       cloud: {
         title:         "Synchronisation Cloud",
@@ -1649,18 +1537,7 @@ input[class*="searchInput"]::placeholder,
       deleteTitle: "Supprimer",
       badgeCommunity: "communauté",
       badgeCustom: "personnalisé",
-      footer: {
-        bug:       "🐛 Vous avez trouvé un <strong>bug</strong> ? Ouvrez une",
-        request:   "✨ Vous avez une <strong>demande</strong> ? Ouvrez une",
-        preset:    "🎨 Vous voulez proposer un <strong>preset</strong> ? Ouvrez une",
-        issue:     "issue",
-        note:      "mais <em>n'en ouvrez pas</em> s'il en existe déjà une ouverte pour ce bug/cette demande",
-        custom:    "💖 Vous voulez un <strong>preset personnalisé</strong> ? Ouvrez une",
-        warning:   "⚠️ Important",
-        warnText:  "Tous les presets personnalisés ou versions spéciales demandés seront publiés sur le dépôt et devront être installés manuellement.",
-        warnText2: "La version ou le preset sera mis à jour en parallèle avec la version publique. (Si impossible, cela sera communiqué dans la release principale.)",
-        thanks:    "Merci pour votre compréhension ❤️",
-      },
+      footerLink: "Signale un problème",
     },
     "es": {
       subtitle:       "Personaliza cada color de Spotify en tiempo real",
@@ -1709,6 +1586,7 @@ input[class*="searchInput"]::placeholder,
       tabCloud:           "Cloud",
       tabSettings: "Ajustes",
       communityLabel:     "🌐 Activar preajustes de la comunidad",
+      versionsLabel: "⚙️ Versiones de la app", versionsCopyBtn: "Copiar", versionsCopyTitle: "Copiar versiones de Spotify / Spicetify / ChromaShift", versionsCopied: "Versiones copiadas al portapapeles", undoTitle: "Deshacer", redoTitle: "Rehacer",
       communityNoneFound: "No se encontraron preajustes de la comunidad.",
       cloud: {
         title:         "Sincronización en la nube",
@@ -1730,18 +1608,7 @@ input[class*="searchInput"]::placeholder,
       deleteTitle: "Eliminar",
       badgeCommunity: "comunidad",
       badgeCustom: "personalizado",
-      footer: {
-        bug:       "🐛 ¿Encontraste un <strong>error</strong>? Abre una",
-        request:   "✨ ¿Tienes una <strong>solicitud</strong>? Abre una",
-        preset:    "🎨 ¿Quieres proponer un <strong>preset</strong>? Abre una",
-        issue:     "issue",
-        note:      "pero <em>no</em> abras una si ya hay una issue abierta para ese error/solicitud",
-        custom:    "💖 ¿Quieres un <strong>preset personalizado</strong>? Abre una",
-        warning:   "⚠️ Importante",
-        warnText:  "Todos los presets personalizados o versiones especiales solicitados se publicarán en el repositorio y deberán instalarse manualmente.",
-        warnText2: "La versión o el preset se actualizará en paralelo con la versión pública. (Si no es posible, se comunicará en la release principal.)",
-        thanks:    "Gracias por tu comprensión ❤️",
-      },
+      footerLink: "Reporta un problema",
     },
     "uk": {
       subtitle:       "Налаштуйте кожен колір Spotify у реальному часі",
@@ -1790,6 +1657,7 @@ input[class*="searchInput"]::placeholder,
       tabCloud:           "Хмара",
       tabSettings: "Налаштування",
       communityLabel:     "🌐 Увімкнути пресети спільноти",
+      versionsLabel: "⚙️ Версії застосунку", versionsCopyBtn: "Копіювати", versionsCopyTitle: "Копіювати версії Spotify / Spicetify / ChromaShift", versionsCopied: "Версії скопійовано в буфер обміну", undoTitle: "Скасувати", redoTitle: "Повторити",
       communityNoneFound: "Пресети спільноти не знайдено.",
       cloud: {
         title:         "Хмарна синхронізація",
@@ -1811,18 +1679,7 @@ input[class*="searchInput"]::placeholder,
       deleteTitle: "Видалити",
       badgeCommunity: "спільнота",
       badgeCustom: "власний",
-      footer: {
-        bug:       "🐛 Знайшли <strong>помилку</strong>? Відкрийте",
-        request:   "✨ Маєте <strong>запит</strong>? Відкрийте",
-        preset:    "🎨 Хочете запропонувати <strong>пресет</strong>? Відкрийте",
-        issue:     "issue",
-        note:      "але <em>не відкривайте</em>, якщо вже є відкрите issue для цієї помилки/запиту",
-        custom:    "💖 Хочете <strong>власний пресет</strong>? Відкрийте",
-        warning:   "⚠️ Важливо",
-        warnText:  "Усі користувацькі пресети або спеціальні версії будуть опубліковані у репозиторії та потребуватимуть ручного встановлення.",
-        warnText2: "Версія або пресет оновлюватиметься паралельно з публічною версією. (Якщо неможливо, про це буде повідомлено в основному релізі.)",
-        thanks:    "Дякуємо за розуміння ❤️",
-      },
+      footerLink: "Повідоми про проблему",
     },
     "ru": {
       subtitle:       "Настройте каждый цвет Spotify в реальном времени",
@@ -1871,6 +1728,7 @@ input[class*="searchInput"]::placeholder,
       tabCloud:           "Облако",
       tabSettings: "Настройки",
       communityLabel:     "🌐 Включить пресеты сообщества",
+      versionsLabel: "⚙️ Версии приложений", versionsCopyBtn: "Копировать", versionsCopyTitle: "Скопировать версии Spotify / Spicetify / ChromaShift", versionsCopied: "Версии скопированы в буфер обмена", undoTitle: "Отменить", redoTitle: "Повторить",
       communityNoneFound: "Пресеты сообщества не найдены.",
       cloud: {
         title:         "Облачная синхронизация",
@@ -1892,18 +1750,7 @@ input[class*="searchInput"]::placeholder,
       deleteTitle: "Удалить",
       badgeCommunity: "сообщество",
       badgeCustom: "свой",
-      footer: {
-        bug:       "🐛 Нашли <strong>ошибку</strong>? Откройте",
-        request:   "✨ Есть <strong>пожелание</strong>? Откройте",
-        preset:    "🎨 Хотите предложить <strong>пресет</strong>? Откройте",
-        issue:     "issue",
-        note:      "но <em>не открывайте</em>, если уже есть открытое issue для этой ошибки/пожелания",
-        custom:    "💖 Хотите <strong>собственный пресет</strong>? Откройте",
-        warning:   "⚠️ Важно",
-        warnText:  "Все пользовательские пресеты или специальные версии будут опубликованы в репозитории и потребуют ручной установки.",
-        warnText2: "Версия или пресет будет обновляться параллельно с публичной версией. (Если невозможно — будет сообщено в основном релизе.)",
-        thanks:    "Спасибо за понимание ❤️",
-      },
+      footerLink: "Сообщи о проблеме",
     },
     "zh": {
       subtitle:       "实时自定义 Spotify 的每种颜色",
@@ -1952,6 +1799,7 @@ input[class*="searchInput"]::placeholder,
       tabCloud:           "云端",
       tabSettings: "设置",
       communityLabel:     "🌐 启用社区预设",
+      versionsLabel: "⚙️ 应用版本", versionsCopyBtn: "复制", versionsCopyTitle: "复制 Spotify / Spicetify / ChromaShift 版本", versionsCopied: "版本已复制到剪贴板", undoTitle: "撤销", redoTitle: "重做",
       communityNoneFound: "未找到社区预设。",
       cloud: {
         title:         "云端同步",
@@ -1973,18 +1821,7 @@ input[class*="searchInput"]::placeholder,
       deleteTitle: "删除",
       badgeCommunity: "社区",
       badgeCustom: "自定义",
-      footer: {
-        bug:       "🐛 发现了<strong>错误</strong>？请提交",
-        request:   "✨ 有<strong>功能请求</strong>？请提交",
-        preset:    "🎨 想提议一个<strong>预设</strong>？请提交",
-        issue:     "Issue",
-        note:      "但如果已有相同的 Issue，<em>请勿</em>重复提交",
-        custom:    "💖 想要<strong>自定义预设</strong>？请提交",
-        warning:   "⚠️ 重要",
-        warnText:  "所有用户请求的自定义预设或特殊版本将发布到仓库，需手动安装。",
-        warnText2: "版本或预设将与公开版本同步更新。（如无法更新，将在主要发布说明中告知。）",
-        thanks:    "感谢您的理解 ❤️",
-      },
+      footerLink: "报告问题",
     },
   };
 
@@ -2021,6 +1858,39 @@ input[class*="searchInput"]::placeholder,
     let activePresetKey = loadPreset();
     let activeSliderPop = null;
 
+    let historyStack = [{ ...editColors }];
+    let historyIndex = 0;
+
+    function pushHistory() {
+      historyStack = historyStack.slice(0, historyIndex + 1);
+      historyStack.push({ ...editColors });
+      if (historyStack.length > 50) historyStack.shift();
+      historyIndex = historyStack.length - 1;
+      updateUndoRedoBtns();
+    }
+    function undo() {
+      if (historyIndex <= 0) return;
+      historyIndex--;
+      editColors = { ...historyStack[historyIndex] };
+      syncPickers();
+      applyColors(editColors);
+      updateUndoRedoBtns();
+    }
+    function redo() {
+      if (historyIndex >= historyStack.length - 1) return;
+      historyIndex++;
+      editColors = { ...historyStack[historyIndex] };
+      syncPickers();
+      applyColors(editColors);
+      updateUndoRedoBtns();
+    }
+    function updateUndoRedoBtns() {
+      const u = document.getElementById("cs4-undo");
+      const r = document.getElementById("cs4-redo");
+      if (u) u.disabled = historyIndex <= 0;
+      if (r) r.disabled = historyIndex >= historyStack.length - 1;
+    }
+
     let uiStyle = document.getElementById("cs4-ui-style");
     if (!uiStyle) { uiStyle = document.createElement("style"); uiStyle.id = "cs4-ui-style"; document.head.appendChild(uiStyle); }
 
@@ -2037,7 +1907,6 @@ input[class*="searchInput"]::placeholder,
 .cs4-tab.cs4-active{color:${accTxt};background:${acc}}
 .cs4-panel{display:none}
 .cs4-panel.cs4-active{display:block}
-/* Presets */
 .cs4-presets-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:9px;margin-bottom:24px}
 .cs4-preset-card{border-radius:14px;border:2px solid transparent;background:${card};padding:15px;cursor:pointer;transition:all .17s;position:relative;overflow:hidden}
 .cs4-preset-card:hover{border-color:${hlEl};transform:translateY(-2px);box-shadow:0 6px 22px rgba(0,0,0,.4)}
@@ -2062,7 +1931,6 @@ input[class*="searchInput"]::placeholder,
 .cs4-name-input{flex:1;background:${hl};border:1.5px solid ${hlEl};border-radius:8px;padding:8px 12px;font-size:13px;color:${txt};outline:none;transition:border-color .15s}
 .cs4-name-input::placeholder{color:${sub}}
 .cs4-name-input:focus{border-color:${acc}}
-/* Editor */
 .cs4-group-label{font-size:10px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:${sub};margin:22px 0 10px;padding-bottom:8px;border-bottom:1px solid ${hl}}
 .cs4-group-label:first-child{margin-top:0}
 .cs4-colors-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:8px}
@@ -2078,7 +1946,6 @@ input[class*="searchInput"]::placeholder,
 .cs4-hex.cs4-invalid{border-color:#e5534b}
 .cs4-sl-btn{padding:5px 9px;border-radius:7px;border:1.5px solid ${hlEl};background:${bgEl};color:${sub};font-size:11px;cursor:pointer;transition:all .14s;flex-shrink:0}
 .cs4-sl-btn:hover{background:${hl};color:${txt};border-color:${acc}}
-/* Slider popup */
 .cs4-sl-popup{position:fixed;z-index:99999;background:${bgEl};border:1px solid ${hlEl};border-radius:14px;padding:16px 18px;width:236px;box-shadow:0 18px 50px rgba(0,0,0,.75)}
 .cs4-sl-title{font-size:10px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:${sub};margin-bottom:12px}
 .cs4-sl-row{display:flex;align-items:center;gap:9px;margin-bottom:8px}
@@ -2087,20 +1954,19 @@ input[class*="searchInput"]::placeholder,
 .cs4-sl-track{flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;outline:none;cursor:pointer}
 .cs4-sl-track::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;background:${acc};cursor:pointer;border:2px solid ${bgEl};box-shadow:0 0 6px ${accGlo}}
 .cs4-sl-val{font-size:11px;font-family:'Courier New',monospace;color:${txt};width:26px;text-align:right;flex-shrink:0}
-/* Lang bar */
 .cs4-lang-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:18px}
 .cs4-lang-label{font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:${sub};margin-right:4px}
 .cs4-lang-btn{background:${hl};border:1.5px solid transparent;border-radius:8px;padding:5px 8px;font-size:18px;cursor:pointer;transition:all .14s;line-height:1}
 .cs4-lang-btn:hover{border-color:${hlEl};transform:scale(1.12)}
 .cs4-lang-btn.cs4-lang-active{border-color:${acc};box-shadow:0 0 0 1px ${acc};transform:scale(1.1)}
-/* Actions */
 .cs4-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:26px;padding-top:20px;border-top:1px solid ${hl}}
-.cs4-footer{display:flex;flex-direction:column;gap:6px;margin-top:28px;padding:16px 18px;background:${card};border-radius:12px;border-left:3px solid ${acc}}
-.cs4-footer span{font-size:12px;color:${sub};line-height:1.5}
-.cs4-footer strong{color:${txt};font-weight:700}
-.cs4-footer-link{color:${acc};text-decoration:none;font-weight:700}
-.cs4-footer-link:hover{text-decoration:underline}
-.cs4-footer-note{margin-top:4px;font-size:11px;color:${sub};opacity:.7;font-style:italic;padding-top:8px;border-top:1px solid ${hl}}
+.cs4-icon-btn{width:42px;height:42px;border-radius:50%;border:1.5px solid ${hlEl};background:${card};color:${txt};cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .14s;margin-left:auto}
+.cs4-icon-btn + .cs4-icon-btn{margin-left:0}
+.cs4-icon-btn:hover:not(:disabled){background:${hl};border-color:${acc};color:${acc}}
+.cs4-icon-btn:disabled{opacity:.3;cursor:default}
+.cs4-footer{margin-top:24px;text-align:center}
+.cs4-footer-link{font-size:12px;color:${sub};text-decoration:none;font-weight:700;transition:color .15s}
+.cs4-footer-link:hover{color:${acc};text-decoration:underline}
 .cs4-btn{padding:9px 22px;border-radius:500px;font-size:13px;font-weight:700;letter-spacing:.3px;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:7px;transition:all .14s}
 .cs4-btn-primary{background:${acc};color:${accTxt}}
 .cs4-btn-primary:hover{filter:brightness(1.12);transform:scale(1.02);box-shadow:0 0 18px ${accGlo}}
@@ -2108,7 +1974,6 @@ input[class*="searchInput"]::placeholder,
 .cs4-btn-secondary:hover{background:${hlEl};transform:scale(1.02)}
 .cs4-btn-danger{background:rgba(255,80,80,.13);color:#ff6b6b}
 .cs4-btn-danger:hover{background:rgba(255,80,80,.26)}
-/* Toast */
 #cs4-toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(70px);background:${bgEl};color:${txt};border:1px solid ${hlEl};border-left:3px solid ${acc};padding:11px 22px;border-radius:10px;font-size:13px;font-weight:600;z-index:999999;opacity:0;pointer-events:none;white-space:nowrap;transition:opacity .22s,transform .28s cubic-bezier(.34,1.56,.64,1)}
 #cs4-toast.cs4-show{opacity:1;transform:translateX(-50%) translateY(0)}
 `;
@@ -2142,6 +2007,12 @@ input[class*="searchInput"]::placeholder,
     <button class="cs4-btn cs4-btn-primary" id="cs4-apply">${tr.applyBtn}</button>
     <button class="cs4-btn cs4-btn-secondary" id="cs4-reset">${tr.resetBtn}</button>
     <button class="cs4-btn cs4-btn-danger" id="cs4-default">${tr.defaultBtn}</button>
+    <button class="cs4-icon-btn" id="cs4-undo" title="${tr.undoTitle}" disabled>
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
+    </button>
+    <button class="cs4-icon-btn" id="cs4-redo" title="${tr.redoTitle}" disabled>
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/></svg>
+    </button>
   </div>
 </div>
 <div class="cs4-panel" id="cs4-panel-cloud">
@@ -2155,12 +2026,13 @@ input[class*="searchInput"]::placeholder,
       <span class="cs4-community-slider"></span>
     </label>
   </div>
+  <div class="cs4-community-row" style="margin-top:12px;">
+    <span class="cs4-community-label" id="cs4-versions-label">${tr.versionsLabel}</span>
+    <button class="cs4-btn" id="cs4-versions-copy-btn" title="${tr.versionsCopyTitle}">${tr.versionsCopyBtn}</button>
+  </div>
 </div>
 <div class="cs4-footer">
-  <span>${tr.footer.bug} <a class="cs4-footer-link" href="https://chromashift.qzz.io/contacts" target="_blank">${tr.footer.issue}</a></span>
-  <span>${tr.footer.request} <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">${tr.footer.issue}</a></span>
-  <span>${tr.footer.preset} <a class="cs4-footer-link" href="https://github.com/stefaceriani/chromashift/issues/new" target="_blank">${tr.footer.issue}</a></span>
-  <span class="cs4-footer-note">${tr.footer.note}</span>
+  <a class="cs4-footer-link" href="https://chromashift.qzz.io/" target="_blank">${tr.footerLink}</a>
 </div>
 `;
     let toastEl = document.getElementById("cs4-toast");
@@ -2263,6 +2135,37 @@ input[class*="searchInput"]::placeholder,
       });
     }
 
+    function getAppVersions() {
+      let spotifyV = "?", spicetifyV = "?";
+      try {
+        spotifyV =
+          (Spicetify && Spicetify.Platform && Spicetify.Platform.version) ||
+          (Spicetify && Spicetify.Platform && Spicetify.Platform.PlatformData && Spicetify.Platform.PlatformData.version) ||
+          "?";
+      } catch (_) {}
+      try {
+        spicetifyV =
+          (Spicetify && Spicetify.Config && Spicetify.Config.version) ||
+          (Spicetify && Spicetify.CONFIG && Spicetify.CONFIG.version) ||
+          "?";
+      } catch (_) {}
+      return { spotifyV, spicetifyV, chrV: CURRENT_VERSION };
+    }
+
+    const versionsCopyBtn = document.getElementById("cs4-versions-copy-btn");
+    if (versionsCopyBtn) {
+      versionsCopyBtn.addEventListener("click", async () => {
+        const v = getAppVersions();
+        const text = `${v.spotifyV} ● ${v.spicetifyV} ● ${v.chrV}`;
+        try {
+          await navigator.clipboard.writeText(text);
+          toast(t().versionsCopied);
+        } catch (_) {
+          toast(text);
+        }
+      });
+    }
+
     document.getElementById("cs4-save-btn").addEventListener("click", () => {
       const ni = document.getElementById("cs4-pname");
       const name = ni.value.trim();
@@ -2322,6 +2225,7 @@ input[class*="searchInput"]::placeholder,
           }
 
           picker.addEventListener("input", e => setColor(e.target.value));
+          picker.addEventListener("change", () => pushHistory());
 
           hexInp.addEventListener("input", e => {
             const raw = e.target.value.trim();
@@ -2330,6 +2234,9 @@ input[class*="searchInput"]::placeholder,
           });
           hexInp.addEventListener("blur", e => {
             if (!isValidHex(e.target.value)) { hexInp.value = editColors[def.key] || "#000000"; hexInp.classList.remove("cs4-invalid"); }
+          });
+          hexInp.addEventListener("change", e => {
+            if (isValidHex(e.target.value)) pushHistory();
           });
 
           slBtn.addEventListener("click", e => {
@@ -2410,7 +2317,10 @@ input[class*="searchInput"]::placeholder,
         r.hexInp.classList.remove("cs4-invalid");
         applyColors(editColors);
       }
-      [slH, slS, slL].forEach(s => s.addEventListener("input", onSlide));
+      [slH, slS, slL].forEach(s => {
+        s.addEventListener("input", onSlide);
+        s.addEventListener("change", () => pushHistory());
+      });
 
       setTimeout(() => {
         function close(e) {
@@ -2427,7 +2337,6 @@ input[class*="searchInput"]::placeholder,
     buildCloudPanel();
 
 
-    // ── Cloud UI ──
     function buildCloudPanel() {
       const wrap = document.getElementById("cs4-cloud-container");
       if (!wrap) return;
@@ -2566,8 +2475,11 @@ input[class*="searchInput"]::placeholder,
       const p = getAllPresets()[activePresetKey] || BUILTIN_PRESETS.default;
       editColors = { ...p.colors };
       syncPickers(); applyColors(editColors);
+      pushHistory();
       toast(t().toastReset);
     });
+    document.getElementById("cs4-undo").addEventListener("click", undo);
+    document.getElementById("cs4-redo").addEventListener("click", redo);
     document.getElementById("cs4-default").addEventListener("click", () => {
       editColors = { ...BUILTIN_PRESETS.default.colors };
       activePresetKey = "default";
@@ -2576,6 +2488,7 @@ input[class*="searchInput"]::placeholder,
       toast(t().toastDefault);
     });
   }
+
 
   // ===========================================================
   // NAVIGATION
@@ -2590,11 +2503,12 @@ input[class*="searchInput"]::placeholder,
     Spicetify.Platform.History.listen(() => setTimeout(tryMount, 400));
   }
 
+
   // ===========================================================
   // AUTO-UPDATER
   // ===========================================================
 
-  const CURRENT_VERSION  = "3.3.3";
+  const CURRENT_VERSION  = "3.3.4";
   const RELEASES_API     = "https://api.github.com/repos/stefaceriani/chromashift/releases/latest";
   const RELEASES_PAGE    = "https://github.com/stefaceriani/chromashift/releases";
   const UPDATE_INTERVAL  = 60 * 60 * 1000;
@@ -2682,6 +2596,7 @@ input[class*="searchInput"]::placeholder,
       showUpdateBadge(remoteVersion);
     } catch (_) {}
   }
+
 
   // ===========================================================
   // BOOT
