@@ -1,6 +1,6 @@
 // PRESET NAME: 🌙 Golden Hour
 // REQUESTED BY: @stefaceriani
-// CS VERSION: 3.2.44
+// CS VERSION: 3.3.4
 // PRESET VERSION: 1.0.0
 
 golden: {
