@@ -1981,7 +1981,7 @@ input[class*="searchInput"]::placeholder,
     container.innerHTML = `
 <div class="cs4-header">
   <div class="cs4-icon">🎨</div>
-  <h2 class="cs4-title">ChromaShift - 3.3.4</h2>
+  <h2 class="cs4-title">ChromaShift</h2>
 </div>
 <p class="cs4-subtitle">${tr.subtitle}</p>
 <div class="cs4-lang-bar" id="cs4-lang-bar">
