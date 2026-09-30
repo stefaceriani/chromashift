@@ -1,4 +1,4 @@
-# 🎨 ChromaShift - DEV
+# 💻 ChromaShift - DEV
 ---
 If Chromashift doesn't work first check our [status page](https://status.chromashift.qzz.io) or [site](https://chromashift.qzz.io)
 
