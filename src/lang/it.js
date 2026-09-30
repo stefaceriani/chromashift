@@ -67,5 +67,5 @@
       deleteTitle: "Elimina",
       badgeCommunity: "community",
       badgeCustom: "personalizzato",
-      footerLink: "Segnala un problema",
+      footerLink: "Segnala un problema.",
     },
