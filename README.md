@@ -5,4 +5,4 @@ If Chromashift doesn't work first check our [status page](https://status.chromas
 > [!NOTE]
 > This is the “dev” branch is an experimental code DO NOT USE IT. [main](https://chromashift.qzz.io)
 
-If you want to use it... forget it you MUST NOT DU IT.
+If you want to use it... forget it you MUST NOT DO IT.
