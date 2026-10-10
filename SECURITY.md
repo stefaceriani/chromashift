@@ -4,8 +4,9 @@
 
 | Version    | Supported | Notes              |
 | ---------- | --------- | ------------------ |
-| 3.3.4      | ✅         | Fully supported    |
-| 3.3.3-beta | ⚠️         | Partialy supported |
+| 3.4.0      | ✅         | Fully supported    |
+| 3.3.4      | ❌         | Outdated, not safe |
+| 3.3.3-beta | ❌         | Outdated, not safe |
 | 3.2.44     | ❌         | Outdated, not safe |
 | 3.2.43-beta| ❌         | Outdated, not safe |
 | 3.2.0      | ❌         | Outdated, not safe |
