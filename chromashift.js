@@ -1,7 +1,7 @@
 // NAME: ChromaShift
 // AUTHOR: stefaceriani
 // DESCRIPTION: Customise every Spotify colour from the Settings page.
-// VERSION: 3.3.4
+// VERSION: 3.4.0
 
 (function ChromaShift() {
   "use strict";
@@ -33,6 +33,15 @@
     g = Math.max(0, Math.min(255, Math.round(g + 255 * amount)));
     b = Math.max(0, Math.min(255, Math.round(b + 255 * amount)));
     return "#" + [r, g, b].map(v => v.toString(16).padStart(2, "0")).join("");
+  }
+
+  function adjustColorSafe(v, amount) {
+    return isGradientValue(v) ? v : adjustColor(v, amount);
+  }
+
+  function hexToRgbSafe(v) {
+    if (isGradientValue(v)) return hexToRgb(gradientFirstColor(v));
+    return hexToRgb(v);
   }
 
   function luminance(hex) {
@@ -202,6 +211,62 @@
     { key: "csVolumeBg",          labelKey: "csVolumeBg",          group: "groupPlayer" },
     { key: "csVolumeFg",          labelKey: "csVolumeFg",          group: "groupPlayer" },
   ];
+
+  const GRADIENT_KEYS = new Set(COLOR_DEFS.map(d => d.key));
+
+  const MAX_STOPS = 5;
+
+  const ICON_GRAD = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M3 12 12 3" stroke-opacity=".35"/><path d="M3 21 21 3" stroke-opacity=".65"/><path d="M12 21 21 12"/></svg>';
+
+  function isGradientValue(v) {
+    return typeof v === "string" && v.trim().startsWith("linear-gradient(");
+  }
+  function parseGradientValue(v, fallbackHex) {
+    const m = /^linear-gradient\(\s*(-?\d+(?:\.\d+)?)deg\s*,(.*)\)\s*$/i.exec((v || "").trim());
+    if (m) {
+      const stops = [];
+      const re = /(#[0-9a-fA-F]{6})(?:\s+(\d+(?:\.\d+)?)%)?/g;
+      let x;
+      while ((x = re.exec(m[2]))) stops.push({ color: x[1].toLowerCase(), pos: x[2] !== undefined ? Math.round(+x[2]) : null });
+      if (stops.length >= 2) {
+        stops.forEach((st, i) => { if (st.pos === null) st.pos = Math.round(i / (stops.length - 1) * 100); });
+        return { angle: Math.round(+m[1]), stops };
+      }
+    }
+    const base = fallbackHex && isValidHex(fallbackHex) ? normalizeHex(fallbackHex) : "#1db954";
+    return { angle: 135, stops: [{ color: base, pos: 0 }, { color: adjustColor(base, -0.35), pos: 100 }] };
+  }
+  function makeGradientValue(angle, stops) {
+    const sorted = [...stops].sort((a, b) => a.pos - b.pos);
+    return `linear-gradient(${angle}deg, ${sorted.map(x => `${x.color} ${x.pos}%`).join(", ")})`;
+  }
+  function gradientFirstColor(v) {
+    const g = parseGradientValue(v, null);
+    return [...g.stops].sort((a, b) => a.pos - b.pos)[0].color;
+  }
+  function flattenGradients(colors) {
+    const out = { ...colors };
+    Object.keys(out).forEach(k => { if (isGradientValue(out[k])) out[k] = gradientFirstColor(out[k]); });
+    return out;
+  }
+  function gradientAvgColor(v) {
+    const g = parseGradientValue(v, null);
+    const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    const rgb = g.stops.map(s => p(s.color));
+    const avg = [0, 1, 2].map(i => Math.round(rgb.reduce((a, c) => a + c[i], 0) / rgb.length));
+    return "#" + avg.map(n => n.toString(16).padStart(2, "0")).join("");
+  }
+  function flatColor(v) { return isGradientValue(v) ? gradientFirstColor(v) : v; }
+  function contrastColorSafe(v) { return contrastColor(isGradientValue(v) ? gradientAvgColor(v) : v); }
+  // "shared" gradients are anchored to the window (background-attachment:fixed): every element that uses
+  // the same colour shows the same slice of ONE gradient instead of restarting it on each element.
+  function bgShared(v) { return isGradientValue(v) ? `background:${v} fixed` : `background-color:${v}`; }
+  function bgDecl(v) { return isGradientValue(v) ? `background:${v}` : `background-color:${v}`; }
+  function mixHex(c1, c2) {
+    const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    const a = p(c1), b = p(c2);
+    return "#" + a.map((v, i) => Math.round((v + b[i]) / 2).toString(16).padStart(2, "0")).join("");
+  }
 
 
   // ===========================================================
@@ -429,40 +494,82 @@
   }
 
   function buildCSS(c) {
-    const t        = c.csText              || "#ffffff";
-    const sub      = c.csSubtext           || "#a7a7a7";
+    // "xG" = value as chosen (may be a gradient); "x" = flat colour for CSS variables and colour maths
+    const tG       = c.csText              || "#ffffff";
+    const subG     = c.csSubtext           || "#a7a7a7";
+    const t        = flatColor(tG);
+    const sub      = flatColor(subG);
     const bg       = c.csMain              || "#121212";
     const bgEl     = c.csMainElevated      || "#1a1a1a";
     const hl       = c.csHighlight         || "#282828";
     const hlEl     = c.csHighlightElevated || "#3e3e3e";
-    const acc      = c.csAccent            || "#1db954";
+    const accG     = c.csAccent            || "#1db954";
+    const acc      = flatColor(accG);
+    const accGrad  = isGradientValue(accG);
     const btn      = luminance(acc) > 0.179 ? adjustColor(acc, -0.15) : adjustColor(acc, 0.15);
-    const pbtn     = c.csPlayButton        || c.csButton || "#1db954";
-    const pbtnHov  = c.csPlayButtonHover   || adjustColor(pbtn, 0.1);
-    const btnD     = c.csButtonDisabled    || "#535353";
+    const pbtnG    = c.csPlayButton        || c.csButton || "#1db954";
+    const pbtnHovG = c.csPlayButtonHover   || adjustColorSafe(pbtnG, 0.1);
+    const btnDG    = c.csButtonDisabled    || "#535353";
+    const pbtn     = flatColor(pbtnG);
+    const pbtnHov  = flatColor(pbtnHovG);
+    const btnD     = flatColor(btnDG);
+    const hovExtra = (isGradientValue(pbtnG) && !c.csPlayButtonHover) ? "filter:brightness(1.12)!important;" : "";
     const side     = c.csSidebar           || "#000000";
     const play     = c.csPlayer            || "#121212";
     const card     = c.csCard              || "#181818";
-    const cardHov  = c.csCardHover         || adjustColor(card, 0.08);
-    const notif    = c.csNotification      || "#3d91f4";
+    const cardHov  = c.csCardHover         || adjustColorSafe(card, 0.08);
+    const notifG    = c.csNotification      || "#3d91f4";
+    const notif     = flatColor(notifG);
     const notifBg   = "#ffffff";
-    const notifText = c.csNotificationText || "#000000";
+    const notifTextG = c.csNotificationText || "#000000";
+    const notifText  = flatColor(notifTextG);
     const progBg   = c.csProgressBg        || hl;
-    const progFg   = c.csProgressFg        || acc;
+    const progFg   = c.csProgressFg        || accG;
     const volBg    = c.csVolumeBg          || hl;
-    const volFg    = c.csVolumeFg          || acc;
+    const volFg    = c.csVolumeFg          || accG;
 
     const accActive  = adjustColor(acc, 0.08);
     const btnActive  = adjustColor(btn, 0.08);
-    const bgPress    = adjustColor(bg, -0.05);
-    const bgTinted   = adjustColor(bg, 0.04);
-    const bgTintedHl = adjustColor(bg, 0.09);
+    const bgFlat     = flatColor(bg);
+    const bgPress    = adjustColor(bgFlat, -0.05);
+    const bgTinted   = adjustColor(bgFlat, 0.04);
+    const bgTintedHl = adjustColor(bgFlat, 0.09);
     const decorBase  = adjustColor(acc, -0.15);
     const decorSub   = adjustColor(acc, -0.25);
-    const pbtnText   = contrastColor(pbtn);
-    const btnText    = contrastColor(btn);
+    const pbtnText   = contrastColorSafe(pbtnG);
+    const btnText    = accGrad ? contrastColorSafe(accG) : contrastColor(btn);
 
-    return `
+    // Gradient text: paint the gradient through the glyphs (background-clip:text)
+    const textGrad = isGradientValue(tG) || isGradientValue(subG);
+    const textPaint = v => isGradientValue(v)
+      ? `background-image:${v}!important;background-attachment:fixed!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important;color:transparent!important;`
+      : (textGrad
+          ? `background-image:none!important;-webkit-text-fill-color:${v}!important;color:${v}!important;`
+          : `color:${v}!important;`);
+
+    // Extra rules that only exist when the matching colour is a gradient
+    const gradTextExtra = textGrad ? `
+[class*="encore-internal-color-text-base"]{${textPaint(tG)}}
+[class*="encore-internal-color-text-subdued"]{${textPaint(subG)}}
+` : "";
+    const accGradCss = accGrad ? `
+[class*="encore-internal-color-text-bright-accent"],[class*="encore-text-bright-accent"]{${textPaint(accG)}}
+` : "";
+    const notifTextGradCss = isGradientValue(notifTextG) ? `
+.notistack-Snackbar [data-encore-id="text"],
+[role="dialog"] .encore-light-theme [data-encore-id="text"],
+.main-image-image + .standalone-ellipsis-one-line{${textPaint(notifTextG)}}
+` : "";
+    const notifGradCss = isGradientValue(notifG) ? `
+.encore-announcement-set{background:${notifG} fixed!important}
+` : "";
+    const btnDisabledGradCss = isGradientValue(btnDG) ? `
+[data-encore-id="buttonPrimary"]:not([class*="play"]):not([data-testid*="play"]):disabled,
+[data-encore-id="buttonPrimary"]:not([class*="play"]):not([data-testid*="play"])[aria-disabled="true"]{
+  background:${btnDG} fixed!important;filter:none!important}
+` : "";
+
+    const css = `
 :root,.Root__top-bar,.Root__nav-bar,.Root__main-view,.Root__now-playing-bar,
 .Root__globalNav,.main-view-container,[class*="main-view"],[class*="Root__"]{
   --spice-text:${t}!important;--spice-subtext:${sub}!important;
@@ -478,10 +585,10 @@
   --spice-notification-error:#e5534b!important;--spice-misc:${hl}!important;
   --spice-shadow:rgba(0,0,0,.5)!important;
   --spice-rgb-text:${hexToRgb(t)}!important;--spice-rgb-subtext:${hexToRgb(sub)}!important;
-  --spice-rgb-main:${hexToRgb(bg)}!important;--spice-rgb-main-elevated:${hexToRgb(bgEl)}!important;
-  --spice-rgb-highlight:${hexToRgb(hl)}!important;--spice-rgb-highlight-elevated:${hexToRgb(hlEl)}!important;
-  --spice-rgb-sidebar:${hexToRgb(side)}!important;--spice-rgb-player:${hexToRgb(play)}!important;
-  --spice-rgb-card:${hexToRgb(card)}!important;--spice-rgb-button:${hexToRgb(btn)}!important;
+  --spice-rgb-main:${hexToRgbSafe(bg)}!important;--spice-rgb-main-elevated:${hexToRgbSafe(bgEl)}!important;
+  --spice-rgb-highlight:${hexToRgbSafe(hl)}!important;--spice-rgb-highlight-elevated:${hexToRgbSafe(hlEl)}!important;
+  --spice-rgb-sidebar:${hexToRgbSafe(side)}!important;--spice-rgb-player:${hexToRgbSafe(play)}!important;
+  --spice-rgb-card:${hexToRgbSafe(card)}!important;--spice-rgb-button:${hexToRgb(btn)}!important;
   --spice-rgb-button-active:${hexToRgb(btnActive)}!important;
   --spice-rgb-accent:${hexToRgb(acc)}!important;--spice-rgb-notification:${hexToRgb(notif)}!important;
 }
@@ -490,7 +597,7 @@
 }
 .encore-bright-accent-set[class*="playButton"],
 .encore-bright-accent-set[class*="PlayButton"],
-.encore-bright-accent-set[data-testid="play-button"]{
+.encore-bright-accent-setbutton[data-testid="play-button"]{
   --background-highlight:${pbtnHov}!important;
 }
 .x-settings-zoomRadioCircle:hover,
@@ -584,15 +691,15 @@
 }
 .Root__nav-bar,.nav-bar,[class*="navBar"],[class*="sidebar"],
 [class*="globalNav"],[class*="GlobalNav"],
-.LayoutResizer__resize-bar+*{background-color:${side}!important}
+.LayoutResizer__resize-bar+*{background:${side}!important}
 body:not(.cs4-sbl-active) .Root__main-view,
 body:not(.cs4-sbl-active) .main-view-container__scroll-node:not(:has(.before-scroll-node)),
 body:not(.cs4-sbl-active) [class*="scroll-node"]:not([class*="child"]):not(:has(.before-scroll-node)),
-body:not(.cs4-sbl-active) [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)){background-color:${bg}!important}
+body:not(.cs4-sbl-active) [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)){background:${bg}!important}
 body.cs4-sbl-active .Root__main-view:not(:has(.lyrics-lyrics-container)),
 body.cs4-sbl-active .main-view-container__scroll-node:not(:has(.lyrics-lyrics-container)):not(:has(.before-scroll-node)),
 body.cs4-sbl-active [class*="scroll-node"]:not([class*="child"]):not(:has(.lyrics-lyrics-container)):not(:has(.before-scroll-node)),
-body.cs4-sbl-active [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)):not(:has(.lyrics-lyrics-container)){background-color:${bg}!important}
+body.cs4-sbl-active [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)):not(:has(.lyrics-lyrics-container)){background:${bg}!important}
 body:not(.cs4-sbl-active) .main-view-container:has(.before-scroll-node) [class*="contentSpacing"],
 body.cs4-sbl-active .main-view-container:has(.before-scroll-node) [class*="contentSpacing"]{
   background-color:transparent!important;
@@ -602,7 +709,7 @@ body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-con
   background-color:transparent!important;
 }
 .main-topBar-topbarContentContainer{background-color:transparent!important}
-.Root__now-playing-bar,.now-playing-bar,[class*="nowPlayingBar"]{background-color:${play}!important}
+.Root__now-playing-bar,.now-playing-bar,[class*="nowPlayingBar"]{background:${play}!important}
 
 .Root__top-bar{
   background-color:transparent!important;
@@ -632,44 +739,44 @@ body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-con
 [data-testid="progress-bar"],[data-testid="playback-progressbar"]{cursor:pointer}
 .x-progressBar-background{background-color:${progBg}!important;height:4px!important;border-radius:2px!important;transition:height .12s!important}
 .x-progressBar-middleground{background-color:${progBg}!important}
-.x-progressBar-foreground{background-color:${progFg}!important;height:4px!important;border-radius:2px!important;min-width:2px!important;transition:background-color .15s,height .12s!important}
-.x-progressBar-handle{background-color:${progFg}!important;width:12px!important;height:12px!important;border-radius:50%!important;opacity:1!important;transition:transform .12s,background-color .15s!important}
+.x-progressBar-foreground{background:${progFg}!important;height:4px!important;border-radius:2px!important;min-width:2px!important;transition:background .15s,height .12s!important}
+.x-progressBar-handle{background:${progFg}!important;width:12px!important;height:12px!important;border-radius:50%!important;opacity:1!important;transition:transform .12s,background .15s!important}
 [data-testid="progress-bar"]:hover .x-progressBar-background,[data-testid="playback-progressbar"]:hover .x-progressBar-background{height:5px!important}
-[data-testid="progress-bar"]:hover .x-progressBar-foreground,[data-testid="playback-progressbar"]:hover .x-progressBar-foreground{background-color:${adjustColor(progFg,0.12)}!important;height:5px!important}
-[data-testid="progress-bar"]:hover .x-progressBar-handle,[data-testid="playback-progressbar"]:hover .x-progressBar-handle{background-color:${adjustColor(progFg,0.12)}!important}
+[data-testid="progress-bar"]:hover .x-progressBar-foreground,[data-testid="playback-progressbar"]:hover .x-progressBar-foreground{background:${adjustColorSafe(progFg,0.12)}!important;height:5px!important}
+[data-testid="progress-bar"]:hover .x-progressBar-handle,[data-testid="playback-progressbar"]:hover .x-progressBar-handle{background:${adjustColorSafe(progFg,0.12)}!important}
 .progressBar-background{background-color:${progBg}!important;height:4px!important;border-radius:2px!important;transition:height .12s!important}
 .progressBar-middleground{background-color:${progBg}!important}
-.progressBar-foreground{background-color:${progFg}!important;height:4px!important;border-radius:2px!important;min-width:2px!important;transition:background-color .15s,height .12s!important}
-.progressBar-handle{background-color:${progFg}!important;width:12px!important;height:12px!important;border-radius:50%!important;opacity:1!important;transition:transform .12s,background-color .15s!important}
+.progressBar-foreground{background:${progFg}!important;height:4px!important;border-radius:2px!important;min-width:2px!important;transition:background .15s,height .12s!important}
+.progressBar-handle{background:${progFg}!important;width:12px!important;height:12px!important;border-radius:50%!important;opacity:1!important;transition:transform .12s,background .15s!important}
 [data-testid="progress-bar"]:hover .progressBar-background,[data-testid="playback-progressbar"]:hover .progressBar-background{height:5px!important}
-[data-testid="progress-bar"]:hover .progressBar-foreground,[data-testid="playback-progressbar"]:hover .progressBar-foreground{background-color:${adjustColor(progFg,0.12)}!important;height:5px!important}
-[data-testid="progress-bar"]:hover .progressBar-handle,[data-testid="playback-progressbar"]:hover .progressBar-handle{background-color:${adjustColor(progFg,0.12)}!important}
+[data-testid="progress-bar"]:hover .progressBar-foreground,[data-testid="playback-progressbar"]:hover .progressBar-foreground{background:${adjustColorSafe(progFg,0.12)}!important;height:5px!important}
+[data-testid="progress-bar"]:hover .progressBar-handle,[data-testid="playback-progressbar"]:hover .progressBar-handle{background:${adjustColorSafe(progFg,0.12)}!important}
 [data-testid="progress-bar"] .x-progressBar-progressBarBg,
 [data-testid="playback-progressbar"] .x-progressBar-progressBarBg,
 [data-testid="progress-bar-background"]{
-  background-color:${progBg}!important;transition:background-color .15s!important;
+  background-color:${progBg}!important;transition:background .15s!important;
 }
 [data-testid="progress-bar"] .x-progressBar-progressFillColor,
 [data-testid="playback-progressbar"] .x-progressBar-progressFillColor{
-  background-color:${progBg}!important;transition:background-color .15s!important;
+  background-color:${progBg}!important;transition:background .15s!important;
 }
 [data-testid="progress-bar"] .x-progressBar-fillColor,
 [data-testid="playback-progressbar"] .x-progressBar-fillColor{
-  background-color:${progFg}!important;transition:background-color .15s!important;
+  background:${progFg}!important;transition:background .15s!important;
 }
 [data-testid="progress-bar"] .progress-bar__slider,
 [data-testid="playback-progressbar"] .progress-bar__slider,
 [data-testid="progress-bar-handle"]{
-  background-color:${progFg}!important;opacity:1!important;
-  transition:background-color .15s,transform .12s!important;
+  background:${progFg}!important;opacity:1!important;
+  transition:background .15s,transform .12s!important;
 }
 [data-testid="progress-bar"]:hover .x-progressBar-fillColor,
 [data-testid="playback-progressbar"]:hover .x-progressBar-fillColor{
-  background-color:${adjustColor(progFg,0.12)}!important;
+  background:${adjustColorSafe(progFg,0.12)}!important;
 }
 [data-testid="progress-bar"]:hover .progress-bar__slider,
 [data-testid="playback-progressbar"]:hover .progress-bar__slider{
-  background-color:${adjustColor(progFg,0.12)}!important;
+  background:${adjustColorSafe(progFg,0.12)}!important;
 }
 
 [data-testid="volume-bar"] .x-progressBar-background,
@@ -677,114 +784,103 @@ body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-con
 [class*="volume"] .x-progressBar-background{background-color:${volBg}!important}
 [data-testid="volume-bar"] .x-progressBar-foreground,
 [data-testid="volume-bar"] ~ * .x-progressBar-foreground,
-[class*="volume"] .x-progressBar-foreground{background-color:${volFg}!important;transition:background-color .15s!important}
+[class*="volume"] .x-progressBar-foreground{background:${volFg}!important;transition:background .15s!important}
 [data-testid="volume-bar"]:hover .x-progressBar-foreground,
-[class*="volume"]:hover .x-progressBar-foreground{background-color:${adjustColor(volFg,0.12)}!important}
+[class*="volume"]:hover .x-progressBar-foreground{background:${adjustColorSafe(volFg,0.12)}!important}
 [data-testid="volume-bar"] .x-progressBar-handle,
-[class*="volume"] .x-progressBar-handle{background-color:${volFg}!important;opacity:1!important;transition:background-color .15s,transform .12s!important}
+[class*="volume"] .x-progressBar-handle{background:${volFg}!important;opacity:1!important;transition:background .15s,transform .12s!important}
 [data-testid="volume-bar"]:hover .x-progressBar-handle,
-[class*="volume"]:hover .x-progressBar-handle{background-color:${adjustColor(volFg,0.12)}!important}
+[class*="volume"]:hover .x-progressBar-handle{background:${adjustColorSafe(volFg,0.12)}!important}
 [data-testid="volume-bar"] .progressBar-background,
 [data-testid="volume-bar"] ~ * .progressBar-background,
 [class*="volume"] .progressBar-background{background-color:${volBg}!important}
 [data-testid="volume-bar"] .progressBar-foreground,
 [data-testid="volume-bar"] ~ * .progressBar-foreground,
-[class*="volume"] .progressBar-foreground{background-color:${volFg}!important;transition:background-color .15s!important}
+[class*="volume"] .progressBar-foreground{background:${volFg}!important;transition:background .15s!important}
 [data-testid="volume-bar"]:hover .progressBar-foreground,
-[class*="volume"]:hover .progressBar-foreground{background-color:${adjustColor(volFg,0.12)}!important}
+[class*="volume"]:hover .progressBar-foreground{background:${adjustColorSafe(volFg,0.12)}!important}
 [data-testid="volume-bar"] .progressBar-handle,
-[class*="volume"] .progressBar-handle{background-color:${volFg}!important;opacity:1!important;transition:background-color .15s,transform .12s!important}
+[class*="volume"] .progressBar-handle{background:${volFg}!important;opacity:1!important;transition:background .15s,transform .12s!important}
 [data-testid="volume-bar"]:hover .progressBar-handle,
-[class*="volume"]:hover .progressBar-handle{background-color:${adjustColor(volFg,0.12)}!important}
+[class*="volume"]:hover .progressBar-handle{background:${adjustColorSafe(volFg,0.12)}!important}
 [data-testid="volume-bar"] .x-progressBar-progressBarBg,
 [class*="volume"] .x-progressBar-progressBarBg{background-color:${volBg}!important}
 [data-testid="volume-bar"] .x-progressBar-progressFillColor,
-[class*="volume"] .x-progressBar-progressFillColor{background-color:${volBg}!important;transition:background-color .15s!important}
+[class*="volume"] .x-progressBar-progressFillColor{background-color:${volBg}!important;transition:background .15s!important}
 [data-testid="volume-bar"] .x-progressBar-fillColor,
-[class*="volume"] .x-progressBar-fillColor{background-color:${volFg}!important;transition:background-color .15s!important}
+[class*="volume"] .x-progressBar-fillColor{background:${volFg}!important;transition:background .15s!important}
 [data-testid="volume-bar"] .progress-bar__slider,
-[class*="volume"] .progress-bar__slider{background-color:${volFg}!important;opacity:1!important;transition:background-color .15s,transform .12s!important}
+[class*="volume"] .progress-bar__slider{background:${volFg}!important;opacity:1!important;transition:background .15s,transform .12s!important}
 [data-testid="volume-bar"]:hover .x-progressBar-fillColor,
-[class*="volume"]:hover .x-progressBar-fillColor{background-color:${adjustColor(volFg,0.12)}!important}
+[class*="volume"]:hover .x-progressBar-fillColor{background:${adjustColorSafe(volFg,0.12)}!important}
 [data-testid="volume-bar"]:hover .progress-bar__slider,
-[class*="volume"]:hover .progress-bar__slider{background-color:${adjustColor(volFg,0.12)}!important}
+[class*="volume"]:hover .progress-bar__slider{background:${adjustColorSafe(volFg,0.12)}!important}
 
-.main-playButton-PlayButton:not([data-testid="control-button-playpause"]),
-[data-testid="play-button"]{
-  opacity:0!important;
-  background-color:transparent!important;
-  box-shadow:none!important;
-  transform:scale(.85)!important;
-  pointer-events:none!important;
-  transition:opacity .15s,transform .15s!important;
-}
-*:hover > .main-playButton-PlayButton,
-*:hover > [data-testid="play-button"],
-*:hover .main-playButton-PlayButton,
-*:hover [data-testid="play-button"]{
-  opacity:1!important;
-  transform:scale(1)!important;
-  pointer-events:all!important;
-}
-
-[data-testid="home-page"] .main-playButton-PlayButton:not([data-testid="control-button-playpause"]),
-[data-testid="home-page"] [data-testid="play-button"]{
+[role="div"]:not([data-testid="control-button-playpause"]),
+button[data-testid="play-button"]{
   background-color:transparent!important;
   box-shadow:none!important;
 }
-[data-testid="home-page"] .kyJXPKlxWxJleoZlsuUa .main-playButton-PlayButton{
-  opacity:0!important;
+[role="div"]:not([data-testid="control-button-playpause"]):not([role="row"] *):not([data-testid="action-bar"] *):not([data-testid="action-bar-row-actions"] *):not([class*="actionBar"] *):not([class*="ActionBar"] *):not([class*="entityHeader"] *):not([class*="EntityHeader"] *){
+  opacity:0;transition:opacity .15s!important;
 }
-[data-testid="home-page"] .kyJXPKlxWxJleoZlsuUa:hover .main-playButton-PlayButton{
-  opacity:1!important;
+[data-testid="action-bar"] button[data-testid="play-button"],
+[data-testid="action-bar-row-actions"] button[data-testid="play-button"]{
+  opacity:1!important;transform:none!important;pointer-events:auto!important;
 }
 [data-testid="control-button-playpause"]{
-  background-color:${pbtn}!important;color:${pbtnText}!important;
+  ${bgShared(pbtnG)}!important;color:${pbtnText}!important;
   border-radius:50%!important;border:none!important;
   opacity:1!important;transform:none!important;pointer-events:auto!important;
 }
 [data-testid="control-button-playpause"]:hover{
-  background-color:${pbtnHov}!important;
+  ${bgShared(pbtnHovG)}!important;${hovExtra}
 }
 [data-testid="control-button-playpause"] svg{
   fill:${pbtnText}!important;color:${pbtnText}!important;
 }
-.main-actionBar-ActionBar .main-playButton-PlayButton,
-.main-actionBar-ActionBar [data-testid="play-button"],
-[class*="actionBar"] .main-playButton-PlayButton,
-[class*="actionBar"] [data-testid="play-button"],
-[class*="ActionBar"] .main-playButton-PlayButton,
-[class*="ActionBar"] [data-testid="play-button"],
-[class*="entityHeader"] .main-playButton-PlayButton,
-[class*="entityHeader"] [data-testid="play-button"],
-[class*="EntityHeader"] .main-playButton-PlayButton,
-[class*="EntityHeader"] [data-testid="play-button"]{
-  background-color:${pbtn}!important;color:${pbtnText}!important;
+[data-testid="action-bar"] [role="div"],
+[data-testid="action-bar"] button[data-testid="play-button"],
+.main-actionBar-ActionBar [role="div"],
+.main-actionBar-ActionBar button[data-testid="play-button"],
+[class*="actionBar"] [role="div"],
+[class*="actionBar"] button[data-testid="play-button"],
+[class*="ActionBar"] [role="div"],
+[class*="ActionBar"] button[data-testid="play-button"],
+[class*="entityHeader"] [role="div"],
+[class*="entityHeader"] button[data-testid="play-button"],
+[class*="EntityHeader"] [role="div"],
+[class*="EntityHeader"] button[data-testid="play-button"]{
+  ${bgShared(pbtnG)}!important;color:${pbtnText}!important;
   border-radius:50%!important;border:none!important;
   opacity:1!important;transform:none!important;pointer-events:auto!important;
 }
-[class*="actionBar"] .main-playButton-PlayButton svg,
-[class*="ActionBar"] .main-playButton-PlayButton svg,
-[class*="entityHeader"] .main-playButton-PlayButton svg,
-[class*="EntityHeader"] .main-playButton-PlayButton svg{
+[data-testid="action-bar"] [role="div"] svg,
+[data-testid="action-bar"] button[data-testid="play-button"] svg,
+[class*="actionBar"] [role="div"] svg,
+[class*="ActionBar"] [role="div"] svg,
+[class*="entityHeader"] [role="div"] svg,
+[class*="EntityHeader"] [role="div"] svg{
   fill:${pbtnText}!important;color:${pbtnText}!important;
 }
-[class*="actionBar"] .main-playButton-PlayButton:hover,
-[class*="ActionBar"] .main-playButton-PlayButton:hover,
-[class*="entityHeader"] .main-playButton-PlayButton:hover,
-[class*="EntityHeader"] .main-playButton-PlayButton:hover,
-*:hover > .main-playButton-PlayButton:hover,
-*:hover .main-playButton-PlayButton:hover,
-*:hover > [data-testid="play-button"]:hover,
-*:hover [data-testid="play-button"]:hover{
-  background-color:${pbtnHov}!important;
+[data-testid="action-bar"] [role="div"]:hover,
+[data-testid="action-bar"] button[data-testid="play-button"]:hover,
+[class*="actionBar"] [role="div"]:hover,
+[class*="ActionBar"] [role="div"]:hover,
+[class*="entityHeader"] [role="div"]:hover,
+[class*="EntityHeader"] [role="div"]:hover,
+*:hover > [role="div"]:hover,
+*:hover [role="div"]:hover,
+*:hover > button[data-testid="play-button"]:hover,
+*:hover button[data-testid="play-button"]:hover{
+  ${bgShared(pbtnHovG)}!important;${hovExtra}
 }
 
 [class*="heart"][aria-checked="true"],[class*="follow"][data-encore-id][class*="active"],
 [class*="Button--is-active"]{color:${acc}!important}
 
 .main-card-card,[class*="CardComponent"],
-[data-testid="card-container"]{background-color:${card}!important;transition:background-color .2s,transform .18s,box-shadow .2s!important}
+[data-testid="card-container"]{background:${card}!important;transition:background .2s,transform .18s,box-shadow .2s!important}
 .main-card-card:hover,[class*="CardComponent"]:hover,
 [data-testid="card-container"]:hover,[class*="gridItem"]:hover [data-testid="card-container"],
 [class*="gridItem"]:hover [class*="CardComponent"]{background-color:${cardHov}!important;
@@ -795,12 +891,12 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 
 [class*="TrackListRow"]:hover,[class*="tracklist-row"]:hover,
 [data-testid="tracklist-row"]:hover,
-.main-trackList-trackListRow:hover{background-color:${hl}!important}
+.main-trackList-trackListRow:hover{background:${hl}!important}
 [class*="TrackListRow"][aria-selected="true"],
 [data-testid="tracklist-row"][aria-selected="true"],
-.main-trackList-trackListRow[aria-selected="true"]{background-color:${hlEl}!important}
+.main-trackList-trackListRow[aria-selected="true"]{background:${hlEl}!important}
 [class*="contextMenu"],[class*="ContextMenu"],
-[data-testid*="context-menu"]{background-color:${bgEl}!important}
+[data-testid*="context-menu"]{background:${bgEl}!important}
 .main-contextMenu-menuItemButton:hover,
 .main-contextMenu-menuItemButton:focus,
 .main-contextMenu-menuItemButton:hover .main-contextMenu-menuItemLabel,
@@ -811,14 +907,14 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 .main-contextMenu-menuItemButton:focus .main-contextMenu-menuItemIconWrapper,
 .main-contextMenu-menuItemButton:hover .main-contextMenu-menuItemIconWrapper *,
 .main-contextMenu-menuItemButton:focus .main-contextMenu-menuItemIconWrapper *{
-  background-color:${hl}!important;
+  background:${hl}!important;
 }
 
 [class*="Type__"],[class*="encore-text"],.main-trackList-rowTitle,
-.main-trackList-rowSectionStart{color:${t}!important}
+.main-trackList-rowSectionStart{${textPaint(tG)}}
 [class*="encore-text-subdued"],[class*="Type__subdued"],
 .main-trackList-rowSubTitle,
-[data-testid="tracklist-row"] [class*="encore-text"]:not([class*="bold"]){color:${sub}!important}
+[data-testid="tracklist-row"] [class*="encore-text"]:not([class*="bold"]){${textPaint(subG)}}
 .main-image-image + .standalone-ellipsis-one-line{color:${notifText}!important}
 
 :root,[class*="Root__"]{
@@ -826,6 +922,7 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
   --progress-bar-color:${acc}!important;
   --progress-bar-handle-color:${acc}!important;
 }
+input[type="range"]{accent-color:${acc}!important}
 
 .main-trackList-trackListRow:hover .main-trackList-rowSectionIndex svg,
 [data-testid="tracklist-row"]:hover [class*="rowIndex"] svg,
@@ -836,9 +933,9 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 
 [class*="ButtonPrimary"]:not([class*="play"]):not([data-testid*="play"]),
 [data-encore-id="buttonPrimary"]:not([class*="play"]):not([data-testid*="play"]){
-  background-color:${btn}!important;color:${btnText}!important;border-radius:500px!important}
+  ${bgShared(accGrad ? accG : btn)}!important;color:${btnText}!important;border-radius:500px!important}
 [class*="ButtonPrimary"]:not([class*="play"]):hover,
-[data-encore-id="buttonPrimary"]:not([class*="play"]):hover{background-color:${btnActive}!important}
+[data-encore-id="buttonPrimary"]:not([class*="play"]):hover{${accGrad ? "filter:brightness(1.1)" : `background-color:${btnActive}`}!important}
 
 ::-webkit-scrollbar{width:8px!important}
 ::-webkit-scrollbar-track{background:${bg}!important}
@@ -858,8 +955,8 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 [data-testid="search-bar-text-input"],
 input[class*="searchInput"]:not([class*="topbar"]),
 .x-filterBox-filterInput{
-  background-color:${bgEl}!important;color:${t}!important;
-  border:1.5px solid ${hlEl}!important;border-radius:500px!important;
+  background:${bgEl}!important;color:${t}!important;
+  border:1.5px solid ${isGradientValue(hlEl) ? gradientFirstColor(hlEl) : hlEl}!important;border-radius:500px!important;
   transition:border-color .15s,box-shadow .15s!important}
 [data-testid="search-bar-text-input"]:focus,
 input[class*="searchInput"]:focus,
@@ -872,13 +969,76 @@ input[class*="searchInput"]::placeholder,
 [data-testid="search-bar-text-input"] ~ [data-testid="search-icon"]{
   color:${sub}!important;fill:${sub}!important}
 [data-testid="search-category-tab"],[class*="searchCategory-tab"],[class*="categoryTab"]{
-  background-color:${hl}!important;color:${t}!important;
-  border-radius:500px!important;transition:background-color .15s!important}
+  background:${hl}!important;color:${t}!important;
+  border-radius:500px!important;transition:background .15s!important}
 [data-testid="search-category-tab"][aria-selected="true"],
 [class*="searchCategory-tab--active"],[class*="categoryTab--active"]{
-  background-color:${acc}!important;color:${contrastColor(acc)}!important}
+  ${bgShared(accG)}!important;color:${contrastColorSafe(accG)}!important}
+${gradTextExtra}${accGradCss}${notifTextGradCss}${notifGradCss}${btnDisabledGradCss}
+
+:root,.encore-dark-theme,.encore-dark-theme .encore-base-set{
+  --text-base:${t}!important;--text-subdued:${sub}!important;
+  --text-bright-accent:${acc}!important;--text-positive:${acc}!important;
+  --text-announcement:${notif}!important;
+  --background-base:${bg}!important;--background-highlight:${hl}!important;
+  --background-press:${bgPress}!important;
+  --background-elevated-base:${bgEl}!important;--background-elevated-highlight:${hlEl}!important;
+  --background-tinted-base:color-mix(in srgb,${t} 10%,transparent)!important;--background-tinted-highlight:color-mix(in srgb,${t} 18%,transparent)!important;--background-tinted-press:color-mix(in srgb,${t} 6%,transparent)!important;
+  --essential-base:${t}!important;--essential-subdued:${sub}!important;
+  --essential-bright-accent:${acc}!important;--essential-positive:${acc}!important;
+  --essential-announcement:${notif}!important;
+  --decorative-base:${decorBase}!important;--decorative-subdued:${decorSub}!important;
+}
+.encore-light-theme,.encore-light-theme .encore-base-set{
+  --text-base:${notifText}!important;--text-subdued:${notifText}!important;
+  --essential-base:${notifText}!important;
+  --background-base:${notifBg}!important;--background-elevated-base:${notifBg}!important;
+}
+#main-view,#global-nav-bar,#Desktop_LeftSidebar_Id,header[data-testid="topbar"],[data-testid="now-playing-bar"]{
+  --spice-text:${t}!important;--spice-subtext:${sub}!important;--spice-main:${bg}!important;
+  --spice-highlight:${hl}!important;--spice-sidebar:${side}!important;--spice-player:${play}!important;
+  --spice-button:${btn}!important;--spice-accent:${acc}!important;
+}
+#global-nav-bar,#Desktop_LeftSidebar_Id,nav[aria-label]:has(#Desktop_LeftSidebar_Id),#Desktop_LeftSidebar_Id *:is(section,[role="grid"]){background:${side}!important}
+body:not(.cs4-sbl-active) #main-view,body.cs4-sbl-active #main-view:not(:has(.lyrics-lyrics-container)){background:${bg}!important}
+div:has(> [data-testid="now-playing-bar"]),[data-testid="now-playing-bar"]{background:${play}!important}
+header[data-testid="topbar"],header[data-testid="topbar"] > :first-child{
+  background-image:none!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+header[data-testid="topbar"]{background-color:transparent!important}
+[data-testid="progress-bar"]{
+  --bg-color:${flatColor(progBg)}!important;--mg-color:${flatColor(progBg)}!important;
+  --fg-color:${flatColor(progFg)}!important;--is-active-fg-color:${adjustColor(flatColor(progFg),0.12)}!important;
+  --progress-bar-height:4px!important}
+[data-testid="volume-bar"] [data-testid="progress-bar"]{
+  --bg-color:${flatColor(volBg)}!important;--mg-color:${flatColor(volBg)}!important;
+  --fg-color:${flatColor(volFg)}!important;--is-active-fg-color:${adjustColor(flatColor(volFg),0.12)}!important}
+[data-testid="progress-bar-background"]{background-color:${flatColor(progBg)}!important;border-radius:2px!important}
+[data-testid="volume-bar"] [data-testid="progress-bar-background"]{background-color:${flatColor(volBg)}!important}
+[data-testid="volume-bar"] [data-testid="progress-bar-handle"]{background:${volFg}!important}
+[role="menu"]{background:${bgEl}!important}
+[role="menuitem"]:hover,[role="menuitem"]:focus,[role="menuitemcheckbox"]:hover,[role="menuitemradio"]:hover,
+[role="menuitem"]:hover *,[role="menuitem"]:focus *{background:${hl}!important}
+[role="row"][aria-rowindex]:hover{background:${hl}!important}
+[role="row"][aria-rowindex][aria-selected="true"]{background:${hlEl}!important}
+[role="row"][aria-rowindex]:hover [role="gridcell"] svg{color:${acc}!important;fill:${acc}!important}
+[data-testid="search-modal-input"]{background:${bgEl}!important;color:${t}!important;border:1.5px solid ${flatColor(hlEl)}!important;border-radius:500px!important}
+[data-testid="search-modal-input"]:focus{border-color:${acc}!important;box-shadow:0 0 0 2px ${acc}33!important;outline:none!important}
+[data-testid="search-modal-input"]::placeholder{color:${sub}!important;opacity:1!important}
+button[data-testid="play-button"],[role="div"],[data-testid="control-button-playpause"],
+.encore-bright-accent-set:has(> button[data-testid="play-button"]),.encore-bright-accent-set:has(button[data-testid="play-button"]){
+  --background-base:${pbtn}!important;--background-highlight:${pbtnHov}!important;--background-press:${pbtnHov}!important}
+button[data-testid="play-button"] .e-10860-button-primary__inner,
+[data-testid="control-button-playpause"] .e-10860-button-primary__inner,
+[role="div"] .e-10860-button-primary__inner{${bgShared(pbtnG)}!important;color:${pbtnText}!important}
+button[data-testid="play-button"]:hover .e-10860-button-primary__inner,
+button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
+[data-testid="control-button-playpause"]:hover .e-10860-button-primary__inner,
+[role="div"]:hover .e-10860-button-primary__inner{${bgShared(pbtnHovG)}!important;${hovExtra}}
+.e-10860-chip{background:${hl}!important;color:${t}!important}
+.e-10860-chip[aria-pressed="true"],.e-10860-chip[aria-checked="true"],.e-10860-chip[aria-selected="true"]{${bgShared(accG)}!important;color:${contrastColorSafe(accG)}!important}
 
 `;
+    return css.replace(/background-color:(linear-gradient\([^;{}]*\))/g, "background:$1");
   }
 
   function applyCSS(colors) { styleEl.textContent = buildCSS(colors); }
@@ -901,7 +1061,8 @@ input[class*="searchInput"]::placeholder,
   sblCheck();
   new MutationObserver(sblCheck).observe(document.body, { childList: true, subtree: true });
 
-  let _liveColors = loadColors();
+  let _rawColors  = loadColors();
+  let _liveColors = _rawColors;
 
   function isHomePage() {
     return !!(
@@ -911,9 +1072,10 @@ input[class*="searchInput"]::placeholder,
     );
   }
   const TOPBAR_SELS = [
+    "header[data-testid='topbar']",
+    "header[data-testid='topbar'] > :first-child",
     ".Root__top-bar",
     ".main-topBar-container",
-    ".main-topBar-background",
     "[data-testid='topbar-background']",
   ];
 
@@ -923,13 +1085,16 @@ input[class*="searchInput"]::placeholder,
   function applyTopBarColor(color) {
     if (_topBarWriting) return;
     _topBarWriting = true;
+    const grad = isGradientValue(color);
     TOPBAR_SELS.forEach(sel => {
       document.querySelectorAll(sel).forEach(el => {
         if (el.dataset.cs4Tbg === color) return;
         el.dataset.cs4Tbg = color;
-        el.style.setProperty("background-color", color, "important");
-        el.style.setProperty("background",       color, "important");
-        el.style.setProperty("background-image", "none", "important");
+        el.style.setProperty("background", color, "important");
+        if (!grad) {
+          el.style.setProperty("background-color", color, "important");
+          el.style.setProperty("background-image", "none", "important");
+        }
         el.style.setProperty("box-shadow",       "none", "important");
         el.style.setProperty("backdrop-filter",  "none", "important");
         el.style.setProperty("-webkit-backdrop-filter", "none", "important");
@@ -962,7 +1127,7 @@ input[class*="searchInput"]::placeholder,
   }
 
   function fixTopBarContent() {
-    document.querySelectorAll(".main-topBar-topbarContentContainer").forEach(el => {
+    document.querySelectorAll("header[data-testid='topbar'] > .contentSpacing, .main-topBar-topbarContentContainer").forEach(el => {
       const color = isHomePage() ? "" : "transparent";
       if (color) {
         el.style.setProperty("background-color", color, "important");
@@ -973,12 +1138,40 @@ input[class*="searchInput"]::placeholder,
   }
 
 
+  function playPalette() {
+    const pbtn = _liveColors.csPlayButton || _liveColors.csButton || "#1db954";
+    const hovMissing = !_liveColors.csPlayButtonHover;
+    return {
+      pbtn,
+      pbtnHov: _liveColors.csPlayButtonHover || adjustColorSafe(pbtn, 0.1),
+      pbtnText: contrastColorSafe(pbtn),
+      hovFilter: hovMissing && isGradientValue(pbtn),
+    };
+  }
+
+  // gradient = background shorthand, solid = background-color (and drop whatever we set before)
+  function paintBg(el, val) {
+    el.style.removeProperty("background");
+    el.style.removeProperty("background-image");
+    if (isGradientValue(val)) el.style.setProperty("background", val + " fixed", "important");
+    else el.style.setProperty("background-color", val, "important");
+  }
+  function clearBg(el) {
+    el.style.removeProperty("background");
+    el.style.removeProperty("background-image");
+    el.style.removeProperty("background-color");
+  }
+  function playHover(btn, on) {
+    const p = playPalette();
+    paintBg(btn, on ? p.pbtnHov : p.pbtn);
+    if (on && p.hovFilter) btn.style.setProperty("filter", "brightness(1.12)", "important");
+    else btn.style.removeProperty("filter");
+  }
+
   function fixPlayButtons() {
-    const pbtn      = _liveColors.csPlayButton     || _liveColors.csButton || "#1db954";
-    const pbtnHov   = _liveColors.csPlayButtonHover || adjustColor(pbtn, 0.1);
-    const pbtnText  = contrastColor(pbtn);
+    const { pbtn, pbtnText } = playPalette();
     document.querySelectorAll("[data-testid='control-button-playpause']").forEach(btn => {
-      btn.style.setProperty("background-color", pbtn, "important");
+      paintBg(btn, pbtn);
       btn.style.setProperty("color", pbtnText, "important");
       btn.style.setProperty("border-radius", "50%", "important");
       btn.querySelectorAll("svg,path,polygon").forEach(el => {
@@ -987,12 +1180,12 @@ input[class*="searchInput"]::placeholder,
       });
       if (!btn.dataset.cs4Hooked) {
         btn.dataset.cs4Hooked = "1";
-        btn.addEventListener("mouseenter", () => btn.style.setProperty("background-color", pbtnHov, "important"));
-        btn.addEventListener("mouseleave", () => btn.style.setProperty("background-color", pbtn, "important"));
+        btn.addEventListener("mouseenter", () => playHover(btn, true));
+        btn.addEventListener("mouseleave", () => playHover(btn, false));
       }
     });
 
-    document.querySelectorAll(".main-playButton-PlayButton,[data-testid='play-button']").forEach(btn => {
+    document.querySelectorAll("[role='div'],button[data-testid='play-button']").forEach(btn => {
       if (
         btn.closest("[class*='TrackListRow']") || btn.closest("[class*='tracklist-row']") ||
         btn.closest(".main-trackList-trackListRow") || btn.closest("[data-testid='tracklist-row']") ||
@@ -1005,19 +1198,20 @@ input[class*="searchInput"]::placeholder,
         el.style.setProperty("color", pbtnText, "important");
       });
       if (
+        btn.closest("[data-testid='action-bar']") || btn.closest("[data-testid='action-bar-row-actions']") ||
         btn.closest("[class*='actionBar']") || btn.closest("[class*='ActionBar']") ||
         btn.closest("[class*='entityHeader']") || btn.closest("[class*='EntityHeader']")
       ) {
-        btn.style.setProperty("background-color", pbtn, "important");
+        paintBg(btn, pbtn);
         btn.style.setProperty("border-radius", "50%", "important");
         if (!btn.dataset.cs4Hooked) {
           btn.dataset.cs4Hooked = "1";
-          btn.addEventListener("mouseenter", () => btn.style.setProperty("background-color", pbtnHov, "important"));
-          btn.addEventListener("mouseleave", () => btn.style.setProperty("background-color", pbtn, "important"));
+          btn.addEventListener("mouseenter", () => playHover(btn, true));
+          btn.addEventListener("mouseleave", () => playHover(btn, false));
         }
         return;
       }
-      btn.style.removeProperty("background-color");
+      clearBg(btn);
       btn.style.setProperty("border-radius", "50%", "important");
 
       if (!btn.dataset.cs4Hooked) {
@@ -1026,6 +1220,7 @@ input[class*="searchInput"]::placeholder,
           btn.closest(".main-card-card") ||
           btn.closest("[class*='CardComponent']") ||
           btn.closest("[data-testid='card-container']") ||
+          btn.closest(":has(> [data-testid='shortcut-background'])") ||
           btn.closest("[data-testid='shortcut']") ||
           btn.closest("[class*='shortcut']") ||
           btn.closest("[class*='Shortcut']") ||
@@ -1041,20 +1236,15 @@ input[class*="searchInput"]::placeholder,
         }
         if (!cardAnchor) cardAnchor = btn.parentElement;
         if (cardAnchor) {
-          const isShortcutCard = !!btn.closest(".kyJXPKlxWxJleoZlsuUa");
-          if (isShortcutCard) {
+          {
             btn.style.setProperty("opacity", "0", "important");
             cardAnchor.addEventListener("mouseenter", () => btn.style.setProperty("opacity", "1", "important"));
             cardAnchor.addEventListener("mouseleave", () => btn.style.setProperty("opacity", "0", "important"));
           }
-          cardAnchor.addEventListener("mouseenter", () => {
-            btn.style.setProperty("background-color", pbtn, "important");
-          });
-          cardAnchor.addEventListener("mouseleave", () => {
-            btn.style.removeProperty("background-color");
-          });
-          btn.addEventListener("mouseenter", () => btn.style.setProperty("background-color", pbtnHov, "important"));
-          btn.addEventListener("mouseleave", () => btn.style.setProperty("background-color", pbtn, "important"));
+          cardAnchor.addEventListener("mouseenter", () => paintBg(btn, playPalette().pbtn));
+          cardAnchor.addEventListener("mouseleave", () => { clearBg(btn); btn.style.removeProperty("filter"); });
+          btn.addEventListener("mouseenter", () => playHover(btn, true));
+          btn.addEventListener("mouseleave", () => playHover(btn, false));
         }
       }
     });
@@ -1066,6 +1256,7 @@ input[class*="searchInput"]::placeholder,
   // ===========================================================
 
   const FILTER_SELS = [
+    "[data-testid='home-page'] [role='group']:has(.e-10860-chip)",
     ".search-searchCategory-contentArea",
     "[class*='search-searchCategory-contentArea']",
   ];
@@ -1123,8 +1314,9 @@ input[class*="searchInput"]::placeholder,
   domObserver.observe(document.body, { childList: true, subtree: true, attributes: false });
 
   function applyColors(colors) {
+    _rawColors  = colors;
     _liveColors = colors;
-    applyCSS(colors);
+    applyCSS(_liveColors);
     setTimeout(runAllFixes, 50);
   }
 
@@ -1231,7 +1423,7 @@ input[class*="searchInput"]::placeholder,
       tabCloud:           "Cloud",
       tabSettings: "Settings",
       communityLabel:     "🌐 Enable community presets",
-      versionsLabel: "⚙️ App versions", versionsCopyBtn: "Copy", versionsCopyTitle: "Copy Spotify / Spicetify / ChromaShift versions", versionsCopied: "Versions copied to clipboard", undoTitle: "Undo", redoTitle: "Redo",
+      versionsLabel: "⚙️ App versions", versionsCopyBtn: "Copy", versionsCopyTitle: "Copy Spotify / Spicetify / ChromaShift versions", versionsCopied: "Versions copied to clipboard", undoTitle: "Undo", redoTitle: "Redo", gradientTitle: "Gradient", gradientRemoveBtn: "Solid color", gradientTag: "Gradient", gradientAddBtn: "+ Color",
       communityNoneFound: "No community presets found.",
       cloud: {
         title:         "Cloud Sync",
@@ -1302,7 +1494,7 @@ input[class*="searchInput"]::placeholder,
       tabCloud:           "Cloud",
       tabSettings: "Settings",
       communityLabel:     "🌐 Enable community presets",
-      versionsLabel: "⚙️ App versions", versionsCopyBtn: "Copy", versionsCopyTitle: "Copy Spotify / Spicetify / ChromaShift versions", versionsCopied: "Versions copied to clipboard", undoTitle: "Undo", redoTitle: "Redo",
+      versionsLabel: "⚙️ App versions", versionsCopyBtn: "Copy", versionsCopyTitle: "Copy Spotify / Spicetify / ChromaShift versions", versionsCopied: "Versions copied to clipboard", undoTitle: "Undo", redoTitle: "Redo", gradientTitle: "Gradient", gradientRemoveBtn: "Solid color", gradientTag: "Gradient", gradientAddBtn: "+ Color",
       communityNoneFound: "No community presets found.",
       cloud: {
         title:         "Cloud Sync",
@@ -1373,7 +1565,7 @@ input[class*="searchInput"]::placeholder,
       tabCloud:           "Cloud",
       tabSettings: "Impostazioni",
       communityLabel:     "🌐 Abilita preset della community",
-      versionsLabel: "⚙️ Versioni app", versionsCopyBtn: "Copia", versionsCopyTitle: "Copia versioni Spotify / Spicetify / ChromaShift", versionsCopied: "Versioni copiate negli appunti", undoTitle: "Annulla", redoTitle: "Ripeti",
+      versionsLabel: "⚙️ Versioni app", versionsCopyBtn: "Copia", versionsCopyTitle: "Copia versioni Spotify / Spicetify / ChromaShift", versionsCopied: "Versioni copiate negli appunti", undoTitle: "Annulla", redoTitle: "Ripeti", gradientTitle: "Gradiente", gradientRemoveBtn: "Colore pieno", gradientTag: "Gradiente", gradientAddBtn: "+ Colore",
       communityNoneFound: "Nessun preset community trovato.",
       cloud: {
         title:         "Sincronizzazione Cloud",
@@ -1444,7 +1636,7 @@ input[class*="searchInput"]::placeholder,
       tabCloud:           "Cloud",
       tabSettings: "Einstellungen",
       communityLabel:     "🌐 Community-Presets aktivieren",
-      versionsLabel: "⚙️ App-Versionen", versionsCopyBtn: "Kopieren", versionsCopyTitle: "Spotify-/Spicetify-/ChromaShift-Versionen kopieren", versionsCopied: "Versionen in die Zwischenablage kopiert", undoTitle: "Rückgängig", redoTitle: "Wiederholen",
+      versionsLabel: "⚙️ App-Versionen", versionsCopyBtn: "Kopieren", versionsCopyTitle: "Spotify-/Spicetify-/ChromaShift-Versionen kopieren", versionsCopied: "Versionen in die Zwischenablage kopiert", undoTitle: "Rückgängig", redoTitle: "Wiederholen", gradientTitle: "Verlauf", gradientRemoveBtn: "Vollfarbe", gradientTag: "Verlauf", gradientAddBtn: "+ Farbe",
       communityNoneFound: "Keine Community-Presets gefunden.",
       cloud: {
         title:         "Cloud-Synchronisation",
@@ -1515,7 +1707,7 @@ input[class*="searchInput"]::placeholder,
       tabCloud:           "Cloud",
       tabSettings: "Paramètres",
       communityLabel:     "🌐 Activer les préréglages communautaires",
-      versionsLabel: "⚙️ Versions de l'app", versionsCopyBtn: "Copier", versionsCopyTitle: "Copier les versions Spotify / Spicetify / ChromaShift", versionsCopied: "Versions copiées dans le presse-papiers", undoTitle: "Annuler", redoTitle: "Rétablir",
+      versionsLabel: "⚙️ Versions de l'app", versionsCopyBtn: "Copier", versionsCopyTitle: "Copier les versions Spotify / Spicetify / ChromaShift", versionsCopied: "Versions copiées dans le presse-papiers", undoTitle: "Annuler", redoTitle: "Rétablir", gradientTitle: "Dégradé", gradientRemoveBtn: "Couleur unie", gradientTag: "Dégradé", gradientAddBtn: "+ Couleur",
       communityNoneFound: "Aucun préréglage communautaire trouvé.",
       cloud: {
         title:         "Synchronisation Cloud",
@@ -1586,7 +1778,7 @@ input[class*="searchInput"]::placeholder,
       tabCloud:           "Cloud",
       tabSettings: "Ajustes",
       communityLabel:     "🌐 Activar preajustes de la comunidad",
-      versionsLabel: "⚙️ Versiones de la app", versionsCopyBtn: "Copiar", versionsCopyTitle: "Copiar versiones de Spotify / Spicetify / ChromaShift", versionsCopied: "Versiones copiadas al portapapeles", undoTitle: "Deshacer", redoTitle: "Rehacer",
+      versionsLabel: "⚙️ Versiones de la app", versionsCopyBtn: "Copiar", versionsCopyTitle: "Copiar versiones de Spotify / Spicetify / ChromaShift", versionsCopied: "Versiones copiadas al portapapeles", undoTitle: "Deshacer", redoTitle: "Rehacer", gradientTitle: "Degradado", gradientRemoveBtn: "Color sólido", gradientTag: "Degradado", gradientAddBtn: "+ Color",
       communityNoneFound: "No se encontraron preajustes de la comunidad.",
       cloud: {
         title:         "Sincronización en la nube",
@@ -1657,7 +1849,7 @@ input[class*="searchInput"]::placeholder,
       tabCloud:           "Хмара",
       tabSettings: "Налаштування",
       communityLabel:     "🌐 Увімкнути пресети спільноти",
-      versionsLabel: "⚙️ Версії застосунку", versionsCopyBtn: "Копіювати", versionsCopyTitle: "Копіювати версії Spotify / Spicetify / ChromaShift", versionsCopied: "Версії скопійовано в буфер обміну", undoTitle: "Скасувати", redoTitle: "Повторити",
+      versionsLabel: "⚙️ Версії застосунку", versionsCopyBtn: "Копіювати", versionsCopyTitle: "Копіювати версії Spotify / Spicetify / ChromaShift", versionsCopied: "Версії скопійовано в буфер обміну", undoTitle: "Скасувати", redoTitle: "Повторити", gradientTitle: "Градієнт", gradientRemoveBtn: "Суцільний колір", gradientTag: "Градієнт", gradientAddBtn: "+ Колір",
       communityNoneFound: "Пресети спільноти не знайдено.",
       cloud: {
         title:         "Хмарна синхронізація",
@@ -1728,7 +1920,7 @@ input[class*="searchInput"]::placeholder,
       tabCloud:           "Облако",
       tabSettings: "Настройки",
       communityLabel:     "🌐 Включить пресеты сообщества",
-      versionsLabel: "⚙️ Версии приложений", versionsCopyBtn: "Копировать", versionsCopyTitle: "Скопировать версии Spotify / Spicetify / ChromaShift", versionsCopied: "Версии скопированы в буфер обмена", undoTitle: "Отменить", redoTitle: "Повторить",
+      versionsLabel: "⚙️ Версии приложений", versionsCopyBtn: "Копировать", versionsCopyTitle: "Скопировать версии Spotify / Spicetify / ChromaShift", versionsCopied: "Версии скопированы в буфер обмена", undoTitle: "Отменить", redoTitle: "Повторить", gradientTitle: "Градиент", gradientRemoveBtn: "Сплошной цвет", gradientTag: "Градиент", gradientAddBtn: "+ Цвет",
       communityNoneFound: "Пресеты сообщества не найдены.",
       cloud: {
         title:         "Облачная синхронизация",
@@ -1799,7 +1991,7 @@ input[class*="searchInput"]::placeholder,
       tabCloud:           "云端",
       tabSettings: "设置",
       communityLabel:     "🌐 启用社区预设",
-      versionsLabel: "⚙️ 应用版本", versionsCopyBtn: "复制", versionsCopyTitle: "复制 Spotify / Spicetify / ChromaShift 版本", versionsCopied: "版本已复制到剪贴板", undoTitle: "撤销", redoTitle: "重做",
+      versionsLabel: "⚙️ 应用版本", versionsCopyBtn: "复制", versionsCopyTitle: "复制 Spotify / Spicetify / ChromaShift 版本", versionsCopied: "版本已复制到剪贴板", undoTitle: "撤销", redoTitle: "重做", gradientTitle: "渐变", gradientRemoveBtn: "纯色", gradientTag: "渐变", gradientAddBtn: "+ 颜色",
       communityNoneFound: "未找到社区预设。",
       cloud: {
         title:         "云端同步",
@@ -1841,7 +2033,7 @@ input[class*="searchInput"]::placeholder,
   function renderUI(container) {
     container.innerHTML = "";
 
-    const c      = _liveColors;
+    const c      = flattenGradients(_liveColors);
     const acc    = c.csAccent            || "#1db954";
     const bg     = c.csMain              || "#121212";
     const bgEl   = c.csMainElevated      || "#1a1a1a";
@@ -1954,6 +2146,27 @@ input[class*="searchInput"]::placeholder,
 .cs4-sl-track{flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;outline:none;cursor:pointer}
 .cs4-sl-track::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;background:${acc};cursor:pointer;border:2px solid ${bgEl};box-shadow:0 0 6px ${accGlo}}
 .cs4-sl-val{font-size:11px;font-family:'Courier New',monospace;color:${txt};width:26px;text-align:right;flex-shrink:0}
+.cs4-gr-btn{width:30px;height:26px;padding:0;border-radius:7px;border:1.5px solid ${hlEl};background:${bgEl};color:${sub};cursor:pointer;transition:all .14s;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center}
+.cs4-gr-btn:hover{background:${hl};color:${txt};border-color:${acc}}
+.cs4-gr-btn.cs4-gr-active{border-color:${acc};color:${acc}}
+.cs4-gr-popup{width:280px}
+.cs4-gr-preview{height:34px;border-radius:9px;margin-bottom:14px;border:1px solid ${hlEl}}
+.cs4-gr-track{background:${hlEl}}
+.cs4-gr-chips{display:flex;gap:5px;margin:2px 0 14px}
+.cs4-gr-chip{flex:1;padding:5px 0;border-radius:6px;border:1.5px solid ${hlEl};background:${bgEl};color:${sub};font:700 10px 'Courier New',monospace;cursor:pointer;transition:all .14s}
+.cs4-gr-chip:hover{background:${hl};color:${txt}}
+.cs4-gr-chip.cs4-on{border-color:${acc};color:${acc}}
+.cs4-gr-stop{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.cs4-gr-stop input[type="color"]{-webkit-appearance:none;appearance:none;width:32px;height:26px;border:1.5px solid ${hlEl};border-radius:7px;background:none;padding:0;cursor:pointer;flex-shrink:0}
+.cs4-gr-stop input[type="color"]::-webkit-color-swatch-wrapper{padding:2px}
+.cs4-gr-stop input[type="color"]::-webkit-color-swatch{border:none;border-radius:4px}
+.cs4-gr-stop .cs4-sl-val{width:34px}
+.cs4-gr-x{width:22px;height:22px;border-radius:6px;border:none;background:transparent;color:${sub};font-size:16px;line-height:1;cursor:pointer;flex-shrink:0;transition:all .14s}
+.cs4-gr-x:hover:not(:disabled){background:${hl};color:${txt}}
+.cs4-gr-x:disabled{opacity:.25;cursor:default}
+.cs4-gr-foot{display:flex;gap:8px;margin-top:6px}
+.cs4-gr-foot .cs4-btn{flex:1;justify-content:center;font-size:11px;padding:8px 10px}
+.cs4-gr-foot .cs4-btn:disabled{opacity:.35;cursor:default}
 .cs4-lang-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:18px}
 .cs4-lang-label{font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:${sub};margin-right:4px}
 .cs4-lang-btn{background:${hl};border:1.5px solid transparent;border-radius:8px;padding:5px 8px;font-size:18px;cursor:pointer;transition:all .14s;line-height:1}
@@ -2028,7 +2241,7 @@ input[class*="searchInput"]::placeholder,
   </div>
   <div class="cs4-community-row" style="margin-top:12px;">
     <span class="cs4-community-label" id="cs4-versions-label">${tr.versionsLabel}</span>
-    <button class="cs4-btn" id="cs4-versions-copy-btn" title="${tr.versionsCopyTitle}">${tr.versionsCopyBtn}</button>
+    <button class="cs4-btn cs4-btn-primary" id="cs4-versions-copy-btn" title="${tr.versionsCopyTitle}">${tr.versionsCopyBtn}</button>
   </div>
 </div>
 <div class="cs4-footer">
@@ -2197,23 +2410,26 @@ input[class*="searchInput"]::placeholder,
 
         COLOR_DEFS.filter(d => d.group === group).forEach(def => {
           const val = editColors[def.key] || "#000000";
+          const canGradient = GRADIENT_KEYS.has(def.key);
           const row = document.createElement("div");
           row.className = "cs4-color-row";
           row.dataset.key = def.key;
           row.innerHTML = `
             <div class="cs4-color-circle" style="background:${val}">
-              <input type="color" value="${val}" data-key="${def.key}">
+              <input type="color" value="#000000" data-key="${def.key}">
             </div>
             <div class="cs4-color-lbl">${t().colorLabels[def.labelKey] || def.labelKey}</div>
-            <input class="cs4-hex" value="${val}" maxlength="7" spellcheck="false" data-key="${def.key}">
+            <input class="cs4-hex" value="" maxlength="7" spellcheck="false" data-key="${def.key}">
             <button class="cs4-sl-btn" data-slkey="${def.key}" title="Slider HSL">HSL</button>
+            ${canGradient ? `<button class="cs4-gr-btn" data-grkey="${def.key}"></button>` : ""}
           `;
 
           const picker  = row.querySelector("input[type='color']");
           const circle  = row.querySelector(".cs4-color-circle");
           const hexInp  = row.querySelector(".cs4-hex");
           const slBtn   = row.querySelector(".cs4-sl-btn");
-          pickerRefs[def.key] = { picker, circle, hexInp, row };
+          const grBtn   = row.querySelector(".cs4-gr-btn");
+          pickerRefs[def.key] = { picker, circle, hexInp, slBtn, grBtn, row };
 
           function setColor(v) {
             editColors[def.key] = v;
@@ -2233,7 +2449,9 @@ input[class*="searchInput"]::placeholder,
             else hexInp.classList.add("cs4-invalid");
           });
           hexInp.addEventListener("blur", e => {
-            if (!isValidHex(e.target.value)) { hexInp.value = editColors[def.key] || "#000000"; hexInp.classList.remove("cs4-invalid"); }
+            if (!isValidHex(e.target.value) && !isGradientValue(editColors[def.key])) {
+              hexInp.value = editColors[def.key] || "#000000"; hexInp.classList.remove("cs4-invalid");
+            }
           });
           hexInp.addEventListener("change", e => {
             if (isValidHex(e.target.value)) pushHistory();
@@ -2243,6 +2461,13 @@ input[class*="searchInput"]::placeholder,
             e.stopPropagation();
             openSlider(def.key, slBtn);
           });
+
+          if (grBtn) {
+            grBtn.addEventListener("click", async e => {
+              e.stopPropagation();
+              openGradient(def.key, grBtn);
+            });
+          }
 
           grid.appendChild(row);
         });
@@ -2255,10 +2480,28 @@ input[class*="searchInput"]::placeholder,
         const v = editColors[def.key] || "#000000";
         const r = pickerRefs[def.key];
         if (!r) return;
-        r.picker.value = v;
+        const grad = isGradientValue(v);
         r.circle.style.background = v;
-        r.hexInp.value = v;
         r.hexInp.classList.remove("cs4-invalid");
+        if (grad) {
+          r.hexInp.value = "";
+          r.hexInp.disabled = true;
+          r.hexInp.placeholder = t().gradientTag || "";
+          r.picker.style.visibility = "hidden";
+          if (r.slBtn) r.slBtn.disabled = true;
+        } else {
+          r.picker.value = v;
+          r.picker.style.visibility = "visible";
+          r.hexInp.disabled = false;
+          r.hexInp.placeholder = "";
+          r.hexInp.value = v;
+          if (r.slBtn) r.slBtn.disabled = false;
+        }
+        if (r.grBtn) {
+          r.grBtn.innerHTML = ICON_GRAD;
+          r.grBtn.title = t().gradientTitle;
+          r.grBtn.classList.toggle("cs4-gr-active", grad);
+        }
       });
     }
     function openSlider(key, anchor) {
@@ -2333,7 +2576,144 @@ input[class*="searchInput"]::placeholder,
       }, 50);
     }
 
+    function openGradient(key, anchor) {
+      if (activeSliderPop) { activeSliderPop.remove(); activeSliderPop = null; }
+      const current = editColors[key];
+      const g = parseGradientValue(current, isGradientValue(current) ? null : current);
+      let angle = g.angle;
+      const stops = g.stops.map(x => ({ ...x }));
+      const r = pickerRefs[key];
+      const defLabel = t().colorLabels[COLOR_DEFS.find(d => d.key === key)?.labelKey] || key;
+      const ANGLES = [0, 45, 90, 135, 180, 270];
+
+      const pop = document.createElement("div");
+      pop.className = "cs4-sl-popup cs4-gr-popup";
+      pop.innerHTML = `
+        <div class="cs4-sl-title">${defLabel} · ${t().gradientTag}</div>
+        <div class="cs4-gr-preview"></div>
+        <div class="cs4-sl-row">
+          <span class="cs4-sl-name">∠</span>
+          <input class="cs4-sl-track cs4-gr-track" data-angle type="range" min="0" max="360" value="${angle}">
+          <span class="cs4-sl-val cs4-gr-angval" style="width:34px">${angle}°</span>
+        </div>
+        <div class="cs4-gr-chips">${ANGLES.map(a => `<button class="cs4-gr-chip" data-a="${a}">${a}°</button>`).join("")}</div>
+        <div class="cs4-gr-stops"></div>
+        <div class="cs4-gr-foot">
+          <button class="cs4-btn cs4-btn-secondary" data-add>${t().gradientAddBtn}</button>
+          <button class="cs4-btn cs4-btn-secondary" data-solid>${t().gradientRemoveBtn}</button>
+        </div>
+      `;
+      document.body.appendChild(pop);
+      activeSliderPop = pop;
+
+      const preview  = pop.querySelector(".cs4-gr-preview");
+      const angInp   = pop.querySelector("[data-angle]");
+      const angVal   = pop.querySelector(".cs4-gr-angval");
+      const stopsBox = pop.querySelector(".cs4-gr-stops");
+      const addBtn   = pop.querySelector("[data-add]");
+      const chips    = [...pop.querySelectorAll(".cs4-gr-chip")];
+
+      function place() {
+        const rect = anchor.getBoundingClientRect();
+        pop.style.top  = Math.max(8, Math.min(rect.bottom + 8, window.innerHeight - pop.offsetHeight - 12)) + "px";
+        pop.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - pop.offsetWidth - 12)) + "px";
+      }
+
+      function paintPreview() {
+        const val = makeGradientValue(angle, stops);
+        preview.style.background = val;
+        angVal.textContent = angle + "°";
+        chips.forEach(c => c.classList.toggle("cs4-on", +c.dataset.a === angle));
+        return val;
+      }
+      function apply() {
+        const val = paintPreview();
+        editColors[key] = val;
+        applyColors(editColors);
+        syncPickers();
+      }
+
+      function renderStops() {
+        stopsBox.innerHTML = stops.map((x, i) => `
+          <div class="cs4-gr-stop">
+            <input type="color" value="${x.color}" data-c="${i}">
+            <input class="cs4-sl-track cs4-gr-track" type="range" min="0" max="100" value="${x.pos}" data-p="${i}">
+            <span class="cs4-sl-val" data-pv="${i}">${x.pos}%</span>
+            <button class="cs4-gr-x" data-x="${i}" ${stops.length <= 2 ? "disabled" : ""}>×</button>
+          </div>`).join("");
+        stopsBox.querySelectorAll("[data-c]").forEach(inp => {
+          inp.addEventListener("input", () => { stops[+inp.dataset.c].color = inp.value; apply(); });
+          inp.addEventListener("change", () => pushHistory());
+        });
+        stopsBox.querySelectorAll("[data-p]").forEach(inp => {
+          inp.addEventListener("input", () => {
+            const i = +inp.dataset.p;
+            stops[i].pos = +inp.value;
+            stopsBox.querySelector(`[data-pv="${i}"]`).textContent = inp.value + "%";
+            apply();
+          });
+          inp.addEventListener("change", () => pushHistory());
+        });
+        stopsBox.querySelectorAll("[data-x]").forEach(btn => {
+          btn.addEventListener("click", () => {
+            if (stops.length <= 2) return;
+            stops.splice(+btn.dataset.x, 1);
+            renderStops(); apply(); pushHistory(); place();
+          });
+        });
+        addBtn.disabled = stops.length >= MAX_STOPS;
+      }
+
+      angInp.addEventListener("input", () => { angle = +angInp.value; apply(); });
+      angInp.addEventListener("change", () => pushHistory());
+      chips.forEach(c => c.addEventListener("click", () => {
+        angle = +c.dataset.a; angInp.value = angle; apply(); pushHistory();
+      }));
+
+      addBtn.addEventListener("click", () => {
+        if (stops.length >= MAX_STOPS) return;
+        const sorted = [...stops].sort((a, b) => a.pos - b.pos);
+        let gi = 0, gw = -1;
+        for (let i = 0; i < sorted.length - 1; i++) {
+          const w = sorted[i + 1].pos - sorted[i].pos;
+          if (w > gw) { gw = w; gi = i; }
+        }
+        const a = sorted[gi], b = sorted[gi + 1];
+        stops.push({ color: mixHex(a.color, b.color), pos: Math.round((a.pos + b.pos) / 2) });
+        stops.sort((x, y) => x.pos - y.pos);
+        renderStops(); apply(); pushHistory(); place();
+      });
+
+      pop.querySelector("[data-solid]").addEventListener("click", () => {
+        if (isGradientValue(editColors[key])) {
+          editColors[key] = [...stops].sort((a, b) => a.pos - b.pos)[0].color;
+          applyColors(editColors);
+          pushHistory();
+        }
+        pop.remove(); activeSliderPop = null;
+        syncPickers();
+      });
+
+      renderStops();
+      paintPreview();
+      place();
+
+      setTimeout(() => {
+        function close(e) {
+          if (activeSliderPop !== pop) { document.removeEventListener("click", close); return; }
+          const path = e.composedPath ? e.composedPath() : [];
+          if (!path.includes(pop) && !path.includes(anchor)) {
+            pop.remove(); activeSliderPop = null;
+            document.removeEventListener("click", close);
+            syncPickers();
+          }
+        }
+        document.addEventListener("click", close);
+      }, 50);
+    }
+
     buildEditor();
+    syncPickers();
     buildCloudPanel();
 
 
@@ -2508,7 +2888,7 @@ input[class*="searchInput"]::placeholder,
   // AUTO-UPDATER
   // ===========================================================
 
-  const CURRENT_VERSION  = "3.3.4";
+  const CURRENT_VERSION  = "3.4.0";
   const RELEASES_API     = "https://api.github.com/repos/stefaceriani/chromashift/releases/latest";
   const RELEASES_PAGE    = "https://github.com/stefaceriani/chromashift/releases";
   const UPDATE_INTERVAL  = 60 * 60 * 1000;
