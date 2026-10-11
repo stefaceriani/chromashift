@@ -12,10 +12,12 @@ If Chromashift doesn't work first check our [status page](https://status.chromas
 |---|---|
 | **7 Presets** | Spotify Default, Midnight Blue, Rose Gold, Forest, Cyberpunk, Monochrome, Light Mode |
 | **13+ color variables** | Text, subtext, backgrounds, highlights, accent, buttons, sidebar, player, cards, notifications |
+| **Gradient Support** (BETA) | Now, one or more gradients can be assigned to each variable. |
 | **Live preview** | Colors update instantly as you move the picker |
 | **Full override** | Overrides both legacy `--spice-*` and modern `--encore-*` Spotify tokens |
 | **Persistent** | Colors are saved via `Spicetify.LocalStorage` and applied on every launch |
-| **Export / Import** | Share your theme as a `.json` file |
+| **Scheduled Theme** | You can now set the theme to change at specific times of the day. |
+| **Export / Import** | Share your theme as a `.json` file (Cloud dashboard) |
 | **AutoUpdater Checker** | Extension auto check new updates and notify you |
 | **Language Traslator** | Available language: 🇬🇧 / 🇺🇸 / 🇮🇹 / 🇩🇪 / 🇫🇷 / 🇪🇸 / 🇷🇺 / 🇨🇳
 | **Online Cloud** | https://chromashift.qzz.io (only after login/register) |
