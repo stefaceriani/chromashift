@@ -4,17 +4,13 @@
 
 | Version    | Supported | Notes              |
 | ---------- | --------- | ------------------ |
-| 3.4.0      | ✅         | Fully supported    |
+| 3.4.1      | ✅         | Fully supported    |
+| 3.4.0      | ❌         | Outdated, not safe |
 | 3.3.4      | ❌         | Outdated, not safe |
 | 3.3.3-beta | ❌         | Outdated, not safe |
 | 3.2.44     | ❌         | Outdated, not safe |
 | 3.2.43-beta| ❌         | Outdated, not safe |
-| 3.2.0      | ❌         | Outdated, not safe |
-| 3.1.2      | ❌         | Outdated, not safe |
-| 3.0.0      | ❌         | Outdated, not safe |
-| 2.5.3      | ❌         | Outdated, not safe |
-| 2.0.0      | ❌         | Outdated, not safe |
-| 1.0.0      | ❌         | Outdated, not safe |
+| < 3.2.0    | ❌         | Outdated, not safe |
 
 ## 🛡️ Reporting a Vulnerability
 
