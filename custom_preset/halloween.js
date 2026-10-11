@@ -1,6 +1,6 @@
 // PRESET NAME: 👻 Halloween
 // REQUESTED BY: @stefaceriani
-// CS VERSION: 3.3.4
+// CS VERSION: 3.4.1
 // PRESET VERSION: 1.0.1
 
 halloween: {
