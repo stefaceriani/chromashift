@@ -7,9 +7,12 @@ on:
       - chromashift.js
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
   purge:
     runs-on: ubuntu-latest
+    permissions: {}
     steps:
       - name: Purge chromashift.js
         run: |
