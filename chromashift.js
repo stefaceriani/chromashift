@@ -1,7 +1,7 @@
 // NAME: ChromaShift
 // AUTHOR: stefaceriani
 // DESCRIPTION: Customise every Spotify colour from the Settings page.
-// VERSION: 3.4.0
+// VERSION: 3.4.1
 
 (function ChromaShift() {
   "use strict";
@@ -178,13 +178,15 @@
     light: {
       name: "Light Mode", emoji: "☀️", builtin: true,
       colors: {
-        csText: "#000000", csSubtext: "#6a6a6a",
-        csMain: "#ffffff", csMainElevated: "#f0f0f0",
-        csHighlight: "#e0e0e0", csHighlightElevated: "#cccccc",
-        csAccent: "#1db954", csPlayButton: "#1db954", csPlayButtonHover: "#1ed760",
-        csButtonDisabled: "#aaaaaa", csSidebar: "#f5f5f5",
-        csPlayer: "#ffffff", csCard: "#f8f8f8", csCardHover: "#ebebeb",
-        csNotification: "#3d91f4", csNotificationText: "#000000", csProgressBg: "#cccccc", csProgressFg: "#1db954", csVolumeBg: "#cccccc", csVolumeFg: "#1db954",
+        csText: "#121212", csSubtext: "#5e5e5e",
+        csMain: "#fafafa", csMainElevated: "#ffffff",
+        csHighlight: "#e8e8e8", csHighlightElevated: "#dcdcdc",
+        csAccent: "#14893f", csPlayButton: "#1db954", csPlayButtonHover: "#17a34a",
+        csButtonDisabled: "#b8b8b8", csSidebar: "#efefef",
+        csPlayer: "#f2f2f2", csCard: "#ffffff", csCardHover: "#ededed",
+        csNotification: "#3d91f4", csNotificationText: "#000000",
+        csProgressBg: "#d4d4d4", csProgressFg: "#1db954",
+        csVolumeBg: "#d4d4d4", csVolumeFg: "#1db954",
       },
     },
   };
@@ -277,6 +279,7 @@
   const KEY_PRESET         = "cs4_preset";
   const KEY_CUSTOM_PRESETS    = "cs4_custom_presets";
   const KEY_COMMUNITY_ENABLED = "cs4_community_enabled";
+  const KEY_GRADIENTS_ENABLED = "cs4_gradients_enabled";
   const KEY_COMMUNITY_PRESETS = "cs4_community_presets";
 
   const COMMUNITY_BASE        = "https://cdn.jsdelivr.net/gh/stefaceriani/chromashift@main/custom_preset";
@@ -415,6 +418,14 @@
     return Spicetify.LocalStorage.get(KEY_COMMUNITY_ENABLED) === "1";
   }
 
+  function isGradientsEnabled() {
+    return Spicetify.LocalStorage.get(KEY_GRADIENTS_ENABLED) === "1";
+  }
+
+  function setGradientsEnabled(val) {
+    Spicetify.LocalStorage.set(KEY_GRADIENTS_ENABLED, val ? "1" : "0");
+  }
+
   function setCommunityEnabled(val) {
     Spicetify.LocalStorage.set(KEY_COMMUNITY_ENABLED, val ? "1" : "0");
   }
@@ -542,18 +553,19 @@
     // Gradient text: paint the gradient through the glyphs (background-clip:text)
     const textGrad = isGradientValue(tG) || isGradientValue(subG);
     const textPaint = v => isGradientValue(v)
-      ? `background-image:${v}!important;background-attachment:fixed!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important;color:transparent!important;`
+      ? `background-image:${v}!important;background-repeat:no-repeat!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important;color:transparent!important;`
       : (textGrad
           ? `background-image:none!important;-webkit-text-fill-color:${v}!important;color:${v}!important;`
           : `color:${v}!important;`);
 
     // Extra rules that only exist when the matching colour is a gradient
+    const textSafe = ":not(button):not(input):not(textarea):not(select):not(:has(svg,img,button,input))";
     const gradTextExtra = textGrad ? `
-[class*="encore-internal-color-text-base"]{${textPaint(tG)}}
-[class*="encore-internal-color-text-subdued"]{${textPaint(subG)}}
+[class*="encore-internal-color-text-base"]${textSafe}{${textPaint(tG)}}
+[class*="encore-internal-color-text-subdued"]${textSafe}{${textPaint(subG)}}
 ` : "";
     const accGradCss = accGrad ? `
-[class*="encore-internal-color-text-bright-accent"],[class*="encore-text-bright-accent"]{${textPaint(accG)}}
+[class*="encore-internal-color-text-bright-accent"]${textSafe},[class*="encore-text-bright-accent"]${textSafe}{${textPaint(accG)}}
 ` : "";
     const notifTextGradCss = isGradientValue(notifTextG) ? `
 .notistack-Snackbar [data-encore-id="text"],
@@ -573,16 +585,16 @@
 :root,.Root__top-bar,.Root__nav-bar,.Root__main-view,.Root__now-playing-bar,
 .Root__globalNav,.main-view-container,[class*="main-view"],[class*="Root__"]{
   --spice-text:${t}!important;--spice-subtext:${sub}!important;
-  --spice-extratext:${sub}!important;--spice-main:${bg}!important;
-  --spice-main-elevated:${bgEl}!important;--spice-main-transition:${bg}!important;
-  --spice-highlight:${hl}!important;--spice-highlight-elevated:${hlEl}!important;
-  --background-highlight:${hl}!important;
-  --spice-sidebar:${side}!important;--spice-player:${play}!important;
-  --spice-card:${card}!important;--spice-button:${btn}!important;
+  --spice-extratext:${sub}!important;--spice-main:${flatColor(bg)}!important;
+  --spice-main-elevated:${flatColor(bgEl)}!important;--spice-main-transition:${flatColor(bg)}!important;
+  --spice-highlight:${flatColor(hl)}!important;--spice-highlight-elevated:${flatColor(hlEl)}!important;
+  --background-highlight:${flatColor(hl)}!important;
+  --spice-sidebar:${flatColor(side)}!important;--spice-player:${flatColor(play)}!important;
+  --spice-card:${flatColor(card)}!important;--spice-button:${btn}!important;
   --spice-button-active:${btnActive}!important;--spice-button-disabled:${btnD}!important;
   --spice-accent:${acc}!important;--spice-accent-active:${accActive}!important;
-  --spice-tab-active:${side}!important;--spice-notification:${notif}!important;
-  --spice-notification-error:#e5534b!important;--spice-misc:${hl}!important;
+  --spice-tab-active:${flatColor(side)}!important;--spice-notification:${notif}!important;
+  --spice-notification-error:#e5534b!important;--spice-misc:${flatColor(hl)}!important;
   --spice-shadow:rgba(0,0,0,.5)!important;
   --spice-rgb-text:${hexToRgb(t)}!important;--spice-rgb-subtext:${hexToRgb(sub)}!important;
   --spice-rgb-main:${hexToRgbSafe(bg)}!important;--spice-rgb-main-elevated:${hexToRgbSafe(bgEl)}!important;
@@ -593,7 +605,7 @@
   --spice-rgb-accent:${hexToRgb(acc)}!important;--spice-rgb-notification:${hexToRgb(notif)}!important;
 }
 .encore-dark-theme{
-  --background-highlight:${hl}!important;
+  --background-highlight:${flatColor(hl)}!important;
 }
 .encore-bright-accent-set[class*="playButton"],
 .encore-bright-accent-set[class*="PlayButton"],
@@ -612,15 +624,15 @@
   --encore-base-color-text-warning:#e8740c!important;
   --encore-base-color-text-positive:${acc}!important;
   --encore-base-color-text-announcement:${notif}!important;
-  --encore-base-color-background-base:${bg}!important;
-  --encore-base-color-background-highlight:${hl}!important;
+  --encore-base-color-background-base:${flatColor(bg)}!important;
+  --encore-base-color-background-highlight:${flatColor(hl)}!important;
   --encore-base-color-background-press:${bgPress}!important;
-  --encore-base-color-background-elevated-base:${bgEl}!important;
-  --encore-base-color-background-elevated-highlight:${hlEl}!important;
+  --encore-base-color-background-elevated-base:${flatColor(bgEl)}!important;
+  --encore-base-color-background-elevated-highlight:${flatColor(hlEl)}!important;
   --encore-base-color-background-tinted-base:${bgTinted}!important;
   --encore-base-color-background-tinted-highlight:${bgTintedHl}!important;
-  --encore-base-color-background-unsafe-for-small-text-base:${bg}!important;
-  --encore-base-color-background-unsafe-for-small-text-highlight:${hl}!important;
+  --encore-base-color-background-unsafe-for-small-text-base:${flatColor(bg)}!important;
+  --encore-base-color-background-unsafe-for-small-text-highlight:${flatColor(hl)}!important;
   --encore-base-color-essential-base:${t}!important;
   --encore-base-color-essential-subdued:${sub}!important;
   --encore-base-color-essential-bright-accent:${acc}!important;
@@ -637,11 +649,11 @@
   --encore-color-text-positive:${acc}!important;
   --encore-color-text-warning:#e8740c!important;
   --encore-color-text-announcement:${notif}!important;
-  --encore-color-background-base:${bg}!important;
-  --encore-color-background-highlight:${hl}!important;
+  --encore-color-background-base:${flatColor(bg)}!important;
+  --encore-color-background-highlight:${flatColor(hl)}!important;
   --encore-color-background-press:${bgPress}!important;
-  --encore-color-background-elevated-base:${bgEl}!important;
-  --encore-color-background-elevated-highlight:${hlEl}!important;
+  --encore-color-background-elevated-base:${flatColor(bgEl)}!important;
+  --encore-color-background-elevated-highlight:${flatColor(hlEl)}!important;
   --encore-color-background-tinted-base:${bgTinted}!important;
   --encore-color-background-tinted-highlight:${bgTintedHl}!important;
   --encore-color-essential-base:${t}!important;
@@ -654,10 +666,10 @@
   --e-91000-color-text-base:${t}!important;
   --e-91000-color-text-subdued:${sub}!important;
   --e-91000-color-text-bright-accent:${acc}!important;
-  --e-91000-color-background-base:${bg}!important;
-  --e-91000-color-background-highlight:${hl}!important;
-  --e-91000-color-background-elevated-base:${bgEl}!important;
-  --e-91000-color-background-elevated-highlight:${hlEl}!important;
+  --e-91000-color-background-base:${flatColor(bg)}!important;
+  --e-91000-color-background-highlight:${flatColor(hl)}!important;
+  --e-91000-color-background-elevated-base:${flatColor(bgEl)}!important;
+  --e-91000-color-background-elevated-highlight:${flatColor(hlEl)}!important;
   --e-91000-color-essential-base:${t}!important;
   --e-91000-color-essential-subdued:${sub}!important;
   --e-91000-color-essential-bright-accent:${acc}!important;
@@ -910,11 +922,11 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
   background:${hl}!important;
 }
 
-[class*="Type__"],[class*="encore-text"],.main-trackList-rowTitle,
-.main-trackList-rowSectionStart{${textPaint(tG)}}
-[class*="encore-text-subdued"],[class*="Type__subdued"],
-.main-trackList-rowSubTitle,
-[data-testid="tracklist-row"] [class*="encore-text"]:not([class*="bold"]){${textPaint(subG)}}
+[class*="Type__"]${textSafe},[class*="encore-text"]${textSafe},.main-trackList-rowTitle${textSafe},
+.main-trackList-rowSectionStart${textSafe}{${textPaint(tG)}}
+[class*="encore-text-subdued"]${textSafe},[class*="Type__subdued"]${textSafe},
+.main-trackList-rowSubTitle${textSafe},
+[role="row"][aria-rowindex] [class*="encore-text"]:not([class*="bold"])${textSafe}{${textPaint(subG)}}
 .main-image-image + .standalone-ellipsis-one-line{color:${notifText}!important}
 
 :root,[class*="Root__"]{
@@ -980,9 +992,9 @@ ${gradTextExtra}${accGradCss}${notifTextGradCss}${notifGradCss}${btnDisabledGrad
   --text-base:${t}!important;--text-subdued:${sub}!important;
   --text-bright-accent:${acc}!important;--text-positive:${acc}!important;
   --text-announcement:${notif}!important;
-  --background-base:${bg}!important;--background-highlight:${hl}!important;
+  --background-base:${flatColor(bg)}!important;--background-highlight:${flatColor(hl)}!important;
   --background-press:${bgPress}!important;
-  --background-elevated-base:${bgEl}!important;--background-elevated-highlight:${hlEl}!important;
+  --background-elevated-base:${flatColor(bgEl)}!important;--background-elevated-highlight:${flatColor(hlEl)}!important;
   --background-tinted-base:color-mix(in srgb,${t} 10%,transparent)!important;--background-tinted-highlight:color-mix(in srgb,${t} 18%,transparent)!important;--background-tinted-press:color-mix(in srgb,${t} 6%,transparent)!important;
   --essential-base:${t}!important;--essential-subdued:${sub}!important;
   --essential-bright-accent:${acc}!important;--essential-positive:${acc}!important;
@@ -994,14 +1006,16 @@ ${gradTextExtra}${accGradCss}${notifTextGradCss}${notifGradCss}${btnDisabledGrad
   --essential-base:${notifText}!important;
   --background-base:${notifBg}!important;--background-elevated-base:${notifBg}!important;
 }
-#main-view,#global-nav-bar,#Desktop_LeftSidebar_Id,header[data-testid="topbar"],[data-testid="now-playing-bar"]{
-  --spice-text:${t}!important;--spice-subtext:${sub}!important;--spice-main:${bg}!important;
-  --spice-highlight:${hl}!important;--spice-sidebar:${side}!important;--spice-player:${play}!important;
+#main-view,#global-nav-bar,#Desktop_LeftSidebar_Id,#Desktop_PanelContainer_Id,header[data-testid="topbar"],[data-testid="now-playing-bar"]{
+  --spice-text:${t}!important;--spice-subtext:${sub}!important;--spice-main:${flatColor(bg)}!important;
+  --spice-highlight:${flatColor(hl)}!important;--spice-sidebar:${flatColor(side)}!important;--spice-player:${flatColor(play)}!important;
   --spice-button:${btn}!important;--spice-accent:${acc}!important;
 }
-#global-nav-bar,#Desktop_LeftSidebar_Id,nav[aria-label]:has(#Desktop_LeftSidebar_Id),#Desktop_LeftSidebar_Id *:is(section,[role="grid"]){background:${side}!important}
-body:not(.cs4-sbl-active) #main-view,body.cs4-sbl-active #main-view:not(:has(.lyrics-lyrics-container)){background:${bg}!important}
-div:has(> [data-testid="now-playing-bar"]),[data-testid="now-playing-bar"]{background:${play}!important}
+#global-nav-bar,#Desktop_LeftSidebar_Id,nav[aria-label]:has(#Desktop_LeftSidebar_Id){${bgShared(side)}!important}
+#Desktop_LeftSidebar_Id *:is(section,[role="grid"]){background:transparent!important}
+body:not(.cs4-sbl-active) #main-view,body.cs4-sbl-active #main-view:not(:has(.lyrics-lyrics-container)){${bgShared(bg)}!important}
+body:not(.cs4-sbl-active) #Desktop_PanelContainer_Id{${bgShared(bg)}!important}
+div:has(> [data-testid="now-playing-bar"]),[data-testid="now-playing-bar"]{${bgShared(play)}!important}
 header[data-testid="topbar"],header[data-testid="topbar"] > :first-child{
   background-image:none!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 header[data-testid="topbar"]{background-color:transparent!important}
@@ -1012,16 +1026,31 @@ header[data-testid="topbar"]{background-color:transparent!important}
 [data-testid="volume-bar"] [data-testid="progress-bar"]{
   --bg-color:${flatColor(volBg)}!important;--mg-color:${flatColor(volBg)}!important;
   --fg-color:${flatColor(volFg)}!important;--is-active-fg-color:${adjustColor(flatColor(volFg),0.12)}!important}
-[data-testid="progress-bar-background"]{background-color:${flatColor(progBg)}!important;border-radius:2px!important}
-[data-testid="volume-bar"] [data-testid="progress-bar-background"]{background-color:${flatColor(volBg)}!important}
-[data-testid="volume-bar"] [data-testid="progress-bar-handle"]{background:${volFg}!important}
-[role="menu"]{background:${bgEl}!important}
+[data-testid="progress-bar"] [data-testid="progress-bar-background"]{${bgDecl(progBg)}!important;border-radius:2px!important}
+[data-testid="volume-bar"] [data-testid="progress-bar"] [data-testid="progress-bar-background"]{${bgDecl(volBg)}!important}
+[data-testid="progress-bar"] [data-testid="progress-bar-handle"]{background:${flatColor(progFg)}!important}
+[data-testid="volume-bar"] [data-testid="progress-bar-handle"]{background:${flatColor(volFg)}!important}
+${isGradientValue(progFg) ? `
+[data-testid="progress-bar"]:not([data-testid="volume-bar"] *) [data-testid="progress-bar-background"] > div:has(> div) ~ div:has(> div){
+  background:${progFg}!important;
+  -webkit-mask-image:linear-gradient(to right,#000 var(--progress-bar-transform,0%),transparent var(--progress-bar-transform,0%))!important;
+  mask-image:linear-gradient(to right,#000 var(--progress-bar-transform,0%),transparent var(--progress-bar-transform,0%))!important}
+[data-testid="progress-bar"]:not([data-testid="volume-bar"] *) [data-testid="progress-bar-background"] > div:has(> div) ~ div:has(> div) > div{
+  background:transparent!important}` : ""}
+${isGradientValue(volFg) ? `
+[data-testid="volume-bar"] [data-testid="progress-bar-background"] > div:has(> div) ~ div:has(> div){
+  background:${volFg}!important;
+  -webkit-mask-image:linear-gradient(to right,#000 var(--progress-bar-transform,0%),transparent var(--progress-bar-transform,0%))!important;
+  mask-image:linear-gradient(to right,#000 var(--progress-bar-transform,0%),transparent var(--progress-bar-transform,0%))!important}
+[data-testid="volume-bar"] [data-testid="progress-bar-background"] > div:has(> div) ~ div:has(> div) > div{
+  background:transparent!important}` : ""}
+[role="menu"]{${bgShared(bgEl)}!important}
 [role="menuitem"]:hover,[role="menuitem"]:focus,[role="menuitemcheckbox"]:hover,[role="menuitemradio"]:hover,
-[role="menuitem"]:hover *,[role="menuitem"]:focus *{background:${hl}!important}
-[role="row"][aria-rowindex]:hover{background:${hl}!important}
-[role="row"][aria-rowindex][aria-selected="true"]{background:${hlEl}!important}
+[role="menuitem"]:hover *,[role="menuitem"]:focus *{${bgShared(hl)}!important}
+[role="row"][aria-rowindex]:hover{${bgShared(hl)}!important}
+[role="row"][aria-rowindex][aria-selected="true"]{${bgShared(hlEl)}!important}
 [role="row"][aria-rowindex]:hover [role="gridcell"] svg{color:${acc}!important;fill:${acc}!important}
-[data-testid="search-modal-input"]{background:${bgEl}!important;color:${t}!important;border:1.5px solid ${flatColor(hlEl)}!important;border-radius:500px!important}
+[data-testid="search-modal-input"]{${bgShared(bgEl)}!important;color:${t}!important;border:1.5px solid ${flatColor(hlEl)}!important;border-radius:500px!important}
 [data-testid="search-modal-input"]:focus{border-color:${acc}!important;box-shadow:0 0 0 2px ${acc}33!important;outline:none!important}
 [data-testid="search-modal-input"]::placeholder{color:${sub}!important;opacity:1!important}
 button[data-testid="play-button"],[role="div"],[data-testid="control-button-playpause"],
@@ -1034,7 +1063,7 @@ button[data-testid="play-button"]:hover .e-10860-button-primary__inner,
 button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
 [data-testid="control-button-playpause"]:hover .e-10860-button-primary__inner,
 [role="div"]:hover .e-10860-button-primary__inner{${bgShared(pbtnHovG)}!important;${hovExtra}}
-.e-10860-chip{background:${hl}!important;color:${t}!important}
+.e-10860-chip{${bgShared(hl)}!important;color:${t}!important}
 .e-10860-chip[aria-pressed="true"],.e-10860-chip[aria-checked="true"],.e-10860-chip[aria-selected="true"]{${bgShared(accG)}!important;color:${contrastColorSafe(accG)}!important}
 
 `;
@@ -1059,7 +1088,7 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
   }
 
   sblCheck();
-  new MutationObserver(sblCheck).observe(document.body, { childList: true, subtree: true });
+  let _sblT; new MutationObserver(() => { clearTimeout(_sblT); _sblT = setTimeout(sblCheck, 250); }).observe(document.body, { childList: true, subtree: true });
 
   let _rawColors  = loadColors();
   let _liveColors = _rawColors;
@@ -1115,9 +1144,16 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
 
     if (scrollEl && _topBarScrollEl !== scrollEl) {
       _topBarScrollEl = scrollEl;
+      let _raf = 0, _lastTop = null;
       scrollEl.addEventListener("scroll", () => {
-        const color = (isHomePage() || _topBarScrollEl.scrollTop <= 10) ? "transparent" : bg;
-        applyTopBarColor(color);
+        if (_raf) return;
+        _raf = requestAnimationFrame(() => {
+          _raf = 0;
+          const color = (isHomePage() || _topBarScrollEl.scrollTop <= 10) ? "transparent" : bg;
+          if (color === _lastTop) return;
+          _lastTop = color;
+          applyTopBarColor(color);
+        });
       }, { passive: true });
     }
 
@@ -1252,7 +1288,7 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
 
 
   // ===========================================================
-  // FILTER BAR (Home): transparent at rest, solid on scroll
+  // FILTER BAR
   // ===========================================================
 
   const FILTER_SELS = [
@@ -1309,19 +1345,113 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
 
   const domObserver = new MutationObserver(() => {
     clearTimeout(domObserver._t);
-    domObserver._t = setTimeout(runAllFixes, 80);
+    domObserver._t = setTimeout(runAllFixes, 200);
   });
   domObserver.observe(document.body, { childList: true, subtree: true, attributes: false });
 
   function applyColors(colors) {
     _rawColors  = colors;
-    _liveColors = colors;
+    _liveColors = isGradientsEnabled() ? colors : flattenGradients(colors);
     applyCSS(_liveColors);
     setTimeout(runAllFixes, 50);
   }
 
 
   const SECTION_ID = "cs4-section";
+
+  // ===========================================================
+  // SCHEDULED THEME
+  // ===========================================================
+
+  const KEY_SCHEDULE      = "cs4_schedule";
+  const KEY_SCHEDULE_LAST = "cs4_schedule_last";
+  const SCHEDULE_DEFAULTS = {
+    enabled: false,
+    slots: [{ start: "07:00", key: "light" }, { start: "19:00", key: "default" }],
+  };
+  const SCHEDULE_TEXT = {
+    en: { label: "Scheduled theme", from: "from", add: "Add time slot" },
+    it: { label: "Tema programmato", from: "dalle", add: "Aggiungi fascia" },
+  };
+
+  function scheduleText(k) {
+    const l = String(getLang() || "en").slice(0, 2).toLowerCase();
+    return (SCHEDULE_TEXT[l] || SCHEDULE_TEXT.en)[k];
+  }
+
+  function loadSchedule() {
+    try {
+      const raw = Spicetify.LocalStorage.get(KEY_SCHEDULE);
+      if (raw) {
+        const o = JSON.parse(raw);
+        if (Array.isArray(o.slots) && o.slots.length) return { enabled: !!o.enabled, slots: o.slots };
+        if (o.dayStart && o.nightStart) {
+          return {
+            enabled: !!o.enabled,
+            slots: [{ start: o.dayStart, key: o.dayKey || "light" }, { start: o.nightStart, key: o.nightKey || "default" }],
+          };
+        }
+      }
+    } catch (_) {}
+    return { enabled: false, slots: SCHEDULE_DEFAULTS.slots.map(x => ({ ...x })) };
+  }
+
+  function saveSchedule(obj) {
+    Spicetify.LocalStorage.set(KEY_SCHEDULE, JSON.stringify(obj));
+  }
+
+  function timeToMinutes(v) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(v || "");
+    return m ? (+m[1]) * 60 + (+m[2]) : 0;
+  }
+
+  function currentScheduleSlot(sch) {
+    const now = new Date();
+    const n = now.getHours() * 60 + now.getMinutes();
+    const sorted = [...sch.slots].sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+    let current = sorted[sorted.length - 1];
+    sorted.forEach(sl => { if (timeToMinutes(sl.start) <= n) current = sl; });
+    return current;
+  }
+
+  function schedulePresetOptions(selected) {
+    const esc = v => String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    return Object.entries(getAllPresets()).map(([k, p]) => {
+      const name = p.builtin ? (t().presetNames?.[k] || p.name) : p.name;
+      return `<option value="${esc(k)}" ${k === selected ? "selected" : ""}>${esc(p.emoji || "")} ${esc(name)}</option>`;
+    }).join("");
+  }
+
+  function scheduleBodyHtml(slots) {
+    const sorted = [...slots].sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+    const lines = sorted.map((sl, i) => `
+      <div class="cs4-sch-line">
+        <span>🕒 ${scheduleText("from")}</span>
+        <input type="time" value="${sl.start}">
+        <select>${schedulePresetOptions(sl.key)}</select>
+        ${sorted.length > 2 ? `<button type="button" class="cs4-sch-del" data-i="${i}">✕</button>` : ""}
+      </div>`).join("");
+    return lines + `<button type="button" id="cs4-sch-add" class="cs4-btn cs4-btn-secondary">＋ ${scheduleText("add")}</button>`;
+  }
+
+  function applySchedule(force, onApplied) {
+    const sch = loadSchedule();
+    if (!sch.enabled) return;
+    const slot = currentScheduleSlot(sch);
+    if (!slot) return;
+    const id = slot.start + "|" + slot.key;
+    if (!force && Spicetify.LocalStorage.get(KEY_SCHEDULE_LAST) === id) return;
+    const preset = getAllPresets()[slot.key];
+    if (!preset) return;
+    Spicetify.LocalStorage.set(KEY_SCHEDULE_LAST, id);
+    const colors = { ...preset.colors };
+    applyColors(colors);
+    saveColors(colors);
+    savePreset(slot.key);
+    if (onApplied) { onApplied(slot.key, colors); return; }
+    const section = document.getElementById(SECTION_ID);
+    if (section) renderUI(section);
+  }
 
   // ===========================================================
   // UI
@@ -2109,6 +2239,14 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
 .cs4-preset-badge{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:${accDim}33;color:${acc};margin-left:auto}
 .cs4-preset-badge-community{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:#5865F233;color:#5865F2;margin-left:auto}
 .cs4-community-row{display:flex;align-items:center;justify-content:space-between;background:${card};border-radius:12px;padding:12px 16px;margin-bottom:14px;gap:12px}
+.cs4-beta-tag{font-size:9px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;padding:2px 6px;border-radius:999px;border:1.5px solid ${acc};color:${acc}}
+.cs4-sch-line{display:flex;align-items:center;gap:8px;font-size:12px;color:${sub}}
+.cs4-sch-line input[type="time"],.cs4-sch-line select{background:${bgEl};color:${txt};border:1.5px solid ${hlEl};border-radius:8px;padding:5px 8px;font:inherit;font-size:12px;outline:none}
+.cs4-sch-line select{flex:1;min-width:0}
+.cs4-sch-line input[type="time"]:focus,.cs4-sch-line select:focus{border-color:${acc}}
+.cs4-sch-del{background:none;border:none;color:${sub};cursor:pointer;font-size:14px;padding:2px 6px;border-radius:6px}
+.cs4-sch-del:hover{color:${acc}}
+#cs4-sch-add{align-self:flex-start}
 .cs4-community-label{font-size:12px;font-weight:600;color:${sub};display:flex;align-items:center;gap:6px}
 .cs4-community-toggle{position:relative;width:40px;height:22px;flex-shrink:0}
 .cs4-community-toggle input{opacity:0;width:0;height:0;position:absolute}
@@ -2240,6 +2378,23 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
     </label>
   </div>
   <div class="cs4-community-row" style="margin-top:12px;">
+    <span class="cs4-community-label">🧪 ${tr.gradientsLabel || "Gradients"} <span class="cs4-beta-tag">Beta</span></span>
+    <label class="cs4-community-toggle">
+      <input type="checkbox" id="cs4-grad-chk" ${isGradientsEnabled() ? "checked" : ""}>
+      <span class="cs4-community-slider"></span>
+    </label>
+  </div>
+  <div class="cs4-community-row" style="margin-top:12px;flex-direction:column;align-items:stretch;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <span class="cs4-community-label">🕒 ${scheduleText("label")}</span>
+      <label class="cs4-community-toggle">
+        <input type="checkbox" id="cs4-sch-chk" ${loadSchedule().enabled ? "checked" : ""}>
+        <span class="cs4-community-slider"></span>
+      </label>
+    </div>
+    <div id="cs4-sch-body" style="display:${loadSchedule().enabled ? "flex" : "none"};flex-direction:column;gap:8px;">${scheduleBodyHtml(loadSchedule().slots)}</div>
+  </div>
+  <div class="cs4-community-row" style="margin-top:12px;">
     <span class="cs4-community-label" id="cs4-versions-label">${tr.versionsLabel}</span>
     <button class="cs4-btn cs4-btn-primary" id="cs4-versions-copy-btn" title="${tr.versionsCopyTitle}">${tr.versionsCopyBtn}</button>
   </div>
@@ -2317,6 +2472,64 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
       });
     }
     renderPresets();
+
+    const gradChk = document.getElementById("cs4-grad-chk");
+    if (gradChk) {
+      gradChk.addEventListener("change", () => {
+        setGradientsEnabled(gradChk.checked);
+        buildEditor();
+        syncPickers();
+        applyColors(editColors);
+      });
+    }
+
+    const schChk = document.getElementById("cs4-sch-chk");
+    if (schChk) {
+      const schBody = document.getElementById("cs4-sch-body");
+      const afterApply = (key, colors) => {
+        editColors = { ...colors };
+        activePresetKey = key;
+        renderPresets();
+        syncPickers();
+      };
+      const readSlots = () => [...schBody.querySelectorAll(".cs4-sch-line")].map(l => ({
+        start: l.querySelector("input[type=time]").value || "07:00",
+        key: l.querySelector("select").value,
+      }));
+      const persist = slots => saveSchedule({ enabled: schChk.checked, slots });
+      const bindSchedule = () => {
+        schBody.querySelectorAll("input[type=time],select").forEach(el => {
+          el.addEventListener("change", () => { persist(readSlots()); applySchedule(true, afterApply); });
+        });
+        schBody.querySelectorAll(".cs4-sch-del").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const slots = readSlots();
+            slots.splice(+btn.dataset.i, 1);
+            persist(slots);
+            schBody.innerHTML = scheduleBodyHtml(slots);
+            bindSchedule();
+            applySchedule(true, afterApply);
+          });
+        });
+        const addBtn = schBody.querySelector("#cs4-sch-add");
+        if (addBtn) {
+          addBtn.addEventListener("click", () => {
+            const slots = readSlots();
+            slots.push({ start: "12:00", key: slots[0] ? slots[0].key : "default" });
+            persist(slots);
+            schBody.innerHTML = scheduleBodyHtml(slots);
+            bindSchedule();
+            applySchedule(true, afterApply);
+          });
+        }
+      };
+      schChk.addEventListener("change", () => {
+        persist(readSlots());
+        schBody.style.display = schChk.checked ? "flex" : "none";
+        applySchedule(true, afterApply);
+      });
+      bindSchedule();
+    }
 
     const communityChk = document.getElementById("cs4-community-chk");
     if (communityChk) {
@@ -2409,8 +2622,9 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
         grid.className = "cs4-colors-grid";
 
         COLOR_DEFS.filter(d => d.group === group).forEach(def => {
-          const val = editColors[def.key] || "#000000";
-          const canGradient = GRADIENT_KEYS.has(def.key);
+          const rawVal = editColors[def.key] || "#000000";
+          const val = (!isGradientsEnabled() && isGradientValue(rawVal)) ? gradientFirstColor(rawVal) : rawVal;
+          const canGradient = GRADIENT_KEYS.has(def.key) && isGradientsEnabled();
           const row = document.createElement("div");
           row.className = "cs4-color-row";
           row.dataset.key = def.key;
@@ -2477,7 +2691,8 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
 
     function syncPickers() {
       COLOR_DEFS.forEach(def => {
-        const v = editColors[def.key] || "#000000";
+        const rawV = editColors[def.key] || "#000000";
+        const v = (!isGradientsEnabled() && isGradientValue(rawV)) ? gradientFirstColor(rawV) : rawV;
         const r = pickerRefs[def.key];
         if (!r) return;
         const grad = isGradientValue(v);
@@ -2849,7 +3064,13 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
     }
 
     document.getElementById("cs4-apply").addEventListener("click", () => {
-      applyColors(editColors); saveColors(editColors); toast(t().toastSaved);
+      applyColors(editColors); saveColors(editColors);
+      const customs = loadCustomPresets();
+      if (customs[activePresetKey]) {
+        customs[activePresetKey].colors = { ...editColors };
+        saveCustomPresets(customs);
+      }
+      toast(t().toastSaved);
     });
     document.getElementById("cs4-reset").addEventListener("click", () => {
       const p = getAllPresets()[activePresetKey] || BUILTIN_PRESETS.default;
@@ -2876,7 +3097,7 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
 
   function tryMount() { if (!document.getElementById(SECTION_ID)) buildUI(); }
 
-  const navObserver = new MutationObserver(tryMount);
+  let _navT; const navObserver = new MutationObserver(() => { if (document.getElementById(SECTION_ID)) return; clearTimeout(_navT); _navT = setTimeout(tryMount, 300); });
   navObserver.observe(document.body, { childList: true, subtree: true });
 
   if (Spicetify.Platform?.History) {
@@ -2888,7 +3109,7 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
   // AUTO-UPDATER
   // ===========================================================
 
-  const CURRENT_VERSION  = "3.4.0";
+  const CURRENT_VERSION  = "3.4.1";
   const RELEASES_API     = "https://api.github.com/repos/stefaceriani/chromashift/releases/latest";
   const RELEASES_PAGE    = "https://github.com/stefaceriani/chromashift/releases";
   const UPDATE_INTERVAL  = 60 * 60 * 1000;
@@ -2983,6 +3204,8 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
   // ===========================================================
 
   applyColors(loadColors());
+  applySchedule(false);
+  setInterval(() => applySchedule(false), 60000);
   setTimeout(() => { tryMount(); runAllFixes(); }, 800);
   setTimeout(checkForUpdates, 5000);
   setInterval(checkForUpdates, UPDATE_INTERVAL);
