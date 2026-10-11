@@ -1,0 +1,23 @@
+name: Purge js cache
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - chromashift.js
+  workflow_dispatch:
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Purge chromashift.js
+        run: |
+          for i in 1 2 3; do
+            if curl -fsS "https://purge.jsdelivr.net/gh/${{ github.repository }}@main/chromashift.js"; then
+              echo
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
