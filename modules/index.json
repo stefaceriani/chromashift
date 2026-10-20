@@ -1,0 +1,10 @@
+[
+  {
+    "id": "font",
+    "file": "font.js",
+    "name": "Font",
+    "description": "Applies any Google Fonts font to every text in Spotify. Set it with: chr font <name>",
+    "version": "1.0.0",
+    "beta": true
+  }
+]
