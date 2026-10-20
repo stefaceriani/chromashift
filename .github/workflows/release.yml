@@ -1,0 +1,27 @@
+name: release-cli
+  push:
+    tags: ["cli-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Build
+        run: |
+          mkdir dist
+          for t in windows/amd64 windows/arm64 linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+            os=${t%/*}; arch=${t#*/}
+            ext=""; [ "$os" = "windows" ] && ext=".exe"
+            GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o "dist/chr-$os-$arch$ext" .
+          done
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          prerelease: true
