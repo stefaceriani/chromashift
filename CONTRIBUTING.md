@@ -33,11 +33,6 @@ If the preset is accepted, your name will be added to the contributors list in t
 
 1. Fork the repo and create a dedicated branch (`git checkout -b fix/bug-name` or `feature/feature-name`)
 2. Test your changes locally by linking `chromashift.js` to your Spicetify Extensions folder:
-   ```bash
-   cp chromashift.js ~/.config/spicetify/Extensions/
-   spicetify config extensions chromashift.js
-   spicetify apply
-   ```
 3. Make sure your changes don't break:
    - The `--spice-*` and `--encore-*` variable overrides
    - Saving/loading via `Spicetify.LocalStorage`
