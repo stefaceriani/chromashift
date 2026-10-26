@@ -33,16 +33,13 @@ If Chromashift doesn't work first check our [status page](https://status.chromas
 4. Click **Install**
 
 ### Manual
+* MacOS/Linux
 ```bash
-# macOS / Linux
-cp chromashift.js ~/.config/spicetify/Extensions/
-spicetify config extensions chromashift.js
-spicetify apply
-
-# Windows (PowerShell)
-cp chromashift.js "$env:APPDATA\spicetify\Extensions\"
-spicetify config extensions chromashift.js
-spicetify apply
+curl -fsSL "https://raw.githubusercontent.com/stefaceriani/chromashift/refs/heads/main/chromashift.js" -o "$(spicetify path -e | tr -d '\r\n')/chromashift.js" && spicetify config extensions chromashift.js && spicetify apply
+```
+* Windows (PowerShell)
+```powershell
+iwr -useb "https://raw.githubusercontent.com/stefaceriani/chromashift/refs/heads/main/chromashift.js" -OutFile "$env:APPDATA\spicetify\Extensions\chromashift.js"; spicetify config extensions chromashift.js; spicetify apply
 ```
 
 ---
