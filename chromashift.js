@@ -1,7 +1,7 @@
 // NAME: ChromaShift
 // AUTHOR: stefaceriani
 // DESCRIPTION: Customise every Spotify colour from the Settings page.
-// VERSION: 3.4.1
+// VERSION: 3.5.0
 
 (function ChromaShift() {
   "use strict";
@@ -262,6 +262,9 @@
   function contrastColorSafe(v) { return contrastColor(isGradientValue(v) ? gradientAvgColor(v) : v); }
   // "shared" gradients are anchored to the window (background-attachment:fixed): every element that uses
   // the same colour shows the same slice of ONE gradient instead of restarting it on each element.
+  // value for the "background" shorthand: gradients are anchored to the window, so every element that uses the
+  // same colour shows the same slice of ONE gradient instead of restarting its own copy. Solid colours unchanged.
+  function gfix(v) { return isGradientValue(v) ? v + " fixed" : v; }
   function bgShared(v) { return isGradientValue(v) ? `background:${v} fixed` : `background-color:${v}`; }
   function bgDecl(v) { return isGradientValue(v) ? `background:${v}` : `background-color:${v}`; }
   function mixHex(c1, c2) {
@@ -301,18 +304,30 @@
     return h.toString(16);
   }
 
+  // When "Remember me" is off the login lives in memory only: it is gone when Spotify restarts.
+  let _sessionCreds = null;
+
   function cloudGetCreds() {
+    if (_sessionCreds) return _sessionCreds;
     const email = Spicetify.LocalStorage.get(KEY_CLOUD_EMAIL);
     const hash  = Spicetify.LocalStorage.get(KEY_CLOUD_HASH);
     return (email && hash) ? { email, hash } : null;
   }
 
-  function cloudSaveCreds(email, pwHash) {
-    Spicetify.LocalStorage.set(KEY_CLOUD_EMAIL, email);
-    Spicetify.LocalStorage.set(KEY_CLOUD_HASH, pwHash);
+  function cloudSaveCreds(email, pwHash, remember = true) {
+    if (remember) {
+      _sessionCreds = null;
+      Spicetify.LocalStorage.set(KEY_CLOUD_EMAIL, email);
+      Spicetify.LocalStorage.set(KEY_CLOUD_HASH, pwHash);
+    } else {
+      _sessionCreds = { email, hash: pwHash };
+      Spicetify.LocalStorage.remove(KEY_CLOUD_EMAIL);
+      Spicetify.LocalStorage.remove(KEY_CLOUD_HASH);
+    }
   }
 
   function cloudClearCreds() {
+    _sessionCreds = null;
     Spicetify.LocalStorage.remove(KEY_CLOUD_EMAIL);
     Spicetify.LocalStorage.remove(KEY_CLOUD_HASH);
   }
@@ -334,13 +349,13 @@
     return { ok: true, data };
   }
 
-  async function cloudLogin(email, password) {
+  async function cloudLogin(email, password, remember = true) {
     email = email.toLowerCase().trim();
     const res = await cloudFetch("cs_users", "GET", null,
       "?email=eq." + encodeURIComponent(email) + "&select=email,password_hash");
     if (!res.ok || !res.data || res.data.length === 0) return { ok: false, error: "No account found." };
     if (res.data[0].password_hash !== csHash(password)) return { ok: false, error: "Wrong password." };
-    cloudSaveCreds(email, csHash(password));
+    cloudSaveCreds(email, csHash(password), remember);
     return { ok: true };
   }
 
@@ -552,8 +567,9 @@
 
     // Gradient text: paint the gradient through the glyphs (background-clip:text)
     const textGrad = isGradientValue(tG) || isGradientValue(subG);
+    const bgNested = isGradientValue(bg) ? "transparent" : bg;   // scroll/content containers inside #main-view
     const textPaint = v => isGradientValue(v)
-      ? `background-image:${v}!important;background-repeat:no-repeat!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important;color:transparent!important;`
+      ? `background-image:${v}!important;background-attachment:fixed!important;background-repeat:no-repeat!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important;color:transparent!important;`
       : (textGrad
           ? `background-image:none!important;-webkit-text-fill-color:${v}!important;color:${v}!important;`
           : `color:${v}!important;`);
@@ -563,6 +579,13 @@
     const gradTextExtra = textGrad ? `
 [class*="encore-internal-color-text-base"]${textSafe}{${textPaint(tG)}}
 [class*="encore-internal-color-text-subdued"]${textSafe}{${textPaint(subG)}}
+` : "";
+    const badgeText = textGrad ? contrastColorSafe(subG) : "#000000";
+    const badgeFix = textGrad ? `
+[data-encore-id="badge"],[class*="adge"],[class*="xplicit"],[aria-label*="xplicit"],[aria-label*="splicit"],
+[data-encore-id="badge"] *,[class*="adge"] *,[class*="xplicit"] *,[aria-label*="xplicit"] *,[aria-label*="splicit"] *{
+  background-image:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;
+  -webkit-text-fill-color:${badgeText}!important;color:${badgeText}!important}
 ` : "";
     const accGradCss = accGrad ? `
 [class*="encore-internal-color-text-bright-accent"]${textSafe},[class*="encore-text-bright-accent"]${textSafe}{${textPaint(accG)}}
@@ -576,8 +599,8 @@
 .encore-announcement-set{background:${notifG} fixed!important}
 ` : "";
     const btnDisabledGradCss = isGradientValue(btnDG) ? `
-[data-encore-id="buttonPrimary"]:not([class*="play"]):not([data-testid*="play"]):disabled,
-[data-encore-id="buttonPrimary"]:not([class*="play"]):not([data-testid*="play"])[aria-disabled="true"]{
+[data-encore-id="buttonPrimary"]:not([class*="play"]:not([class*="playlist"])):not([data-testid*="play"]):disabled,
+[data-encore-id="buttonPrimary"]:not([class*="play"]:not([class*="playlist"])):not([data-testid*="play"])[aria-disabled="true"]{
   background:${btnDG} fixed!important;filter:none!important}
 ` : "";
 
@@ -703,15 +726,15 @@
 }
 .Root__nav-bar,.nav-bar,[class*="navBar"],[class*="sidebar"],
 [class*="globalNav"],[class*="GlobalNav"],
-.LayoutResizer__resize-bar+*{background:${side}!important}
-body:not(.cs4-sbl-active) .Root__main-view,
+.LayoutResizer__resize-bar+*{background:${gfix(side)}!important}
+body:not(.cs4-sbl-active) .Root__main-view{background:${gfix(bg)}!important}
 body:not(.cs4-sbl-active) .main-view-container__scroll-node:not(:has(.before-scroll-node)),
 body:not(.cs4-sbl-active) [class*="scroll-node"]:not([class*="child"]):not(:has(.before-scroll-node)),
-body:not(.cs4-sbl-active) [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)){background:${bg}!important}
-body.cs4-sbl-active .Root__main-view:not(:has(.lyrics-lyrics-container)),
+body:not(.cs4-sbl-active) [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)){background:${bgNested}!important}
+body.cs4-sbl-active .Root__main-view:not(:has(.lyrics-lyrics-container)){background:${gfix(bg)}!important}
 body.cs4-sbl-active .main-view-container__scroll-node:not(:has(.lyrics-lyrics-container)):not(:has(.before-scroll-node)),
 body.cs4-sbl-active [class*="scroll-node"]:not([class*="child"]):not(:has(.lyrics-lyrics-container)):not(:has(.before-scroll-node)),
-body.cs4-sbl-active [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)):not(:has(.lyrics-lyrics-container)){background:${bg}!important}
+body.cs4-sbl-active [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)):not(:has(.lyrics-lyrics-container)){background:${bgNested}!important}
 body:not(.cs4-sbl-active) .main-view-container:has(.before-scroll-node) [class*="contentSpacing"],
 body.cs4-sbl-active .main-view-container:has(.before-scroll-node) [class*="contentSpacing"]{
   background-color:transparent!important;
@@ -721,7 +744,7 @@ body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-con
   background-color:transparent!important;
 }
 .main-topBar-topbarContentContainer{background-color:transparent!important}
-.Root__now-playing-bar,.now-playing-bar,[class*="nowPlayingBar"]{background:${play}!important}
+.Root__now-playing-bar,.now-playing-bar,[class*="nowPlayingBar"]{background:${gfix(play)}!important}
 
 .Root__top-bar{
   background-color:transparent!important;
@@ -892,10 +915,10 @@ button[data-testid="play-button"]{
 [class*="Button--is-active"]{color:${acc}!important}
 
 .main-card-card,[class*="CardComponent"],
-[data-testid="card-container"]{background:${card}!important;transition:background .2s,transform .18s,box-shadow .2s!important}
+[data-testid="card-container"]{background:${gfix(card)}!important;transition:background .2s,transform .18s,box-shadow .2s!important}
 .main-card-card:hover,[class*="CardComponent"]:hover,
 [data-testid="card-container"]:hover,[class*="gridItem"]:hover [data-testid="card-container"],
-[class*="gridItem"]:hover [class*="CardComponent"]{background-color:${cardHov}!important;
+[class*="gridItem"]:hover [class*="CardComponent"]{${isGradientValue(cardHov) ? `background:${cardHov} fixed` : `background-color:${cardHov}`}!important;
 transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0,0,.45)!important}
 [class*="gridItem"]:hover [data-testid="card-container"] *,
 [class*="gridItem"]:hover [class*="CardComponent"] *{transform:none!important}
@@ -903,12 +926,12 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 
 [class*="TrackListRow"]:hover,[class*="tracklist-row"]:hover,
 [data-testid="tracklist-row"]:hover,
-.main-trackList-trackListRow:hover{background:${hl}!important}
+.main-trackList-trackListRow:hover{background:${gfix(hl)}!important}
 [class*="TrackListRow"][aria-selected="true"],
 [data-testid="tracklist-row"][aria-selected="true"],
-.main-trackList-trackListRow[aria-selected="true"]{background:${hlEl}!important}
+.main-trackList-trackListRow[aria-selected="true"]{background:${gfix(hlEl)}!important}
 [class*="contextMenu"],[class*="ContextMenu"],
-[data-testid*="context-menu"]{background:${bgEl}!important}
+[data-testid*="context-menu"]{background:${gfix(bgEl)}!important}
 .main-contextMenu-menuItemButton:hover,
 .main-contextMenu-menuItemButton:focus,
 .main-contextMenu-menuItemButton:hover .main-contextMenu-menuItemLabel,
@@ -919,7 +942,7 @@ transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0
 .main-contextMenu-menuItemButton:focus .main-contextMenu-menuItemIconWrapper,
 .main-contextMenu-menuItemButton:hover .main-contextMenu-menuItemIconWrapper *,
 .main-contextMenu-menuItemButton:focus .main-contextMenu-menuItemIconWrapper *{
-  background:${hl}!important;
+  background:${gfix(hl)}!important;
 }
 
 [class*="Type__"]${textSafe},[class*="encore-text"]${textSafe},.main-trackList-rowTitle${textSafe},
@@ -943,11 +966,11 @@ input[type="range"]{accent-color:${acc}!important}
 [data-testid="queue-row"][aria-current] [class*="trackNumber"] svg{
   color:${acc}!important;fill:${acc}!important}
 
-[class*="ButtonPrimary"]:not([class*="play"]):not([data-testid*="play"]),
-[data-encore-id="buttonPrimary"]:not([class*="play"]):not([data-testid*="play"]){
+[class*="ButtonPrimary"]:not([class*="play"]:not([class*="playlist"])):not([data-testid*="play"]),
+[data-encore-id="buttonPrimary"]:not([class*="play"]:not([class*="playlist"])):not([data-testid*="play"]){
   ${bgShared(accGrad ? accG : btn)}!important;color:${btnText}!important;border-radius:500px!important}
-[class*="ButtonPrimary"]:not([class*="play"]):hover,
-[data-encore-id="buttonPrimary"]:not([class*="play"]):hover{${accGrad ? "filter:brightness(1.1)" : `background-color:${btnActive}`}!important}
+[class*="ButtonPrimary"]:not([class*="play"]:not([class*="playlist"])):hover,
+[data-encore-id="buttonPrimary"]:not([class*="play"]:not([class*="playlist"])):hover{${accGrad ? "filter:brightness(1.1)" : `background-color:${btnActive}`}!important}
 
 ::-webkit-scrollbar{width:8px!important}
 ::-webkit-scrollbar-track{background:${bg}!important}
@@ -967,7 +990,7 @@ input[type="range"]{accent-color:${acc}!important}
 [data-testid="search-bar-text-input"],
 input[class*="searchInput"]:not([class*="topbar"]),
 .x-filterBox-filterInput{
-  background:${bgEl}!important;color:${t}!important;
+  background:${gfix(bgEl)}!important;color:${t}!important;
   border:1.5px solid ${isGradientValue(hlEl) ? gradientFirstColor(hlEl) : hlEl}!important;border-radius:500px!important;
   transition:border-color .15s,box-shadow .15s!important}
 [data-testid="search-bar-text-input"]:focus,
@@ -981,12 +1004,12 @@ input[class*="searchInput"]::placeholder,
 [data-testid="search-bar-text-input"] ~ [data-testid="search-icon"]{
   color:${sub}!important;fill:${sub}!important}
 [data-testid="search-category-tab"],[class*="searchCategory-tab"],[class*="categoryTab"]{
-  background:${hl}!important;color:${t}!important;
+  background:${gfix(hl)}!important;color:${t}!important;
   border-radius:500px!important;transition:background .15s!important}
 [data-testid="search-category-tab"][aria-selected="true"],
 [class*="searchCategory-tab--active"],[class*="categoryTab--active"]{
   ${bgShared(accG)}!important;color:${contrastColorSafe(accG)}!important}
-${gradTextExtra}${accGradCss}${notifTextGradCss}${notifGradCss}${btnDisabledGradCss}
+${gradTextExtra}${badgeFix}${accGradCss}${notifTextGradCss}${notifGradCss}${btnDisabledGradCss}
 
 :root,.encore-dark-theme,.encore-dark-theme .encore-base-set{
   --text-base:${t}!important;--text-subdued:${sub}!important;
@@ -1045,8 +1068,12 @@ ${isGradientValue(volFg) ? `
 [data-testid="volume-bar"] [data-testid="progress-bar-background"] > div:has(> div) ~ div:has(> div) > div{
   background:transparent!important}` : ""}
 [role="menu"]{${bgShared(bgEl)}!important}
-[role="menuitem"]:hover,[role="menuitem"]:focus,[role="menuitemcheckbox"]:hover,[role="menuitemradio"]:hover,
-[role="menuitem"]:hover *,[role="menuitem"]:focus *{${bgShared(hl)}!important}
+${isGradientValue(hl) ? `[role="menuitem"]:hover,[role="menuitem"]:focus,[role="menuitemcheckbox"]:hover,[role="menuitemradio"]:hover{${bgShared(hl)}!important}
+[role="menuitem"]:hover *,[role="menuitem"]:focus *,[role="menuitemcheckbox"]:hover *,[role="menuitemradio"]:hover *{
+  background:transparent!important;background-image:none!important;
+  -webkit-background-clip:border-box!important;background-clip:border-box!important;
+  -webkit-text-fill-color:${contrastColorSafe(hl)}!important;color:${contrastColorSafe(hl)}!important}` : `[role="menuitem"]:hover,[role="menuitem"]:focus,[role="menuitemcheckbox"]:hover,[role="menuitemradio"]:hover,
+[role="menuitem"]:hover *,[role="menuitem"]:focus *{${bgShared(hl)}!important}`}
 [role="row"][aria-rowindex]:hover{${bgShared(hl)}!important}
 [role="row"][aria-rowindex][aria-selected="true"]{${bgShared(hlEl)}!important}
 [role="row"][aria-rowindex]:hover [role="gridcell"] svg{color:${acc}!important;fill:${acc}!important}
@@ -1341,7 +1368,52 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
     attachFilterScrollObserver();
   }
 
-  function runAllFixes() { fixTopBar(); fixTopBarContent(); fixPlayButtons(); fixFilterBar(); sblCheck(); }
+  // ===========================================================
+  // HEADER WASH
+  // Spotify draws a colour wash at the top of home / playlist / artist pages and fades it into the FLAT
+  // --background-base colour. With a gradient as main background that leaves a hard edge where the wash ends,
+  // so while the main background is a gradient the wash is faded out into it instead.
+  // The wash rules are found by reading Spotify's own stylesheets (their class names are hashed and change
+  // every release): position absolute, z-index -1, and a gradient that ends in var(--background-base).
+  // ===========================================================
+  const WASH_STYLE_ID = "cs4-wash-style";
+  const _washSheetsDone = new WeakSet();
+  const _washSelectors = new Set();
+
+  function scanWashRules() {
+    for (const sheet of Array.from(document.styleSheets)) {
+      if (_washSheetsDone.has(sheet)) continue;
+      const own = sheet.ownerNode;
+      if (own && own.id && /^cs4-/.test(own.id)) { _washSheetsDone.add(sheet); continue; }   // our own styles
+      let rules;
+      try { rules = sheet.cssRules; } catch (e) { continue; }                                 // unreadable sheet
+      _washSheetsDone.add(sheet);
+      for (const r of Array.from(rules || [])) {
+        if (!r.style || !r.selectorText) continue;
+        const st = r.style;
+        if (st.getPropertyValue("position") !== "absolute" || st.getPropertyValue("z-index") !== "-1") continue;
+        const bi = st.getPropertyValue("background-image") || st.getPropertyValue("background");
+        if (!/linear-gradient\((?:[^()]|\([^()]*\))*var\(--background-base\)/.test(bi)) continue;
+        r.selectorText.split(",").forEach(sel => { sel = sel.trim(); if (sel) _washSelectors.add(sel); });
+      }
+    }
+  }
+
+  function fixHeaderWash() {
+    let st = document.getElementById(WASH_STYLE_ID);
+    const main = _liveColors && _liveColors.csMain;
+    if (!main || !isGradientValue(main)) { if (st && st.textContent) st.textContent = ""; return; }
+    scanWashRules();
+    if (!_washSelectors.size) return;
+    if (!st) { st = document.createElement("style"); st.id = WASH_STYLE_ID; document.head.appendChild(st); }
+    const css = [..._washSelectors].map(sel => "#main-view " + sel).join(",\n") + `{
+  background-image:linear-gradient(#0009 0%, transparent 100%), var(--background-noise)!important;
+  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 25%,transparent 100%)!important;
+  mask-image:linear-gradient(to bottom,#000 0%,#000 25%,transparent 100%)!important}`;
+    if (st.textContent !== css) st.textContent = css;
+  }
+
+  function runAllFixes() { fixTopBar(); fixTopBarContent(); fixPlayButtons(); fixFilterBar(); sblCheck(); fixHeaderWash(); }
 
   const domObserver = new MutationObserver(() => {
     clearTimeout(domObserver._t);
@@ -1372,11 +1444,117 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
   const SCHEDULE_TEXT = {
     en: { label: "Scheduled theme", from: "from", add: "Add time slot" },
     it: { label: "Tema programmato", from: "dalle", add: "Aggiungi fascia" },
+    de: { label: "Zeitgesteuertes Theme", from: "ab", add: "Zeitfenster hinzufügen" },
+    fr: { label: "Thème programmé", from: "à partir de", add: "Ajouter une plage horaire" },
+    es: { label: "Tema programado", from: "desde las", add: "Añadir franja horaria" },
+    uk: { label: "Тема за розкладом", from: "з", add: "Додати часовий проміжок" },
+    ru: { label: "Тема по расписанию", from: "с", add: "Добавить интервал" },
+    zh: { label: "定时主题", from: "从", add: "添加时间段" },
   };
 
   function scheduleText(k) {
     const l = String(getLang() || "en").slice(0, 2).toLowerCase();
     return (SCHEDULE_TEXT[l] || SCHEDULE_TEXT.en)[k];
+  }
+
+  // =========
+  // SHUFFLE PRESET GENERATOR
+  // =========
+
+  const SHUFFLE_TEXT = {
+    en: { title: "Random preset", done: "🎲 Random preset ready. To keep it, press Apply & Save." },
+    it: { title: "Preset casuale", done: "🎲 Preset casuale pronto. Per tenerlo, premi Applica & Salva." },
+    de: { title: "Zufällige Voreinstellung", done: "🎲 Zufällige Voreinstellung bereit. Zum Behalten auf Anwenden & Speichern klicken." },
+    fr: { title: "Préréglage aléatoire", done: "🎲 Préréglage aléatoire prêt. Pour le garder, cliquez sur Appliquer & Sauvegarder." },
+    es: { title: "Preajuste aleatorio", done: "🎲 Preajuste aleatorio listo. Para conservarlo, pulsa Aplicar y guardar." },
+    uk: { title: "Випадковий пресет", done: "🎲 Випадковий пресет готовий. Щоб зберегти, натисніть «Застосувати та зберегти»." },
+    ru: { title: "Случайный пресет", done: "🎲 Случайный пресет готов. Чтобы сохранить, нажмите «Применить и сохранить»." },
+    zh: { title: "随机预设", done: "🎲 随机预设已生成。如需保留，请点击“应用并保存”。" },
+  };
+
+  const GRADIENTS_TEXT = {
+    en: { label: "Gradients", beta: "Beta" },
+    it: { label: "Gradient", beta: "Beta" },
+    de: { label: "Verläufe", beta: "Beta" },
+    fr: { label: "Dégradés", beta: "Bêta" },
+    es: { label: "Degradados", beta: "Beta" },
+    uk: { label: "Градієнти", beta: "Бета" },
+    ru: { label: "Градиенты", beta: "Бета" },
+    zh: { label: "渐变", beta: "测试版" },
+  };
+
+  function gradientsText(k) {
+    const l = String(getLang() || "en").slice(0, 2).toLowerCase();
+    return (GRADIENTS_TEXT[l] || GRADIENTS_TEXT.en)[k];
+  }
+
+  function shuffleText(k) {
+    const l = String(getLang() || "en").slice(0, 2).toLowerCase();
+    return (SHUFFLE_TEXT[l] || SHUFFLE_TEXT.en)[k];
+  }
+
+  function contrastRatio(a, b) {
+    const la = luminance(a);
+    const lb = luminance(b);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  }
+
+  function generateRandomPreset() {
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+    const wrap = h => ((h % 360) + 360) % 360;
+    const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
+    const hex = (h, sat, l) => hslToHex(wrap(h), clamp(sat, 0, 100), clamp(l, 0, 100));
+    const light = Math.random() < 0.25;
+    const dir = light ? -1 : 1;
+    const base = rnd(0, 360);
+    const scheme = pick([[30, -30], [180, 25], [150, 210], [120, 240], [20, -20]]);
+    const h1 = base;
+    const h2 = base + scheme[0];
+    const h3 = base + scheme[1];
+    const bgSat = light ? pick([10, 18, 26]) : pick([6, 16, 26, 38]);
+    const jit = () => rnd(-0.8, 0.8);
+    const steps = light
+      ? { main: 97, mainEl: 99, side: 93, player: 95, hl: 90, hlEl: 86, card: 99, cardHov: 93 }
+      : { main: 9, mainEl: 13, side: 6, player: 7, hl: 17, hlEl: 22, card: 12, cardHov: 17 };
+    const bg = k => hex(h1, bgSat, steps[k] + jit());
+    const out = {};
+    out.csMain = bg("main");
+    out.csMainElevated = bg("mainEl");
+    out.csSidebar = bg("side");
+    out.csPlayer = bg("player");
+    out.csHighlight = bg("hl");
+    out.csHighlightElevated = bg("hlEl");
+    out.csCard = bg("card");
+    out.csCardHover = bg("cardHov");
+    const worst = out.csHighlightElevated;
+    const fit = (h, sat, l, against, min) => {
+      let ll = l;
+      let c = hex(h, sat, ll);
+      for (let i = 0; i < 60 && contrastRatio(c, against) < min; i++) {
+        ll += dir;
+        c = hex(h, sat, ll);
+      }
+      return c;
+    };
+    out.csText = fit(h1, light ? 18 : 14, light ? 10 : 95, worst, 8);
+    out.csSubtext = fit(h1, light ? 12 : 10, light ? 36 : 70, worst, 4.8);
+    const accSat = rnd(65, 92);
+    const accent = fit(h1, accSat, light ? rnd(34, 44) : rnd(58, 68), worst, 4.5);
+    out.csAccent = accent;
+    const play = hex(h1, accSat, light ? 42 : 60);
+    out.csPlayButton = play;
+    out.csPlayButtonHover = hex(h1, accSat, light ? 35 : 69);
+    out.csProgressFg = accent;
+    out.csVolumeFg = hex(h2, accSat, light ? 42 : 62);
+    const notif = hex(h3, rnd(70, 90), light ? 52 : 58);
+    out.csNotification = notif;
+    out.csNotificationText = contrastColor(notif);
+    const barBg = hex(h1, bgSat, light ? 82 : 26);
+    out.csProgressBg = barBg;
+    out.csVolumeBg = barBg;
+    out.csButtonDisabled = hex(h1, 8, light ? 72 : 34);
+    return out;
   }
 
   function loadSchedule() {
@@ -1488,6 +1666,17 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
 
 
   const KEY_LANG = "cs4_lang";
+
+  // The website's login page (it has no deep link to the Register tab or to the password reset)
+  const CS_SITE_LOGIN_URL = "https://chromashift.qzz.io/login";
+
+  const CS_ICON_ARROW = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+  const CS_ICON_UP    = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>';
+  const CS_ICON_DOWN  = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+  const CS_ICON_EYE   = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const CS_ICON_EYE_OFF = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+  const CS_ICON_CHECK = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
 
   // ===========================================================
   // LANG
@@ -2156,6 +2345,20 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
     Spicetify.LocalStorage.set(KEY_LANG, code);
   }
 
+  // Texts used only by the login card (everything else comes from TRANSLATIONS[..].cloud)
+  const LOGIN_EXTRA = {
+    "en-GB": { remember: "Remember me", forgot: "Forgot password?", noAccount: "Don't have an account?", registerFree: "Register free", showPw: "Show / hide password" },
+    "en-US": { remember: "Remember me", forgot: "Forgot password?", noAccount: "Don't have an account?", registerFree: "Register free", showPw: "Show / hide password" },
+    "it":    { remember: "Ricordami", forgot: "Password dimenticata?", noAccount: "Non hai un account?", registerFree: "Registrati gratis", showPw: "Mostra / nascondi password" },
+    "de":    { remember: "Angemeldet bleiben", forgot: "Passwort vergessen?", noAccount: "Noch kein Konto?", registerFree: "Kostenlos registrieren", showPw: "Passwort anzeigen / verbergen" },
+    "fr":    { remember: "Se souvenir de moi", forgot: "Mot de passe oubli\u00e9 ?", noAccount: "Pas encore de compte ?", registerFree: "S'inscrire gratuitement", showPw: "Afficher / masquer le mot de passe" },
+    "es":    { remember: "Recordarme", forgot: "\u00bfOlvidaste tu contrase\u00f1a?", noAccount: "\u00bfNo tienes cuenta?", registerFree: "Reg\u00edstrate gratis", showPw: "Mostrar / ocultar contrase\u00f1a" },
+    "uk":    { remember: "\u0417\u0430\u043f\u0430\u043c'\u044f\u0442\u0430\u0442\u0438 \u043c\u0435\u043d\u0435", forgot: "\u0417\u0430\u0431\u0443\u043b\u0438 \u043f\u0430\u0440\u043e\u043b\u044c?", noAccount: "\u041d\u0435\u043c\u0430\u0454 \u043e\u0431\u043b\u0456\u043a\u043e\u0432\u043e\u0433\u043e \u0437\u0430\u043f\u0438\u0441\u0443?", registerFree: "\u0417\u0430\u0440\u0435\u0454\u0441\u0442\u0440\u0443\u0432\u0430\u0442\u0438\u0441\u044f \u0431\u0435\u0437\u043a\u043e\u0448\u0442\u043e\u0432\u043d\u043e", showPw: "\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u0438 / \u0441\u0445\u043e\u0432\u0430\u0442\u0438 \u043f\u0430\u0440\u043e\u043b\u044c" },
+    "ru":    { remember: "\u0417\u0430\u043f\u043e\u043c\u043d\u0438\u0442\u044c \u043c\u0435\u043d\u044f", forgot: "\u0417\u0430\u0431\u044b\u043b\u0438 \u043f\u0430\u0440\u043e\u043b\u044c?", noAccount: "\u041d\u0435\u0442 \u0430\u043a\u043a\u0430\u0443\u043d\u0442\u0430?", registerFree: "\u0417\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043e\u0432\u0430\u0442\u044c\u0441\u044f \u0431\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u043e", showPw: "\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c / \u0441\u043a\u0440\u044b\u0442\u044c \u043f\u0430\u0440\u043e\u043b\u044c" },
+    "zh":    { remember: "\u8bb0\u4f4f\u6211", forgot: "\u5fd8\u8bb0\u5bc6\u7801\uff1f", noAccount: "\u8fd8\u6ca1\u6709\u8d26\u53f7\uff1f", registerFree: "\u514d\u8d39\u6ce8\u518c", showPw: "\u663e\u793a / \u9690\u85cf\u5bc6\u7801" },
+  };
+  function lt() { return LOGIN_EXTRA[getLang()] || LOGIN_EXTRA["en-GB"]; }
+
   function t() {
     return TRANSLATIONS[getLang()] || TRANSLATIONS["en-GB"];
   }
@@ -2271,11 +2474,11 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
 .cs4-color-circle:hover{transform:scale(1.1);border-color:rgba(255,255,255,.4)}
 .cs4-color-circle input[type="color"]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border-radius:50%}
 .cs4-color-lbl{flex:1;font-size:13px;font-weight:600;color:${txt};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cs4-hex{width:82px;background:${bgEl};border:1.5px solid ${hlEl};border-radius:7px;padding:5px 8px;font-family:'Courier New',monospace;font-size:12px;color:${txt};outline:none;text-align:center;transition:border-color .14s;flex-shrink:0}
+.cs4-hex{width:82px;background:${bgEl};border:1.5px solid ${hlEl};border-radius:7px;padding:5px 8px;font-family:'Courier New',monospace;font-size:12px;color:${contrastColor(bgEl)};outline:none;text-align:center;transition:border-color .14s;flex-shrink:0}
 .cs4-hex:focus{border-color:${acc}}
 .cs4-hex.cs4-invalid{border-color:#e5534b}
-.cs4-sl-btn{padding:5px 9px;border-radius:7px;border:1.5px solid ${hlEl};background:${bgEl};color:${sub};font-size:11px;cursor:pointer;transition:all .14s;flex-shrink:0}
-.cs4-sl-btn:hover{background:${hl};color:${txt};border-color:${acc}}
+.cs4-sl-btn{padding:5px 9px;border-radius:7px;border:1.5px solid ${hlEl};background:${bgEl};color:${contrastColor(bgEl)};font-size:11px;cursor:pointer;transition:all .14s;flex-shrink:0}
+.cs4-sl-btn:hover{background:${hl};color:${contrastColor(hl)};border-color:${acc}}
 .cs4-sl-popup{position:fixed;z-index:99999;background:${bgEl};border:1px solid ${hlEl};border-radius:14px;padding:16px 18px;width:236px;box-shadow:0 18px 50px rgba(0,0,0,.75)}
 .cs4-sl-title{font-size:10px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:${sub};margin-bottom:12px}
 .cs4-sl-row{display:flex;align-items:center;gap:9px;margin-bottom:8px}
@@ -2284,9 +2487,9 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
 .cs4-sl-track{flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;outline:none;cursor:pointer}
 .cs4-sl-track::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;background:${acc};cursor:pointer;border:2px solid ${bgEl};box-shadow:0 0 6px ${accGlo}}
 .cs4-sl-val{font-size:11px;font-family:'Courier New',monospace;color:${txt};width:26px;text-align:right;flex-shrink:0}
-.cs4-gr-btn{width:30px;height:26px;padding:0;border-radius:7px;border:1.5px solid ${hlEl};background:${bgEl};color:${sub};cursor:pointer;transition:all .14s;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center}
-.cs4-gr-btn:hover{background:${hl};color:${txt};border-color:${acc}}
-.cs4-gr-btn.cs4-gr-active{border-color:${acc};color:${acc}}
+.cs4-gr-btn{width:30px;height:26px;padding:0;border-radius:7px;border:1.5px solid ${hlEl};background:${bgEl};color:${contrastColor(bgEl)};cursor:pointer;transition:all .14s;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center}
+.cs4-gr-btn:hover{background:${hl};color:${contrastColor(hl)};border-color:${acc}}
+.cs4-gr-btn.cs4-gr-active{border-color:${acc};color:${contrastColor(bgEl)}}
 .cs4-gr-popup{width:280px}
 .cs4-gr-preview{height:34px;border-radius:9px;margin-bottom:14px;border:1px solid ${hlEl}}
 .cs4-gr-track{background:${hlEl}}
@@ -2313,6 +2516,10 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
 .cs4-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:26px;padding-top:20px;border-top:1px solid ${hl}}
 .cs4-icon-btn{width:42px;height:42px;border-radius:50%;border:1.5px solid ${hlEl};background:${card};color:${txt};cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .14s;margin-left:auto}
 .cs4-icon-btn + .cs4-icon-btn{margin-left:0}
+.cs4-shuffle-btn{color:${acc};border-color:${acc}}
+.cs4-shuffle-btn:hover{background:${acc};color:${accTxt}}
+.cs4-shuffle-btn.cs4-spin svg{animation:cs4-shuffle-spin .5s ease}
+@keyframes cs4-shuffle-spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 .cs4-icon-btn:hover:not(:disabled){background:${hl};border-color:${acc};color:${acc}}
 .cs4-icon-btn:disabled{opacity:.3;cursor:default}
 .cs4-footer{margin-top:24px;text-align:center}
@@ -2325,6 +2532,43 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
 .cs4-btn-secondary:hover{background:${hlEl};transform:scale(1.02)}
 .cs4-btn-danger{background:rgba(255,80,80,.13);color:#ff6b6b}
 .cs4-btn-danger:hover{background:rgba(255,80,80,.26)}
+.cs4-lg-wrap{display:flex;justify-content:center;padding:6px 0 4px}
+.cs4-lg-card{position:relative;overflow:hidden;width:100%;max-width:420px;box-sizing:border-box;background:${card};border:1px solid ${hlEl};border-radius:20px;padding:34px 32px;box-shadow:0 30px 70px rgba(0,0,0,.45)}
+.cs4-lg-card::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,${acc},transparent);opacity:.6}
+.cs4-lg-head{text-align:center;margin-bottom:24px}
+.cs4-lg-avatar{width:46px;height:46px;border-radius:50%;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;background:${acc}22;border:1px solid ${acc}55;color:${acc}}
+.cs4-lg-title{font-size:25px;font-weight:800;letter-spacing:-.04em;line-height:1.15;color:${txt};margin:0 0 6px}
+.cs4-lg-title b{color:${acc};font-weight:800}
+.cs4-lg-sub{font-size:12.5px;line-height:1.55;color:${sub};margin:0}
+.cs4-lg-sub.cs4-lg-mono{font-family:monospace;font-size:12px;word-break:break-all}
+.cs4-lg-alert{display:none;border-radius:8px;padding:10px 14px;font-size:12px;font-family:monospace;margin-bottom:16px}
+.cs4-lg-group{margin-bottom:16px}
+.cs4-lg-label{display:block;font-family:monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:${sub};margin-bottom:7px}
+.cs4-lg-input{width:100%;box-sizing:border-box;background:${hl};border:1px solid ${hlEl};border-radius:8px;color:${txt};font-size:13.5px;padding:11px 15px;outline:none;transition:border-color .2s,box-shadow .2s}
+.cs4-lg-input::placeholder{color:${sub};opacity:.7}
+.cs4-lg-input:focus{border-color:${acc};box-shadow:0 0 0 3px ${acc}22}
+.cs4-lg-pw{position:relative}
+.cs4-lg-pw .cs4-lg-input{padding-right:44px}
+.cs4-lg-eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:${sub};cursor:pointer;padding:4px;display:flex;transition:color .2s}
+.cs4-lg-eye:hover{color:${txt}}
+.cs4-lg-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 0 22px}
+.cs4-lg-check{display:flex;align-items:center;gap:8px;font-size:12px;color:${sub};cursor:pointer;user-select:none}
+.cs4-lg-check input{-webkit-appearance:none;appearance:none;width:15px;height:15px;margin:0;border:1px solid ${hlEl};border-radius:4px;background:${hl};cursor:pointer;position:relative;flex-shrink:0;transition:all .2s}
+.cs4-lg-check input:checked{background:${acc};border-color:${acc}}
+.cs4-lg-check input:checked::after{content:"";position:absolute;top:1px;left:4px;width:4px;height:8px;border:2px solid ${accTxt};border-top:none;border-left:none;transform:rotate(45deg)}
+.cs4-lg-link{font-family:monospace;font-size:11.5px;letter-spacing:.04em;color:${sub};text-decoration:none;cursor:pointer;transition:color .2s}
+.cs4-lg-link:hover{color:${acc}}
+.cs4-lg-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;box-sizing:border-box;border:none;border-radius:100px;padding:12px 24px;font-size:13.5px;font-weight:700;cursor:pointer;background:${acc};color:${accTxt};box-shadow:0 0 22px ${accGlo};transition:transform .15s,box-shadow .15s,opacity .2s,background .15s}
+.cs4-lg-btn:hover{transform:translateY(-2px);box-shadow:0 0 36px ${acc}88}
+.cs4-lg-btn:disabled{opacity:.5;pointer-events:none}
+.cs4-lg-btn-alt{background:${hl};color:${txt};box-shadow:none}
+.cs4-lg-btn-alt:hover{background:${hlEl};box-shadow:none}
+.cs4-lg-btn-danger{background:rgba(255,80,80,.13);color:#ff6b6b;box-shadow:none}
+.cs4-lg-btn-danger:hover{background:rgba(255,80,80,.26);box-shadow:none}
+.cs4-lg-stack{display:flex;flex-direction:column;gap:10px}
+.cs4-lg-foot{text-align:center;font-size:12px;color:${sub};margin:18px 0 0}
+.cs4-lg-foot a{color:${acc};font-weight:700;text-decoration:none;cursor:pointer}
+.cs4-lg-foot a:hover{text-decoration:underline}
 #cs4-toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(70px);background:${bgEl};color:${txt};border:1px solid ${hlEl};border-left:3px solid ${acc};padding:11px 22px;border-radius:10px;font-size:13px;font-weight:600;z-index:999999;opacity:0;pointer-events:none;white-space:nowrap;transition:opacity .22s,transform .28s cubic-bezier(.34,1.56,.64,1)}
 #cs4-toast.cs4-show{opacity:1;transform:translateX(-50%) translateY(0)}
 `;
@@ -2358,6 +2602,9 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
     <button class="cs4-btn cs4-btn-primary" id="cs4-apply">${tr.applyBtn}</button>
     <button class="cs4-btn cs4-btn-secondary" id="cs4-reset">${tr.resetBtn}</button>
     <button class="cs4-btn cs4-btn-danger" id="cs4-default">${tr.defaultBtn}</button>
+    <button class="cs4-icon-btn cs4-shuffle-btn" id="cs4-shuffle" title="${shuffleText("title")}">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22"/><path d="M2 6h1.972a4 4 0 0 1 3.6 2.2"/><path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45"/></svg>
+    </button>
     <button class="cs4-icon-btn" id="cs4-undo" title="${tr.undoTitle}" disabled>
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
     </button>
@@ -2378,7 +2625,7 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
     </label>
   </div>
   <div class="cs4-community-row" style="margin-top:12px;">
-    <span class="cs4-community-label">🧪 ${tr.gradientsLabel || "Gradients"} <span class="cs4-beta-tag">Beta</span></span>
+    <span class="cs4-community-label">🧪 ${gradientsText("label")} <span class="cs4-beta-tag">${gradientsText("beta")}</span></span>
     <label class="cs4-community-toggle">
       <input type="checkbox" id="cs4-grad-chk" ${isGradientsEnabled() ? "checked" : ""}>
       <span class="cs4-community-slider"></span>
@@ -2941,53 +3188,49 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
     }
 
     function renderLogin() {
-      const tr2 = t();
+      const tr2 = t(), x = lt();
       return `
-        <div style="max-width:380px;padding-top:4px;margin:0 auto;">
-          <div style="background:rgba(29,185,84,.07);border:1px solid rgba(29,185,84,.18);border-radius:12px;padding:14px 16px;margin-bottom:18px;">
-            <div style="font-size:13px;font-weight:700;color:${acc};margin-bottom:5px;">${tr2.cloud.title}</div>
-            <div style="font-size:12px;color:${sub};line-height:1.6;">${tr2.cloud.desc}</div>
+        <div class="cs4-lg-wrap">
+          <div class="cs4-lg-card">
+            <div id="cs4-cloud-alert" class="cs4-lg-alert"></div>
+            <div class="cs4-lg-group">
+              <label class="cs4-lg-label" for="cs4-cloud-email">${tr2.cloud.emailLabel}</label>
+              <input class="cs4-lg-input" id="cs4-cloud-email" type="email" placeholder="you@example.com" autocomplete="email">
+            </div>
+            <div class="cs4-lg-group">
+              <label class="cs4-lg-label" for="cs4-cloud-pw">${tr2.cloud.pwLabel}</label>
+              <div class="cs4-lg-pw">
+                <input class="cs4-lg-input" id="cs4-cloud-pw" type="password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="current-password">
+                <button class="cs4-lg-eye" id="cs4-cloud-eye" type="button" title="${x.showPw}" aria-label="${x.showPw}">${CS_ICON_EYE}</button>
+              </div>
+            </div>
+            <div class="cs4-lg-row">
+              <label class="cs4-lg-check"><input type="checkbox" id="cs4-cloud-remember" checked>${x.remember}</label>
+              <a class="cs4-lg-link" href="${CS_SITE_LOGIN_URL}" target="_blank" rel="noopener">${x.forgot}</a>
+            </div>
+            <button id="cs4-cloud-login" class="cs4-lg-btn" type="button">${tr2.cloud.connectBtn}${CS_ICON_ARROW}</button>
+            <p class="cs4-lg-foot">${x.noAccount} <a href="${CS_SITE_LOGIN_URL}" target="_blank" rel="noopener">${x.registerFree}</a></p>
           </div>
-          <div id="cs4-cloud-alert" style="display:none;border-radius:8px;padding:9px 12px;font-size:12px;margin-bottom:12px;font-family:monospace;"></div>
-          <div style="margin-bottom:11px;">
-            <div style="font-size:10px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:${sub};margin-bottom:5px;">${tr2.cloud.emailLabel}</div>
-            <input id="cs4-cloud-email" type="email" placeholder="you@example.com"
-              style="width:100%;background:${hl};border:1.5px solid ${hlEl};border-radius:8px;padding:9px 12px;font-size:13px;color:${txt};outline:none;box-sizing:border-box;"
-              onfocus="this.style.borderColor='${acc}'" onblur="this.style.borderColor='${hlEl}'">
-          </div>
-          <div style="margin-bottom:16px;">
-            <div style="font-size:10px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:${sub};margin-bottom:5px;">${tr2.cloud.pwLabel}</div>
-            <input id="cs4-cloud-pw" type="password" placeholder="••••••••"
-              style="width:100%;background:${hl};border:1.5px solid ${hlEl};border-radius:8px;padding:9px 12px;font-size:13px;color:${txt};outline:none;box-sizing:border-box;"
-              onfocus="this.style.borderColor='${acc}'" onblur="this.style.borderColor='${hlEl}'">
-          </div>
-          <button id="cs4-cloud-login" class="cs4-btn cs4-btn-primary" style="width:100%;">${tr2.cloud.connectBtn}</button>
         </div>`;
     }
 
     function renderConnected(email) {
       const tr2 = t();
       return `
-        <div style="max-width:380px;padding-top:4px;margin:0 auto;">
-          <div style="background:rgba(29,185,84,.07);border:1px solid rgba(29,185,84,.18);border-radius:12px;padding:14px 16px;margin-bottom:18px;display:flex;align-items:center;gap:11px;">
-            <div style="width:34px;height:34px;border-radius:50%;background:rgba(29,185,84,.15);border:1px solid rgba(29,185,84,.3);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">✓</div>
-            <div>
-              <div style="font-size:12px;font-weight:700;color:${acc};">${tr2.cloud.connected}</div>
-              <div style="font-size:11px;color:${sub};font-family:monospace;margin-top:1px;">${email}</div>
+        <div class="cs4-lg-wrap">
+          <div class="cs4-lg-card">
+            <div class="cs4-lg-head">
+              <div class="cs4-lg-avatar">${CS_ICON_CHECK}</div>
+              <h1 class="cs4-lg-title"><b>${tr2.cloud.connected}</b></h1>
+              <p class="cs4-lg-sub cs4-lg-mono">${email}</p>
+            </div>
+            <div id="cs4-cloud-alert" class="cs4-lg-alert"></div>
+            <div class="cs4-lg-stack">
+              <button id="cs4-cloud-push" class="cs4-lg-btn" type="button">${CS_ICON_UP}${tr2.cloud.pushBtn}</button>
+              <button id="cs4-cloud-pull" class="cs4-lg-btn cs4-lg-btn-alt" type="button">${CS_ICON_DOWN}${tr2.cloud.pullBtn}</button>
+              <button id="cs4-cloud-disconnect" class="cs4-lg-btn cs4-lg-btn-danger" type="button">${tr2.cloud.disconnectBtn}</button>
             </div>
           </div>
-          <div id="cs4-cloud-alert" style="display:none;border-radius:8px;padding:9px 12px;font-size:12px;margin-bottom:12px;font-family:monospace;"></div>
-          <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:18px;">
-            <button id="cs4-cloud-push" class="cs4-btn cs4-btn-primary" style="width:100%;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              ${tr2.cloud.pushBtn}
-            </button>
-            <button id="cs4-cloud-pull" class="cs4-btn cs4-btn-secondary" style="width:100%;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              ${tr2.cloud.pullBtn}
-            </button>
-          </div>
-          <button id="cs4-cloud-disconnect" class="cs4-btn cs4-btn-danger" style="width:100%;">${tr2.cloud.disconnectBtn}</button>
         </div>`;
     }
 
@@ -3004,22 +3247,39 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
     }
 
     function wireCloud() {
+      const eyeBtn = document.getElementById("cs4-cloud-eye");
+      if (eyeBtn) {
+        eyeBtn.addEventListener("click", () => {
+          const inp = document.getElementById("cs4-cloud-pw");
+          if (!inp) return;
+          const show = inp.type === "password";
+          inp.type = show ? "text" : "password";
+          eyeBtn.innerHTML = show ? CS_ICON_EYE_OFF : CS_ICON_EYE;
+        });
+      }
+
       const loginBtn = document.getElementById("cs4-cloud-login");
       if (loginBtn) {
-        loginBtn.addEventListener("click", async () => {
+        const doLogin = async () => {
           const email = (document.getElementById("cs4-cloud-email") || {}).value || "";
           const pw    = (document.getElementById("cs4-cloud-pw") || {}).value || "";
+          const remember = !!(document.getElementById("cs4-cloud-remember") || {}).checked;
           if (!email || !pw) { showCloudMsg("err", t().cloud.fillFields); return; }
           loginBtn.textContent = t().cloud.connecting;
           loginBtn.disabled = true;
-          const res = await cloudLogin(email.trim(), pw);
+          const res = await cloudLogin(email.trim(), pw, remember);
           if (!res.ok) {
-            loginBtn.textContent = t().cloud.connectBtn;
+            loginBtn.innerHTML = t().cloud.connectBtn + CS_ICON_ARROW;
             loginBtn.disabled = false;
             showCloudMsg("err", res.error);
             return;
           }
           buildCloudPanel();
+        };
+        loginBtn.addEventListener("click", doLogin);
+        ["cs4-cloud-email", "cs4-cloud-pw"].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
         });
       }
 
@@ -3030,7 +3290,7 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
           pushBtn.textContent = t().cloud.pushing;
           const res = await cloudPush();
           pushBtn.disabled = false;
-          pushBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> ${t().cloud.pushBtn}`;
+          pushBtn.innerHTML = CS_ICON_UP + t().cloud.pushBtn;
           if (!res.ok) { showCloudMsg("err", res.error); return; }
           showCloudMsg("ok", res.count + " " + t().cloud.pushed);
         });
@@ -3043,7 +3303,7 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
           pullBtn.textContent = t().cloud.pulling;
           const res = await cloudPull();
           pullBtn.disabled = false;
-          pullBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ${t().cloud.pullBtn}`;
+          pullBtn.innerHTML = CS_ICON_DOWN + t().cloud.pullBtn;
           if (!res.ok) { showCloudMsg("err", res.error); return; }
           showCloudMsg("ok", res.count + " " + t().cloud.pulled);
           setTimeout(() => {
@@ -3079,6 +3339,19 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
       pushHistory();
       toast(t().toastReset);
     });
+    document.getElementById("cs4-shuffle").addEventListener("click", e => {
+      const btn = e.currentTarget;
+      btn.classList.remove("cs4-spin");
+      void btn.offsetWidth;
+      btn.classList.add("cs4-spin");
+      editColors = generateRandomPreset();
+      activePresetKey = "";
+      pushHistory();
+      syncPickers();
+      applyColors(editColors);
+      renderPresets();
+      toast(shuffleText("done"));
+    });
     document.getElementById("cs4-undo").addEventListener("click", undo);
     document.getElementById("cs4-redo").addEventListener("click", redo);
     document.getElementById("cs4-default").addEventListener("click", () => {
@@ -3109,7 +3382,7 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
   // AUTO-UPDATER
   // ===========================================================
 
-  const CURRENT_VERSION  = "3.4.1";
+  const CURRENT_VERSION  = "3.5.0";
   const RELEASES_API     = "https://api.github.com/repos/stefaceriani/chromashift/releases/latest";
   const RELEASES_PAGE    = "https://github.com/stefaceriani/chromashift/releases";
   const UPDATE_INTERVAL  = 60 * 60 * 1000;
