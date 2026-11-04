@@ -35,11 +35,19 @@
 
     const section = document.createElement("div");
     section.id = SECTION_ID;
-    section.textContent = "Project under maintenance, retry later";
+    section.textContent = "Project under maintenance,\nretry later";
     section.style.cssText =
-      "padding:48px 0 64px;text-align:center;font-size:clamp(24px,3.5vw,44px);" +
-      "font-weight:800;line-height:1.1;letter-spacing:-0.02em;color:#ffffff;";
+      "padding:48px 0 64px;text-align:center;white-space:pre-line;" +
+      "font-weight:800;line-height:1.15;letter-spacing:-0.02em;color:#ffffff;";
     target.appendChild(section);
+
+    const fit = () => {
+      const w = section.clientWidth;
+      if (!w) return;
+      section.style.fontSize = Math.max(12, Math.min(44, Math.floor(w / 17))) + "px";
+    };
+    fit();
+    window.addEventListener("resize", fit);
   }
 
   let timer;
