@@ -37,8 +37,8 @@
     section.id = SECTION_ID;
     section.textContent = "Project under maintenance, retry later";
     section.style.cssText =
-      "padding:72px 0 96px;text-align:center;font-size:clamp(44px,8vw,110px);" +
-      "font-weight:900;line-height:1.05;letter-spacing:-0.03em;color:#ffffff;";
+      "padding:48px 0 64px;text-align:center;font-size:clamp(24px,3.5vw,44px);" +
+      "font-weight:800;line-height:1.1;letter-spacing:-0.02em;color:#ffffff;";
     target.appendChild(section);
   }
 
