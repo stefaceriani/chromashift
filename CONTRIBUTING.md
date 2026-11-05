@@ -6,8 +6,8 @@ Thanks for your interest in contributing to ChromaShift! 🎨 Whether you want t
 
 Before opening an issue:
 
-1. Check the [status page](https://status.chromashift.qzz.io) to rule out known/temporary issues
-2. Search [existing issues](https://github.com/stefaceriani/chromashift/issues) to avoid duplicates
+<!-- 1. Check the [status page](https://status.chromashift.qzz.io) to rule out known/temporary issues -->
+1. Search [existing issues](https://github.com/stefaceriani/chromashift/issues) to avoid duplicates
 
 Then open a new issue using the right template, which will guide you through the fields to fill in:
 
@@ -57,4 +57,4 @@ Before opening the PR, make sure you've:
 
 ## 💬 Questions?
 
-If you have questions before even getting started, the fastest way to ask is on [Discord](https://discord.gg/pVZHxKW5KN). Otherwise, feel free to open an issue.
+Feel free to open an issue.
