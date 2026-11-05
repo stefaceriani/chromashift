@@ -2872,7 +2872,7 @@ button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
   // AUTO-UPDATER
   // ===========================================================
 
-  const CURRENT_VERSION  = "3.5.0";
+  const CURRENT_VERSION  = "3.5.1";
   const RELEASES_API     = "https://api.github.com/repos/stefaceriani/chromashift/releases/latest";
   const RELEASES_PAGE    = "https://github.com/stefaceriani/chromashift/releases";
   const UPDATE_INTERVAL  = 60 * 60 * 1000;
