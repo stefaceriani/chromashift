@@ -4,7 +4,7 @@
 
 ### ChromaShift is a [Spicetify](https://spicetify.app/) extension that lets you change Spotify's colors without touching any theme files. Everything is done through a clean interface injected right into **Settings**.
 ---
-If Chromashift doesn't work first check our [status page](https://status.chromashift.qzz.io) or [site](https://chromashift.qzz.io)
+<!-- If Chromashift doesn't work first check our [status page](https://status.chromashift.qzz.io) or [site](https://chromashift.qzz.io) -->
 
 ## ✨ Features
 
@@ -17,20 +17,17 @@ If Chromashift doesn't work first check our [status page](https://status.chromas
 | **Full override** | Overrides both legacy `--spice-*` and modern `--encore-*` Spotify tokens |
 | **Persistent** | Colors are saved via `Spicetify.LocalStorage` and applied on every launch |
 | **Scheduled Theme** | You can now set the theme to change at specific times of the day. |
-| **Export / Import** | Share your theme as a `.json` file (Cloud dashboard) |
+| **Export / Import** | Share your theme as a `.json` file |
 | **AutoUpdater Checker** | Extension auto check new updates and notify you |
 | **Language Traslator** | Available language: 🇬🇧 / 🇺🇸 / 🇮🇹 / 🇩🇪 / 🇫🇷 / 🇪🇸 / 🇷🇺 / 🇨🇳
-| **Online Cloud** | https://chromashift.qzz.io (only after login/register) |
+<!-- | **Online Cloud** | https://chromashift.qzz.io (only after login/register) | -->
 
 ---
 
 ## 📦 Installation
 
 ### Via Spicetify Marketplace (recommended)
-1. Open Spotify with Spicetify installed
-2. Click the **Marketplace** icon in the top bar
-3. Search for **ChromaShift**
-4. Click **Install**
+This repo has been blacklisted, manual installation only.
 
 ### Manual
 * MacOS/Linux
@@ -80,7 +77,7 @@ iwr -useb "https://raw.githubusercontent.com/stefaceriani/chromashift/refs/heads
 
 ---
 
-## 📤 Cloud Import / Export presets
+<!-- ## 📤 Cloud Import / Export presets
 
 Login to [https://chromashift.qzz.io/](https://chromashift.qzz.io/)
 Authorise Cloude integration in "Cloud" section
@@ -88,7 +85,7 @@ Authorise Cloude integration in "Cloud" section
 - **Export**: click "Push to cloud" — Presets not yet on the cloud will be added.
 - **Import**: click "Pull from cloud" — Presets saved in the cloud that are not already present locally will be added to spotify.
 
----
+--- -->
 
 ## 🛠 Technical notes
 
@@ -104,12 +101,12 @@ This ensures changes apply to every visible element in the UI.
 
 ## 🤝 Contributing
 
-Thanks for contributing ❤️; if you want to know how, read this 👉 [CONTRIBUTING.md](CONTRIBUTING.md)
+Thanks for contributing ❤️ if you want to know how, read this 👉 [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## 🐛 Bug or Request?
 
 - Issue: [github.com/stafaceriani/chromashift/issues](https://github.com/stefaceriani/chromashift/issues)
-- Website: [https://chromashift.qzz.io/](https://chromashift.qzz.io/contacts)
+<!-- - Website: [https://chromashift.qzz.io/](https://chromashift.qzz.io/contacts) -->
 
 ---
 [![Version](https://img.shields.io/github/v/release/stefaceriani/chromashift?logo=github)](https://github.com/stefaceriani/chromashift/releases) [![Forks](https://img.shields.io/github/forks/stefaceriani/chromashift?style=social)](https://github.com/stefaceriani/chromashift/fork) [![Issues](https://img.shields.io/github/issues/stefaceriani/chromashift)](https://github.com/stefaceriani/chromashift/issues)
