@@ -1,6 +1,6 @@
 // PRESET NAME: 💜 22 Purple
 // REQUESTED BY: @stefaceriani's sister
-// CS VERSION: 3.5.0
+// CS VERSION: 3.5.1
 // PRESET VERSION: 1.0.0
 
 purple: {
