@@ -1,15 +1,1523 @@
+// NAME: ChromaShift
+// AUTHOR: stefaceriani
+// DESCRIPTION: Customise every Spotify colour from the Settings page.
+// VERSION: 3.5.0
+
 (function ChromaShift() {
   "use strict";
 
-  if (!Spicetify?.Platform) {
+  if (!Spicetify?.Platform || !Spicetify?.LocalStorage) {
     setTimeout(ChromaShift, 300);
     return;
   }
 
+
+  // ===========================================================
+  // UTILITIES
+  // ===========================================================
+
+  function hexToRgb(hex) {
+    hex = hex.replace(/^#/, "");
+    if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
+    const n = parseInt(hex, 16);
+    return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
+  }
+
+  function adjustColor(hex, amount) {
+    hex = hex.replace(/^#/, "");
+    if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
+    let r = parseInt(hex.slice(0, 2), 16);
+    let g = parseInt(hex.slice(2, 4), 16);
+    let b = parseInt(hex.slice(4, 6), 16);
+    r = Math.max(0, Math.min(255, Math.round(r + 255 * amount)));
+    g = Math.max(0, Math.min(255, Math.round(g + 255 * amount)));
+    b = Math.max(0, Math.min(255, Math.round(b + 255 * amount)));
+    return "#" + [r, g, b].map(v => v.toString(16).padStart(2, "0")).join("");
+  }
+
+  function adjustColorSafe(v, amount) {
+    return isGradientValue(v) ? v : adjustColor(v, amount);
+  }
+
+  function hexToRgbSafe(v) {
+    if (isGradientValue(v)) return hexToRgb(gradientFirstColor(v));
+    return hexToRgb(v);
+  }
+
+  function luminance(hex) {
+    hex = hex.replace(/^#/, "");
+    if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
+    return [0, 2, 4].reduce((sum, i, idx) => {
+      const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+      const lin = c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+      return sum + lin * [0.2126, 0.7152, 0.0722][idx];
+    }, 0);
+  }
+
+  function contrastColor(bgHex) {
+    return luminance(bgHex) > 0.179 ? "#000000" : "#ffffff";
+  }
+
+  function hexToHsl(hex) {
+    hex = hex.replace(/^#/, "");
+    if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
+    let r = parseInt(hex.slice(0, 2), 16) / 255;
+    let g = parseInt(hex.slice(2, 4), 16) / 255;
+    let b = parseInt(hex.slice(4, 6), 16) / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+    if (max === min) { h = s = 0; }
+    else {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+        case g: h = ((b - r) / d + 2) / 6; break;
+        case b: h = ((r - g) / d + 4) / 6; break;
+      }
+    }
+    return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+  }
+
+  function hslToHex(h, s, l) {
+    s /= 100; l /= 100;
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return "#" + [0, 8, 4].map(n => Math.round(f(n) * 255).toString(16).padStart(2, "0")).join("");
+  }
+
+  function isValidHex(v) {
+    return /^#?[0-9A-Fa-f]{6}$/.test(v.trim());
+  }
+
+  function normalizeHex(v) {
+    v = v.trim().replace(/^#/, "");
+    if (v.length === 3) v = v.split("").map(c => c + c).join("");
+    return "#" + v.toLowerCase();
+  }
+
+
+  // ===========================================================
+  // PRESETS
+  // ===========================================================
+
+  const BUILTIN_PRESETS = {
+    default: {
+      name: "Spotify Default", emoji: "🟢", builtin: true,
+      colors: {
+        csText: "#ffffff", csSubtext: "#a7a7a7",
+        csMain: "#121212", csMainElevated: "#1a1a1a",
+        csHighlight: "#282828", csHighlightElevated: "#3e3e3e",
+        csAccent: "#1db954", csPlayButton: "#1db954", csPlayButtonHover: "#1ed760",
+        csButtonDisabled: "#535353", csSidebar: "#000000",
+        csPlayer: "#121212", csCard: "#181818", csCardHover: "#282828",
+        csNotification: "#3d91f4", csNotificationText: "#000000", csProgressBg: "#3e3e3e", csProgressFg: "#1db954", csVolumeBg: "#3e3e3e", csVolumeFg: "#1db954",
+      },
+    },
+    midnight: {
+      name: "Midnight Blue", emoji: "🔵", builtin: true,
+      colors: {
+        csText: "#e8eaf6", csSubtext: "#9fa8da",
+        csMain: "#0a0e1a", csMainElevated: "#0f1629",
+        csHighlight: "#1a2035", csHighlightElevated: "#253050",
+        csAccent: "#5c6bc0", csPlayButton: "#5c6bc0", csPlayButtonHover: "#7986cb",
+        csButtonDisabled: "#37474f", csSidebar: "#070b14",
+        csPlayer: "#0a0e1a", csCard: "#111827", csCardHover: "#1e2d45",
+        csNotification: "#5c6bc0", csNotificationText: "#000000", csProgressBg: "#253050", csProgressFg: "#5c6bc0", csVolumeBg: "#253050", csVolumeFg: "#5c6bc0",
+      },
+    },
+    rose: {
+      name: "Rose Gold", emoji: "🌸", builtin: true,
+      colors: {
+        csText: "#fdf2f8", csSubtext: "#f9a8d4",
+        csMain: "#1a0a0f", csMainElevated: "#2a1018",
+        csHighlight: "#3d1a25", csHighlightElevated: "#5c2535",
+        csAccent: "#e879a0", csPlayButton: "#e879a0", csPlayButtonHover: "#f48fb1",
+        csButtonDisabled: "#4a2030", csSidebar: "#110508",
+        csPlayer: "#1a0a0f", csCard: "#21101a", csCardHover: "#3d1a2a",
+        csNotification: "#e879a0", csNotificationText: "#000000", csProgressBg: "#5c2535", csProgressFg: "#e879a0", csVolumeBg: "#5c2535", csVolumeFg: "#e879a0",
+      },
+    },
+    forest: {
+      name: "Forest", emoji: "🌿", builtin: true,
+      colors: {
+        csText: "#f0fdf4", csSubtext: "#86efac",
+        csMain: "#071a0e", csMainElevated: "#0d2615",
+        csHighlight: "#163620", csHighlightElevated: "#1e4d2c",
+        csAccent: "#22c55e", csPlayButton: "#22c55e", csPlayButtonHover: "#4ade80",
+        csButtonDisabled: "#1a3320", csSidebar: "#040f08",
+        csPlayer: "#071a0e", csCard: "#0e2117", csCardHover: "#1a3825",
+        csNotification: "#22c55e", csNotificationText: "#000000", csProgressBg: "#1e4d2c", csProgressFg: "#22c55e", csVolumeBg: "#1e4d2c", csVolumeFg: "#22c55e",
+      },
+    },
+    cyber: {
+      name: "Cyberpunk", emoji: "⚡", builtin: true,
+      colors: {
+        csText: "#f0f9ff", csSubtext: "#67e8f9",
+        csMain: "#050a10", csMainElevated: "#080f18",
+        csHighlight: "#0d1a24", csHighlightElevated: "#102030",
+        csAccent: "#06b6d4", csPlayButton: "#06b6d4", csPlayButtonHover: "#22d3ee",
+        csButtonDisabled: "#0e3040", csSidebar: "#030609",
+        csPlayer: "#050a10", csCard: "#091420", csCardHover: "#0e2030",
+        csNotification: "#f59e0b", csNotificationText: "#000000", csProgressBg: "#102030", csProgressFg: "#06b6d4", csVolumeBg: "#102030", csVolumeFg: "#f59e0b",
+      },
+    },
+    monochrome: {
+      name: "Monochrome", emoji: "⬜", builtin: true,
+      colors: {
+        csText: "#ffffff", csSubtext: "#bbbbbb",
+        csMain: "#0d0d0d", csMainElevated: "#141414",
+        csHighlight: "#1f1f1f", csHighlightElevated: "#333333",
+        csAccent: "#ffffff", csPlayButton: "#ffffff", csPlayButtonHover: "#dddddd",
+        csButtonDisabled: "#555555", csSidebar: "#000000",
+        csPlayer: "#0d0d0d", csCard: "#161616", csCardHover: "#2a2a2a",
+        csNotification: "#ffffff", csNotificationText: "#000000", csProgressBg: "#333333", csProgressFg: "#ffffff", csVolumeBg: "#333333", csVolumeFg: "#bbbbbb",
+      },
+    },
+    light: {
+      name: "Light Mode", emoji: "☀️", builtin: true,
+      colors: {
+        csText: "#121212", csSubtext: "#5e5e5e",
+        csMain: "#fafafa", csMainElevated: "#ffffff",
+        csHighlight: "#e8e8e8", csHighlightElevated: "#dcdcdc",
+        csAccent: "#14893f", csPlayButton: "#1db954", csPlayButtonHover: "#17a34a",
+        csButtonDisabled: "#b8b8b8", csSidebar: "#efefef",
+        csPlayer: "#f2f2f2", csCard: "#ffffff", csCardHover: "#ededed",
+        csNotification: "#3d91f4", csNotificationText: "#000000",
+        csProgressBg: "#d4d4d4", csProgressFg: "#1db954",
+        csVolumeBg: "#d4d4d4", csVolumeFg: "#1db954",
+      },
+    },
+  };
+
+  const COLOR_DEFS = [
+    { key: "csText",              labelKey: "csText",              group: "groupText" },
+    { key: "csSubtext",           labelKey: "csSubtext",           group: "groupText" },
+    { key: "csMain",              labelKey: "csMain",              group: "groupBg" },
+    { key: "csMainElevated",      labelKey: "csMainElevated",      group: "groupBg" },
+    { key: "csHighlight",         labelKey: "csHighlight",         group: "groupBg" },
+    { key: "csHighlightElevated", labelKey: "csHighlightElevated", group: "groupBg" },
+    { key: "csAccent",            labelKey: "csAccent",            group: "groupAccents" },
+    { key: "csPlayButton",        labelKey: "csPlayButton",        group: "groupAccents" },
+    { key: "csPlayButtonHover",   labelKey: "csPlayButtonHover",   group: "groupAccents" },
+    { key: "csButtonDisabled",    labelKey: "csButtonDisabled",    group: "groupAccents" },
+    { key: "csSidebar",           labelKey: "csSidebar",           group: "groupStructure" },
+    { key: "csPlayer",            labelKey: "csPlayer",            group: "groupStructure" },
+    { key: "csCard",              labelKey: "csCard",              group: "groupStructure" },
+    { key: "csCardHover",         labelKey: "csCardHover",         group: "groupStructure" },
+    { key: "csNotification",      labelKey: "csNotification",      group: "groupStructure" },
+    { key: "csNotificationText",  labelKey: "csNotificationText",  group: "groupStructure" },
+    { key: "csProgressBg",        labelKey: "csProgressBg",        group: "groupPlayer" },
+    { key: "csProgressFg",        labelKey: "csProgressFg",        group: "groupPlayer" },
+    { key: "csVolumeBg",          labelKey: "csVolumeBg",          group: "groupPlayer" },
+    { key: "csVolumeFg",          labelKey: "csVolumeFg",          group: "groupPlayer" },
+  ];
+
+  const GRADIENT_KEYS = new Set(COLOR_DEFS.map(d => d.key));
+
+  const MAX_STOPS = 5;
+
+  const ICON_GRAD = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M3 12 12 3" stroke-opacity=".35"/><path d="M3 21 21 3" stroke-opacity=".65"/><path d="M12 21 21 12"/></svg>';
+
+  function isGradientValue(v) {
+    return typeof v === "string" && v.trim().startsWith("linear-gradient(");
+  }
+  function parseGradientValue(v, fallbackHex) {
+    const m = /^linear-gradient\(\s*(-?\d+(?:\.\d+)?)deg\s*,(.*)\)\s*$/i.exec((v || "").trim());
+    if (m) {
+      const stops = [];
+      const re = /(#[0-9a-fA-F]{6})(?:\s+(\d+(?:\.\d+)?)%)?/g;
+      let x;
+      while ((x = re.exec(m[2]))) stops.push({ color: x[1].toLowerCase(), pos: x[2] !== undefined ? Math.round(+x[2]) : null });
+      if (stops.length >= 2) {
+        stops.forEach((st, i) => { if (st.pos === null) st.pos = Math.round(i / (stops.length - 1) * 100); });
+        return { angle: Math.round(+m[1]), stops };
+      }
+    }
+    const base = fallbackHex && isValidHex(fallbackHex) ? normalizeHex(fallbackHex) : "#1db954";
+    return { angle: 135, stops: [{ color: base, pos: 0 }, { color: adjustColor(base, -0.35), pos: 100 }] };
+  }
+  function makeGradientValue(angle, stops) {
+    const sorted = [...stops].sort((a, b) => a.pos - b.pos);
+    return `linear-gradient(${angle}deg, ${sorted.map(x => `${x.color} ${x.pos}%`).join(", ")})`;
+  }
+  function gradientFirstColor(v) {
+    const g = parseGradientValue(v, null);
+    return [...g.stops].sort((a, b) => a.pos - b.pos)[0].color;
+  }
+  function flattenGradients(colors) {
+    const out = { ...colors };
+    Object.keys(out).forEach(k => { if (isGradientValue(out[k])) out[k] = gradientFirstColor(out[k]); });
+    return out;
+  }
+  function gradientAvgColor(v) {
+    const g = parseGradientValue(v, null);
+    const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    const rgb = g.stops.map(s => p(s.color));
+    const avg = [0, 1, 2].map(i => Math.round(rgb.reduce((a, c) => a + c[i], 0) / rgb.length));
+    return "#" + avg.map(n => n.toString(16).padStart(2, "0")).join("");
+  }
+  function flatColor(v) { return isGradientValue(v) ? gradientFirstColor(v) : v; }
+  function contrastColorSafe(v) { return contrastColor(isGradientValue(v) ? gradientAvgColor(v) : v); }
+  function gfix(v) { return isGradientValue(v) ? v + " fixed" : v; }
+  function bgShared(v) { return isGradientValue(v) ? `background:${v} fixed` : `background-color:${v}`; }
+  function bgDecl(v) { return isGradientValue(v) ? `background:${v}` : `background-color:${v}`; }
+  function mixHex(c1, c2) {
+    const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    const a = p(c1), b = p(c2);
+    return "#" + a.map((v, i) => Math.round((v + b[i]) / 2).toString(16).padStart(2, "0")).join("");
+  }
+
+
+  // ===========================================================
+  // STORAGE
+  // ===========================================================
+
+  const KEY_COLORS         = "cs4_colors";
+  const KEY_PRESET         = "cs4_preset";
+  const KEY_CUSTOM_PRESETS    = "cs4_custom_presets";
+  const KEY_COMMUNITY_ENABLED = "cs4_community_enabled";
+  const KEY_GRADIENTS_ENABLED = "cs4_gradients_enabled";
+  const KEY_COMMUNITY_PRESETS = "cs4_community_presets";
+
+  const COMMUNITY_BASE        = "https://cdn.jsdelivr.net/gh/stefaceriani/chromashift@main/custom_preset";
+  const COMMUNITY_INDEX       = COMMUNITY_BASE + "/index.json";
+
+
+  function loadColors() {
+    try {
+      const s = Spicetify.LocalStorage.get(KEY_COLORS);
+      if (s) return JSON.parse(s);
+    } catch (_) {}
+    return { ...BUILTIN_PRESETS.default.colors };
+  }
+
+  function saveColors(c) {
+    Spicetify.LocalStorage.set(KEY_COLORS, JSON.stringify(c));
+  }
+
+  function loadPreset() {
+    return Spicetify.LocalStorage.get(KEY_PRESET) || "default";
+  }
+
+  function savePreset(k) {
+    Spicetify.LocalStorage.set(KEY_PRESET, k);
+  }
+
+  function loadCustomPresets() {
+    try {
+      const s = Spicetify.LocalStorage.get(KEY_CUSTOM_PRESETS);
+      if (s) return JSON.parse(s);
+    } catch (_) {}
+    return {};
+  }
+
+  function saveCustomPresets(obj) {
+    Spicetify.LocalStorage.set(KEY_CUSTOM_PRESETS, JSON.stringify(obj));
+  }
+
+  function isCommunityEnabled() {
+    return Spicetify.LocalStorage.get(KEY_COMMUNITY_ENABLED) === "1";
+  }
+
+  function isGradientsEnabled() {
+    return Spicetify.LocalStorage.get(KEY_GRADIENTS_ENABLED) === "1";
+  }
+
+  function setGradientsEnabled(val) {
+    Spicetify.LocalStorage.set(KEY_GRADIENTS_ENABLED, val ? "1" : "0");
+  }
+
+  function setCommunityEnabled(val) {
+    Spicetify.LocalStorage.set(KEY_COMMUNITY_ENABLED, val ? "1" : "0");
+  }
+
+  function loadCommunityPresets() {
+    try {
+      const s = Spicetify.LocalStorage.get(KEY_COMMUNITY_PRESETS);
+      if (s) return JSON.parse(s);
+    } catch (_) {}
+    return {};
+  }
+
+  function saveCommunityPresets(obj) {
+    Spicetify.LocalStorage.set(KEY_COMMUNITY_PRESETS, JSON.stringify(obj));
+  }
+
+  async function fetchCommunityPresets() {
+    const URLS = [
+      "https://cdn.jsdelivr.net/gh/stefaceriani/chromashift@main/custom_preset",
+      "https://raw.githubusercontent.com/stefaceriani/chromashift/main/custom_preset",
+    ];
+
+    let index = null;
+    let baseUrl = null;
+
+    for (const base of URLS) {
+      try {
+        const res = await fetch(base + "/index.json?t=" + Date.now());
+        if (res.ok) { index = await res.json(); baseUrl = base; break; }
+      } catch (_) {}
+    }
+
+    if (!Array.isArray(index) || index.length === 0) return null;
+
+    const presets = {};
+    await Promise.all(index.map(async (filename) => {
+      try {
+        const res = await fetch(baseUrl + "/" + filename + "?t=" + Date.now());
+        if (!res.ok) return;
+        const code = await res.text();
+
+        const nameMatch = code.match(/\/\/\s*PRESET NAME:\s*(.+)/);
+        if (!nameMatch) return;
+        const nameFull = nameMatch[1].trim();
+        const emojiMatch = nameFull.match(/^\p{Emoji}+\s*/u);
+        const emoji = emojiMatch ? emojiMatch[0].trim() : "🎨";
+        const name = nameFull.replace(/^\p{Emoji}+\s*/u, "").trim() || nameFull;
+
+        const colorsMatch = code.match(/colors:\s*\{([\s\S]*?)\}/);
+        if (!colorsMatch) return;
+        const colors = Function('"use strict"; return {' + colorsMatch[1] + '}')();
+        if (!colors || typeof colors !== "object") return;
+
+        const key = "community_" + filename.replace(".js", "").replace(/[^a-z0-9]/gi, "_").toLowerCase();
+        presets[key] = { name, emoji, builtin: false, community: true, colors };
+      } catch (_) {}
+    }));
+
+    return Object.keys(presets).length > 0 ? presets : null;
+  }
+
+  function getAllPresets() {
+    const community = isCommunityEnabled() ? loadCommunityPresets() : {};
+    return { ...BUILTIN_PRESETS, ...community, ...loadCustomPresets() };
+  }
+
+
+  // ===========================================================
+  // CSS INJECTION
+  // ===========================================================
+
+  let styleEl = document.getElementById("cs4-style");
+  if (!styleEl) {
+    styleEl = document.createElement("style");
+    styleEl.id = "cs4-style";
+    document.head.appendChild(styleEl);
+  }
+
+  function buildCSS(c) {
+    const tG       = c.csText              || "#ffffff";
+    const subG     = c.csSubtext           || "#a7a7a7";
+    const t        = flatColor(tG);
+    const sub      = flatColor(subG);
+    const bg       = c.csMain              || "#121212";
+    const bgEl     = c.csMainElevated      || "#1a1a1a";
+    const hl       = c.csHighlight         || "#282828";
+    const hlEl     = c.csHighlightElevated || "#3e3e3e";
+    const accG     = c.csAccent            || "#1db954";
+    const acc      = flatColor(accG);
+    const accGrad  = isGradientValue(accG);
+    const btn      = luminance(acc) > 0.179 ? adjustColor(acc, -0.15) : adjustColor(acc, 0.15);
+    const pbtnG    = c.csPlayButton        || c.csButton || "#1db954";
+    const pbtnHovG = c.csPlayButtonHover   || adjustColorSafe(pbtnG, 0.1);
+    const btnDG    = c.csButtonDisabled    || "#535353";
+    const pbtn     = flatColor(pbtnG);
+    const pbtnHov  = flatColor(pbtnHovG);
+    const btnD     = flatColor(btnDG);
+    const hovExtra = (isGradientValue(pbtnG) && !c.csPlayButtonHover) ? "filter:brightness(1.12)!important;" : "";
+    const side     = c.csSidebar           || "#000000";
+    const play     = c.csPlayer            || "#121212";
+    const card     = c.csCard              || "#181818";
+    const cardHov  = c.csCardHover         || adjustColorSafe(card, 0.08);
+    const notifG    = c.csNotification      || "#3d91f4";
+    const notif     = flatColor(notifG);
+    const notifBg   = "#ffffff";
+    const notifTextG = c.csNotificationText || "#000000";
+    const notifText  = flatColor(notifTextG);
+    const progBg   = c.csProgressBg        || hl;
+    const progFg   = c.csProgressFg        || accG;
+    const volBg    = c.csVolumeBg          || hl;
+    const volFg    = c.csVolumeFg          || accG;
+
+    const accActive  = adjustColor(acc, 0.08);
+    const btnActive  = adjustColor(btn, 0.08);
+    const bgFlat     = flatColor(bg);
+    const bgPress    = adjustColor(bgFlat, -0.05);
+    const bgTinted   = adjustColor(bgFlat, 0.04);
+    const bgTintedHl = adjustColor(bgFlat, 0.09);
+    const decorBase  = adjustColor(acc, -0.15);
+    const decorSub   = adjustColor(acc, -0.25);
+    const pbtnText   = contrastColorSafe(pbtnG);
+    const btnText    = accGrad ? contrastColorSafe(accG) : contrastColor(btn);
+
+    const textGrad = isGradientValue(tG) || isGradientValue(subG);
+    const bgNested = isGradientValue(bg) ? "transparent" : bg;
+    const textPaint = v => isGradientValue(v)
+      ? `background-image:${v}!important;background-attachment:fixed!important;background-repeat:no-repeat!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important;color:transparent!important;`
+      : (textGrad
+          ? `background-image:none!important;-webkit-text-fill-color:${v}!important;color:${v}!important;`
+          : `color:${v}!important;`);
+
+    const textSafe = ":not(button):not(input):not(textarea):not(select):not(:has(svg,img,button,input))";
+    const gradTextExtra = textGrad ? `
+[class*="encore-internal-color-text-base"]${textSafe}{${textPaint(tG)}}
+[class*="encore-internal-color-text-subdued"]${textSafe}{${textPaint(subG)}}
+` : "";
+    const badgeText = textGrad ? contrastColorSafe(subG) : "#000000";
+    const badgeFix = textGrad ? `
+[data-encore-id="badge"],[class*="adge"],[class*="xplicit"],[aria-label*="xplicit"],[aria-label*="splicit"],
+[data-encore-id="badge"] *,[class*="adge"] *,[class*="xplicit"] *,[aria-label*="xplicit"] *,[aria-label*="splicit"] *{
+  background-image:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;
+  -webkit-text-fill-color:${badgeText}!important;color:${badgeText}!important}
+` : "";
+    const accGradCss = accGrad ? `
+[class*="encore-internal-color-text-bright-accent"]${textSafe},[class*="encore-text-bright-accent"]${textSafe}{${textPaint(accG)}}
+` : "";
+    const notifTextGradCss = isGradientValue(notifTextG) ? `
+.notistack-Snackbar [data-encore-id="text"],
+[role="dialog"] .encore-light-theme [data-encore-id="text"],
+.main-image-image + .standalone-ellipsis-one-line{${textPaint(notifTextG)}}
+` : "";
+    const notifGradCss = isGradientValue(notifG) ? `
+.encore-announcement-set{background:${notifG} fixed!important}
+` : "";
+    const btnDisabledGradCss = isGradientValue(btnDG) ? `
+[data-encore-id="buttonPrimary"]:not([class*="play"]:not([class*="playlist"])):not([data-testid*="play"]):disabled,
+[data-encore-id="buttonPrimary"]:not([class*="play"]:not([class*="playlist"])):not([data-testid*="play"])[aria-disabled="true"]{
+  background:${btnDG} fixed!important;filter:none!important}
+` : "";
+
+    const css = `
+:root,.Root__top-bar,.Root__nav-bar,.Root__main-view,.Root__now-playing-bar,
+.Root__globalNav,.main-view-container,[class*="main-view"],[class*="Root__"]{
+  --spice-text:${t}!important;--spice-subtext:${sub}!important;
+  --spice-extratext:${sub}!important;--spice-main:${flatColor(bg)}!important;
+  --spice-main-elevated:${flatColor(bgEl)}!important;--spice-main-transition:${flatColor(bg)}!important;
+  --spice-highlight:${flatColor(hl)}!important;--spice-highlight-elevated:${flatColor(hlEl)}!important;
+  --background-highlight:${flatColor(hl)}!important;
+  --spice-sidebar:${flatColor(side)}!important;--spice-player:${flatColor(play)}!important;
+  --spice-card:${flatColor(card)}!important;--spice-button:${btn}!important;
+  --spice-button-active:${btnActive}!important;--spice-button-disabled:${btnD}!important;
+  --spice-accent:${acc}!important;--spice-accent-active:${accActive}!important;
+  --spice-tab-active:${flatColor(side)}!important;--spice-notification:${notif}!important;
+  --spice-notification-error:#e5534b!important;--spice-misc:${flatColor(hl)}!important;
+  --spice-shadow:rgba(0,0,0,.5)!important;
+  --spice-rgb-text:${hexToRgb(t)}!important;--spice-rgb-subtext:${hexToRgb(sub)}!important;
+  --spice-rgb-main:${hexToRgbSafe(bg)}!important;--spice-rgb-main-elevated:${hexToRgbSafe(bgEl)}!important;
+  --spice-rgb-highlight:${hexToRgbSafe(hl)}!important;--spice-rgb-highlight-elevated:${hexToRgbSafe(hlEl)}!important;
+  --spice-rgb-sidebar:${hexToRgbSafe(side)}!important;--spice-rgb-player:${hexToRgbSafe(play)}!important;
+  --spice-rgb-card:${hexToRgbSafe(card)}!important;--spice-rgb-button:${hexToRgb(btn)}!important;
+  --spice-rgb-button-active:${hexToRgb(btnActive)}!important;
+  --spice-rgb-accent:${hexToRgb(acc)}!important;--spice-rgb-notification:${hexToRgb(notif)}!important;
+}
+.encore-dark-theme{
+  --background-highlight:${flatColor(hl)}!important;
+}
+.encore-bright-accent-set[class*="playButton"],
+.encore-bright-accent-set[class*="PlayButton"],
+.encore-bright-accent-setbutton[data-testid="play-button"]{
+  --background-highlight:${pbtnHov}!important;
+}
+.x-settings-zoomRadioCircle:hover,
+.x-settings-zoomRadioCircle:active{
+  border-color:transparent!important;
+}
+:root,[class*="encore-"]{
+  --encore-base-color-text-base:${t}!important;
+  --encore-base-color-text-subdued:${sub}!important;
+  --encore-base-color-text-bright-accent:${acc}!important;
+  --encore-base-color-text-negative:#e5534b!important;
+  --encore-base-color-text-warning:#e8740c!important;
+  --encore-base-color-text-positive:${acc}!important;
+  --encore-base-color-text-announcement:${notif}!important;
+  --encore-base-color-background-base:${flatColor(bg)}!important;
+  --encore-base-color-background-highlight:${flatColor(hl)}!important;
+  --encore-base-color-background-press:${bgPress}!important;
+  --encore-base-color-background-elevated-base:${flatColor(bgEl)}!important;
+  --encore-base-color-background-elevated-highlight:${flatColor(hlEl)}!important;
+  --encore-base-color-background-tinted-base:${bgTinted}!important;
+  --encore-base-color-background-tinted-highlight:${bgTintedHl}!important;
+  --encore-base-color-background-unsafe-for-small-text-base:${flatColor(bg)}!important;
+  --encore-base-color-background-unsafe-for-small-text-highlight:${flatColor(hl)}!important;
+  --encore-base-color-essential-base:${t}!important;
+  --encore-base-color-essential-subdued:${sub}!important;
+  --encore-base-color-essential-bright-accent:${acc}!important;
+  --encore-base-color-essential-negative:#e5534b!important;
+  --encore-base-color-essential-warning:#e8740c!important;
+  --encore-base-color-essential-positive:${acc}!important;
+  --encore-base-color-essential-announcement:${notif}!important;
+  --encore-base-color-decorative-base:${decorBase}!important;
+  --encore-base-color-decorative-subdued:${decorSub}!important;
+  --encore-color-text-base:${t}!important;
+  --encore-color-text-subdued:${sub}!important;
+  --encore-color-text-bright-accent:${acc}!important;
+  --encore-color-text-negative:#e5534b!important;
+  --encore-color-text-positive:${acc}!important;
+  --encore-color-text-warning:#e8740c!important;
+  --encore-color-text-announcement:${notif}!important;
+  --encore-color-background-base:${flatColor(bg)}!important;
+  --encore-color-background-highlight:${flatColor(hl)}!important;
+  --encore-color-background-press:${bgPress}!important;
+  --encore-color-background-elevated-base:${flatColor(bgEl)}!important;
+  --encore-color-background-elevated-highlight:${flatColor(hlEl)}!important;
+  --encore-color-background-tinted-base:${bgTinted}!important;
+  --encore-color-background-tinted-highlight:${bgTintedHl}!important;
+  --encore-color-essential-base:${t}!important;
+  --encore-color-essential-subdued:${sub}!important;
+  --encore-color-essential-bright-accent:${acc}!important;
+  --encore-color-essential-negative:#e5534b!important;
+  --encore-color-essential-positive:${acc}!important;
+  --encore-color-decorative-base:${decorBase}!important;
+  --encore-color-decorative-subdued:${decorSub}!important;
+  --e-91000-color-text-base:${t}!important;
+  --e-91000-color-text-subdued:${sub}!important;
+  --e-91000-color-text-bright-accent:${acc}!important;
+  --e-91000-color-background-base:${flatColor(bg)}!important;
+  --e-91000-color-background-highlight:${flatColor(hl)}!important;
+  --e-91000-color-background-elevated-base:${flatColor(bgEl)}!important;
+  --e-91000-color-background-elevated-highlight:${flatColor(hlEl)}!important;
+  --e-91000-color-essential-base:${t}!important;
+  --e-91000-color-essential-subdued:${sub}!important;
+  --e-91000-color-essential-bright-accent:${acc}!important;
+}
+.encore-light-theme{
+  --encore-base-color-text-base:${notifText}!important;
+  --encore-base-color-text-subdued:${notifText}!important;
+  --encore-base-color-essential-base:${notifText}!important;
+  --encore-base-color-background-base:${notifBg}!important;
+  --encore-base-color-background-elevated-base:${notifBg}!important;
+  --encore-color-text-base:${notifText}!important;
+  --encore-color-essential-base:${notifText}!important;
+  --encore-color-background-base:${notifBg}!important;
+  --encore-color-background-elevated-base:${notifBg}!important;
+  --e-91000-color-text-base:${notifText}!important;
+  --e-91000-color-essential-base:${notifText}!important;
+  --e-91000-color-background-base:${notifBg}!important;
+  --e-91000-color-background-elevated-base:${notifBg}!important;
+}
+.notistack-Snackbar [data-encore-id="box"],
+[role="dialog"] .encore-light-theme{
+  background-color:${notifBg}!important;
+}
+.notistack-Snackbar [data-encore-id="text"],
+.notistack-Snackbar [data-encore-id="box"] *,
+[role="dialog"] .encore-light-theme [data-encore-id="text"]{
+  color:${notifText}!important;
+}
+[role="dialog"] .encore-light-theme [data-encore-id="buttonTertiary"]{
+  color:${sub}!important;
+}
+.Root__nav-bar,.nav-bar,[class*="navBar"],[class*="sidebar"],
+[class*="globalNav"],[class*="GlobalNav"],
+.LayoutResizer__resize-bar+*{background:${gfix(side)}!important}
+body:not(.cs4-sbl-active) .Root__main-view{background:${gfix(bg)}!important}
+body:not(.cs4-sbl-active) .main-view-container__scroll-node:not(:has(.before-scroll-node)),
+body:not(.cs4-sbl-active) [class*="scroll-node"]:not([class*="child"]):not(:has(.before-scroll-node)),
+body:not(.cs4-sbl-active) [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)){background:${bgNested}!important}
+body.cs4-sbl-active .Root__main-view:not(:has(.lyrics-lyrics-container)){background:${gfix(bg)}!important}
+body.cs4-sbl-active .main-view-container__scroll-node:not(:has(.lyrics-lyrics-container)):not(:has(.before-scroll-node)),
+body.cs4-sbl-active [class*="scroll-node"]:not([class*="child"]):not(:has(.lyrics-lyrics-container)):not(:has(.before-scroll-node)),
+body.cs4-sbl-active [class*="contentSpacing"]:not(:has(.search-searchCategory-contentArea)):not(:has(.lyrics-lyrics-container)){background:${bgNested}!important}
+body:not(.cs4-sbl-active) .main-view-container:has(.before-scroll-node) [class*="contentSpacing"],
+body.cs4-sbl-active .main-view-container:has(.before-scroll-node) [class*="contentSpacing"]{
+  background-color:transparent!important;
+}
+body:not(.cs4-sbl-active) .main-view-container:has(.before-scroll-node) .main-view-container__scroll-node,
+body.cs4-sbl-active .main-view-container:has(.before-scroll-node) .main-view-container__scroll-node{
+  background-color:transparent!important;
+}
+.main-topBar-topbarContentContainer{background-color:transparent!important}
+.Root__now-playing-bar,.now-playing-bar,[class*="nowPlayingBar"]{background:${gfix(play)}!important}
+
+.Root__top-bar{
+  background-color:transparent!important;
+  background-image:none!important;
+  box-shadow:none!important;
+}
+.main-topBar-container,
+[data-testid="topbar-background"],
+[class*="topBar__background"],
+[class*="topBarBackground"],
+.main-topBar-background,
+[class*="topBar__overlay"],
+[class*="topBarOverlay"]{
+  background-color:transparent!important;
+  background-image:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  box-shadow:none!important;
+}
+
+:root,[class*="Root__"]{
+  --progress-bar-indicator-color:${progFg}!important;
+  --progress-bar-height:4px!important;
+  --volume-bar-color:${volFg}!important;
+}
+
+[data-testid="progress-bar"],[data-testid="playback-progressbar"]{cursor:pointer}
+.x-progressBar-background{background-color:${progBg}!important;height:4px!important;border-radius:2px!important;transition:height .12s!important}
+.x-progressBar-middleground{background-color:${progBg}!important}
+.x-progressBar-foreground{background:${progFg}!important;height:4px!important;border-radius:2px!important;min-width:2px!important;transition:background .15s,height .12s!important}
+.x-progressBar-handle{background:${progFg}!important;width:12px!important;height:12px!important;border-radius:50%!important;opacity:1!important;transition:transform .12s,background .15s!important}
+[data-testid="progress-bar"]:hover .x-progressBar-background,[data-testid="playback-progressbar"]:hover .x-progressBar-background{height:5px!important}
+[data-testid="progress-bar"]:hover .x-progressBar-foreground,[data-testid="playback-progressbar"]:hover .x-progressBar-foreground{background:${adjustColorSafe(progFg,0.12)}!important;height:5px!important}
+[data-testid="progress-bar"]:hover .x-progressBar-handle,[data-testid="playback-progressbar"]:hover .x-progressBar-handle{background:${adjustColorSafe(progFg,0.12)}!important}
+.progressBar-background{background-color:${progBg}!important;height:4px!important;border-radius:2px!important;transition:height .12s!important}
+.progressBar-middleground{background-color:${progBg}!important}
+.progressBar-foreground{background:${progFg}!important;height:4px!important;border-radius:2px!important;min-width:2px!important;transition:background .15s,height .12s!important}
+.progressBar-handle{background:${progFg}!important;width:12px!important;height:12px!important;border-radius:50%!important;opacity:1!important;transition:transform .12s,background .15s!important}
+[data-testid="progress-bar"]:hover .progressBar-background,[data-testid="playback-progressbar"]:hover .progressBar-background{height:5px!important}
+[data-testid="progress-bar"]:hover .progressBar-foreground,[data-testid="playback-progressbar"]:hover .progressBar-foreground{background:${adjustColorSafe(progFg,0.12)}!important;height:5px!important}
+[data-testid="progress-bar"]:hover .progressBar-handle,[data-testid="playback-progressbar"]:hover .progressBar-handle{background:${adjustColorSafe(progFg,0.12)}!important}
+[data-testid="progress-bar"] .x-progressBar-progressBarBg,
+[data-testid="playback-progressbar"] .x-progressBar-progressBarBg,
+[data-testid="progress-bar-background"]{
+  background-color:${progBg}!important;transition:background .15s!important;
+}
+[data-testid="progress-bar"] .x-progressBar-progressFillColor,
+[data-testid="playback-progressbar"] .x-progressBar-progressFillColor{
+  background-color:${progBg}!important;transition:background .15s!important;
+}
+[data-testid="progress-bar"] .x-progressBar-fillColor,
+[data-testid="playback-progressbar"] .x-progressBar-fillColor{
+  background:${progFg}!important;transition:background .15s!important;
+}
+[data-testid="progress-bar"] .progress-bar__slider,
+[data-testid="playback-progressbar"] .progress-bar__slider,
+[data-testid="progress-bar-handle"]{
+  background:${progFg}!important;opacity:1!important;
+  transition:background .15s,transform .12s!important;
+}
+[data-testid="progress-bar"]:hover .x-progressBar-fillColor,
+[data-testid="playback-progressbar"]:hover .x-progressBar-fillColor{
+  background:${adjustColorSafe(progFg,0.12)}!important;
+}
+[data-testid="progress-bar"]:hover .progress-bar__slider,
+[data-testid="playback-progressbar"]:hover .progress-bar__slider{
+  background:${adjustColorSafe(progFg,0.12)}!important;
+}
+
+[data-testid="volume-bar"] .x-progressBar-background,
+[data-testid="volume-bar"] ~ * .x-progressBar-background,
+[class*="volume"] .x-progressBar-background{background-color:${volBg}!important}
+[data-testid="volume-bar"] .x-progressBar-foreground,
+[data-testid="volume-bar"] ~ * .x-progressBar-foreground,
+[class*="volume"] .x-progressBar-foreground{background:${volFg}!important;transition:background .15s!important}
+[data-testid="volume-bar"]:hover .x-progressBar-foreground,
+[class*="volume"]:hover .x-progressBar-foreground{background:${adjustColorSafe(volFg,0.12)}!important}
+[data-testid="volume-bar"] .x-progressBar-handle,
+[class*="volume"] .x-progressBar-handle{background:${volFg}!important;opacity:1!important;transition:background .15s,transform .12s!important}
+[data-testid="volume-bar"]:hover .x-progressBar-handle,
+[class*="volume"]:hover .x-progressBar-handle{background:${adjustColorSafe(volFg,0.12)}!important}
+[data-testid="volume-bar"] .progressBar-background,
+[data-testid="volume-bar"] ~ * .progressBar-background,
+[class*="volume"] .progressBar-background{background-color:${volBg}!important}
+[data-testid="volume-bar"] .progressBar-foreground,
+[data-testid="volume-bar"] ~ * .progressBar-foreground,
+[class*="volume"] .progressBar-foreground{background:${volFg}!important;transition:background .15s!important}
+[data-testid="volume-bar"]:hover .progressBar-foreground,
+[class*="volume"]:hover .progressBar-foreground{background:${adjustColorSafe(volFg,0.12)}!important}
+[data-testid="volume-bar"] .progressBar-handle,
+[class*="volume"] .progressBar-handle{background:${volFg}!important;opacity:1!important;transition:background .15s,transform .12s!important}
+[data-testid="volume-bar"]:hover .progressBar-handle,
+[class*="volume"]:hover .progressBar-handle{background:${adjustColorSafe(volFg,0.12)}!important}
+[data-testid="volume-bar"] .x-progressBar-progressBarBg,
+[class*="volume"] .x-progressBar-progressBarBg{background-color:${volBg}!important}
+[data-testid="volume-bar"] .x-progressBar-progressFillColor,
+[class*="volume"] .x-progressBar-progressFillColor{background-color:${volBg}!important;transition:background .15s!important}
+[data-testid="volume-bar"] .x-progressBar-fillColor,
+[class*="volume"] .x-progressBar-fillColor{background:${volFg}!important;transition:background .15s!important}
+[data-testid="volume-bar"] .progress-bar__slider,
+[class*="volume"] .progress-bar__slider{background:${volFg}!important;opacity:1!important;transition:background .15s,transform .12s!important}
+[data-testid="volume-bar"]:hover .x-progressBar-fillColor,
+[class*="volume"]:hover .x-progressBar-fillColor{background:${adjustColorSafe(volFg,0.12)}!important}
+[data-testid="volume-bar"]:hover .progress-bar__slider,
+[class*="volume"]:hover .progress-bar__slider{background:${adjustColorSafe(volFg,0.12)}!important}
+
+[role="div"]:not([data-testid="control-button-playpause"]),
+button[data-testid="play-button"]{
+  background-color:transparent!important;
+  box-shadow:none!important;
+}
+[role="div"]:not([data-testid="control-button-playpause"]):not([role="row"] *):not([data-testid="action-bar"] *):not([data-testid="action-bar-row-actions"] *):not([class*="actionBar"] *):not([class*="ActionBar"] *):not([class*="entityHeader"] *):not([class*="EntityHeader"] *){
+  opacity:0;transition:opacity .15s!important;
+}
+[data-testid="action-bar"] button[data-testid="play-button"],
+[data-testid="action-bar-row-actions"] button[data-testid="play-button"]{
+  opacity:1!important;transform:none!important;pointer-events:auto!important;
+}
+[data-testid="control-button-playpause"]{
+  ${bgShared(pbtnG)}!important;color:${pbtnText}!important;
+  border-radius:50%!important;border:none!important;
+  opacity:1!important;transform:none!important;pointer-events:auto!important;
+}
+[data-testid="control-button-playpause"]:hover{
+  ${bgShared(pbtnHovG)}!important;${hovExtra}
+}
+[data-testid="control-button-playpause"] svg{
+  fill:${pbtnText}!important;color:${pbtnText}!important;
+}
+[data-testid="action-bar"] [role="div"],
+[data-testid="action-bar"] button[data-testid="play-button"],
+.main-actionBar-ActionBar [role="div"],
+.main-actionBar-ActionBar button[data-testid="play-button"],
+[class*="actionBar"] [role="div"],
+[class*="actionBar"] button[data-testid="play-button"],
+[class*="ActionBar"] [role="div"],
+[class*="ActionBar"] button[data-testid="play-button"],
+[class*="entityHeader"] [role="div"],
+[class*="entityHeader"] button[data-testid="play-button"],
+[class*="EntityHeader"] [role="div"],
+[class*="EntityHeader"] button[data-testid="play-button"]{
+  ${bgShared(pbtnG)}!important;color:${pbtnText}!important;
+  border-radius:50%!important;border:none!important;
+  opacity:1!important;transform:none!important;pointer-events:auto!important;
+}
+[data-testid="action-bar"] [role="div"] svg,
+[data-testid="action-bar"] button[data-testid="play-button"] svg,
+[class*="actionBar"] [role="div"] svg,
+[class*="ActionBar"] [role="div"] svg,
+[class*="entityHeader"] [role="div"] svg,
+[class*="EntityHeader"] [role="div"] svg{
+  fill:${pbtnText}!important;color:${pbtnText}!important;
+}
+[data-testid="action-bar"] [role="div"]:hover,
+[data-testid="action-bar"] button[data-testid="play-button"]:hover,
+[class*="actionBar"] [role="div"]:hover,
+[class*="ActionBar"] [role="div"]:hover,
+[class*="entityHeader"] [role="div"]:hover,
+[class*="EntityHeader"] [role="div"]:hover,
+*:hover > [role="div"]:hover,
+*:hover [role="div"]:hover,
+*:hover > button[data-testid="play-button"]:hover,
+*:hover button[data-testid="play-button"]:hover{
+  ${bgShared(pbtnHovG)}!important;${hovExtra}
+}
+
+[class*="heart"][aria-checked="true"],[class*="follow"][data-encore-id][class*="active"],
+[class*="Button--is-active"]{color:${acc}!important}
+
+.main-card-card,[class*="CardComponent"],
+[data-testid="card-container"]{background:${gfix(card)}!important;transition:background .2s,transform .18s,box-shadow .2s!important}
+.main-card-card:hover,[class*="CardComponent"]:hover,
+[data-testid="card-container"]:hover,[class*="gridItem"]:hover [data-testid="card-container"],
+[class*="gridItem"]:hover [class*="CardComponent"]{${isGradientValue(cardHov) ? `background:${cardHov} fixed` : `background-color:${cardHov}`}!important;
+transform:translateY(-3px) scale(1.013)!important;box-shadow:0 8px 28px rgba(0,0,0,.45)!important}
+[class*="gridItem"]:hover [data-testid="card-container"] *,
+[class*="gridItem"]:hover [class*="CardComponent"] *{transform:none!important}
+
+
+[class*="TrackListRow"]:hover,[class*="tracklist-row"]:hover,
+[data-testid="tracklist-row"]:hover,
+.main-trackList-trackListRow:hover{background:${gfix(hl)}!important}
+[class*="TrackListRow"][aria-selected="true"],
+[data-testid="tracklist-row"][aria-selected="true"],
+.main-trackList-trackListRow[aria-selected="true"]{background:${gfix(hlEl)}!important}
+[class*="contextMenu"],[class*="ContextMenu"],
+[data-testid*="context-menu"]{background:${gfix(bgEl)}!important}
+.main-contextMenu-menuItemButton:hover,
+.main-contextMenu-menuItemButton:focus,
+.main-contextMenu-menuItemButton:hover .main-contextMenu-menuItemLabel,
+.main-contextMenu-menuItemButton:focus .main-contextMenu-menuItemLabel,
+.main-contextMenu-menuItemButton:hover > div,
+.main-contextMenu-menuItemButton:focus > div,
+.main-contextMenu-menuItemButton:hover .main-contextMenu-menuItemIconWrapper,
+.main-contextMenu-menuItemButton:focus .main-contextMenu-menuItemIconWrapper,
+.main-contextMenu-menuItemButton:hover .main-contextMenu-menuItemIconWrapper *,
+.main-contextMenu-menuItemButton:focus .main-contextMenu-menuItemIconWrapper *{
+  background:${gfix(hl)}!important;
+}
+
+[class*="Type__"]${textSafe},[class*="encore-text"]${textSafe},.main-trackList-rowTitle${textSafe},
+.main-trackList-rowSectionStart${textSafe}{${textPaint(tG)}}
+[class*="encore-text-subdued"]${textSafe},[class*="Type__subdued"]${textSafe},
+.main-trackList-rowSubTitle${textSafe},
+[role="row"][aria-rowindex] [class*="encore-text"]:not([class*="bold"])${textSafe}{${textPaint(subG)}}
+.main-image-image + .standalone-ellipsis-one-line{color:${notifText}!important}
+
+:root,[class*="Root__"]{
+  --spice-equalizer:${acc}!important;
+  --progress-bar-color:${acc}!important;
+  --progress-bar-handle-color:${acc}!important;
+}
+input[type="range"]{accent-color:${acc}!important}
+
+.main-trackList-trackListRow:hover .main-trackList-rowSectionIndex svg,
+[data-testid="tracklist-row"]:hover [class*="rowIndex"] svg,
+[data-testid="tracklist-row"]:hover [class*="trackIndex"] svg,
+[data-testid="queue-row"]:hover [class*="trackNumber"] svg,
+[data-testid="queue-row"][aria-current] [class*="trackNumber"] svg{
+  color:${acc}!important;fill:${acc}!important}
+
+[class*="ButtonPrimary"]:not([class*="play"]:not([class*="playlist"])):not([data-testid*="play"]),
+[data-encore-id="buttonPrimary"]:not([class*="play"]:not([class*="playlist"])):not([data-testid*="play"]){
+  ${bgShared(accGrad ? accG : btn)}!important;color:${btnText}!important;border-radius:500px!important}
+[class*="ButtonPrimary"]:not([class*="play"]:not([class*="playlist"])):hover,
+[data-encore-id="buttonPrimary"]:not([class*="play"]:not([class*="playlist"])):hover{${accGrad ? "filter:brightness(1.1)" : `background-color:${btnActive}`}!important}
+
+::-webkit-scrollbar{width:8px!important}
+::-webkit-scrollbar-track{background:${bg}!important}
+::-webkit-scrollbar-thumb{background:${hl}!important;border-radius:4px!important}
+::-webkit-scrollbar-thumb:hover{background:${hlEl}!important}
+
+.main-globalNav-searchInputTextWrapper,
+.main-globalNav-searchInputTextWrapper *:not(kbd):not(kbd *){
+  background-color:transparent!important;
+  box-shadow:none!important;
+}
+.main-globalNav-browseButtonWrapper,
+.main-globalNav-browseButtonWrapper *{
+  background-color:transparent!important;
+  box-shadow:none!important;
+}
+[data-testid="search-bar-text-input"],
+input[class*="searchInput"]:not([class*="topbar"]),
+.x-filterBox-filterInput{
+  background:${gfix(bgEl)}!important;color:${t}!important;
+  border:1.5px solid ${isGradientValue(hlEl) ? gradientFirstColor(hlEl) : hlEl}!important;border-radius:500px!important;
+  transition:border-color .15s,box-shadow .15s!important}
+[data-testid="search-bar-text-input"]:focus,
+input[class*="searchInput"]:focus,
+.x-filterBox-filterInput:focus{
+  border-color:${acc}!important;box-shadow:0 0 0 2px ${acc}33!important;outline:none!important}
+[data-testid="search-bar-text-input"]::placeholder,
+input[class*="searchInput"]::placeholder,
+.x-filterBox-filterInput::placeholder{color:${sub}!important;opacity:1!important}
+[data-testid="search-bar-text-input"] ~ [class*="searchIcon"],
+[data-testid="search-bar-text-input"] ~ [data-testid="search-icon"]{
+  color:${sub}!important;fill:${sub}!important}
+[data-testid="search-category-tab"],[class*="searchCategory-tab"],[class*="categoryTab"]{
+  background:${gfix(hl)}!important;color:${t}!important;
+  border-radius:500px!important;transition:background .15s!important}
+[data-testid="search-category-tab"][aria-selected="true"],
+[class*="searchCategory-tab--active"],[class*="categoryTab--active"]{
+  ${bgShared(accG)}!important;color:${contrastColorSafe(accG)}!important}
+${gradTextExtra}${badgeFix}${accGradCss}${notifTextGradCss}${notifGradCss}${btnDisabledGradCss}
+
+:root,.encore-dark-theme,.encore-dark-theme .encore-base-set{
+  --text-base:${t}!important;--text-subdued:${sub}!important;
+  --text-bright-accent:${acc}!important;--text-positive:${acc}!important;
+  --text-announcement:${notif}!important;
+  --background-base:${flatColor(bg)}!important;--background-highlight:${flatColor(hl)}!important;
+  --background-press:${bgPress}!important;
+  --background-elevated-base:${flatColor(bgEl)}!important;--background-elevated-highlight:${flatColor(hlEl)}!important;
+  --background-tinted-base:color-mix(in srgb,${t} 10%,transparent)!important;--background-tinted-highlight:color-mix(in srgb,${t} 18%,transparent)!important;--background-tinted-press:color-mix(in srgb,${t} 6%,transparent)!important;
+  --essential-base:${t}!important;--essential-subdued:${sub}!important;
+  --essential-bright-accent:${acc}!important;--essential-positive:${acc}!important;
+  --essential-announcement:${notif}!important;
+  --decorative-base:${decorBase}!important;--decorative-subdued:${decorSub}!important;
+}
+.encore-light-theme,.encore-light-theme .encore-base-set{
+  --text-base:${notifText}!important;--text-subdued:${notifText}!important;
+  --essential-base:${notifText}!important;
+  --background-base:${notifBg}!important;--background-elevated-base:${notifBg}!important;
+}
+#main-view,#global-nav-bar,#Desktop_LeftSidebar_Id,#Desktop_PanelContainer_Id,header[data-testid="topbar"],[data-testid="now-playing-bar"]{
+  --spice-text:${t}!important;--spice-subtext:${sub}!important;--spice-main:${flatColor(bg)}!important;
+  --spice-highlight:${flatColor(hl)}!important;--spice-sidebar:${flatColor(side)}!important;--spice-player:${flatColor(play)}!important;
+  --spice-button:${btn}!important;--spice-accent:${acc}!important;
+}
+#global-nav-bar,#Desktop_LeftSidebar_Id,nav[aria-label]:has(#Desktop_LeftSidebar_Id){${bgShared(side)}!important}
+#Desktop_LeftSidebar_Id *:is(section,[role="grid"]){background:transparent!important}
+body:not(.cs4-sbl-active) #main-view,body.cs4-sbl-active #main-view:not(:has(.lyrics-lyrics-container)){${bgShared(bg)}!important}
+body:not(.cs4-sbl-active) #Desktop_PanelContainer_Id{${bgShared(bg)}!important}
+div:has(> [data-testid="now-playing-bar"]),[data-testid="now-playing-bar"]{${bgShared(play)}!important}
+header[data-testid="topbar"],header[data-testid="topbar"] > :first-child{
+  background-image:none!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+header[data-testid="topbar"]{background-color:transparent!important}
+[data-testid="progress-bar"]{
+  --bg-color:${flatColor(progBg)}!important;--mg-color:${flatColor(progBg)}!important;
+  --fg-color:${flatColor(progFg)}!important;--is-active-fg-color:${adjustColor(flatColor(progFg),0.12)}!important;
+  --progress-bar-height:4px!important}
+[data-testid="volume-bar"] [data-testid="progress-bar"]{
+  --bg-color:${flatColor(volBg)}!important;--mg-color:${flatColor(volBg)}!important;
+  --fg-color:${flatColor(volFg)}!important;--is-active-fg-color:${adjustColor(flatColor(volFg),0.12)}!important}
+[data-testid="progress-bar"] [data-testid="progress-bar-background"]{${bgDecl(progBg)}!important;border-radius:2px!important}
+[data-testid="volume-bar"] [data-testid="progress-bar"] [data-testid="progress-bar-background"]{${bgDecl(volBg)}!important}
+[data-testid="progress-bar"] [data-testid="progress-bar-handle"]{background:${flatColor(progFg)}!important}
+[data-testid="volume-bar"] [data-testid="progress-bar-handle"]{background:${flatColor(volFg)}!important}
+${isGradientValue(progFg) ? `
+[data-testid="progress-bar"]:not([data-testid="volume-bar"] *) [data-testid="progress-bar-background"] > div:has(> div) ~ div:has(> div){
+  background:${progFg}!important;
+  -webkit-mask-image:linear-gradient(to right,#000 var(--progress-bar-transform,0%),transparent var(--progress-bar-transform,0%))!important;
+  mask-image:linear-gradient(to right,#000 var(--progress-bar-transform,0%),transparent var(--progress-bar-transform,0%))!important}
+[data-testid="progress-bar"]:not([data-testid="volume-bar"] *) [data-testid="progress-bar-background"] > div:has(> div) ~ div:has(> div) > div{
+  background:transparent!important}` : ""}
+${isGradientValue(volFg) ? `
+[data-testid="volume-bar"] [data-testid="progress-bar-background"] > div:has(> div) ~ div:has(> div){
+  background:${volFg}!important;
+  -webkit-mask-image:linear-gradient(to right,#000 var(--progress-bar-transform,0%),transparent var(--progress-bar-transform,0%))!important;
+  mask-image:linear-gradient(to right,#000 var(--progress-bar-transform,0%),transparent var(--progress-bar-transform,0%))!important}
+[data-testid="volume-bar"] [data-testid="progress-bar-background"] > div:has(> div) ~ div:has(> div) > div{
+  background:transparent!important}` : ""}
+[role="menu"]{${bgShared(bgEl)}!important}
+${isGradientValue(hl) ? `[role="menuitem"]:hover,[role="menuitem"]:focus,[role="menuitemcheckbox"]:hover,[role="menuitemradio"]:hover{${bgShared(hl)}!important}
+[role="menuitem"]:hover *,[role="menuitem"]:focus *,[role="menuitemcheckbox"]:hover *,[role="menuitemradio"]:hover *{
+  background:transparent!important;background-image:none!important;
+  -webkit-background-clip:border-box!important;background-clip:border-box!important;
+  -webkit-text-fill-color:${contrastColorSafe(hl)}!important;color:${contrastColorSafe(hl)}!important}` : `[role="menuitem"]:hover,[role="menuitem"]:focus,[role="menuitemcheckbox"]:hover,[role="menuitemradio"]:hover,
+[role="menuitem"]:hover *,[role="menuitem"]:focus *{${bgShared(hl)}!important}`}
+[role="row"][aria-rowindex]:hover{${bgShared(hl)}!important}
+[role="row"][aria-rowindex][aria-selected="true"]{${bgShared(hlEl)}!important}
+[role="row"][aria-rowindex]:hover [role="gridcell"] svg{color:${acc}!important;fill:${acc}!important}
+[data-testid="search-modal-input"]{${bgShared(bgEl)}!important;color:${t}!important;border:1.5px solid ${flatColor(hlEl)}!important;border-radius:500px!important}
+[data-testid="search-modal-input"]:focus{border-color:${acc}!important;box-shadow:0 0 0 2px ${acc}33!important;outline:none!important}
+[data-testid="search-modal-input"]::placeholder{color:${sub}!important;opacity:1!important}
+button[data-testid="play-button"],[role="div"],[data-testid="control-button-playpause"],
+.encore-bright-accent-set:has(> button[data-testid="play-button"]),.encore-bright-accent-set:has(button[data-testid="play-button"]){
+  --background-base:${pbtn}!important;--background-highlight:${pbtnHov}!important;--background-press:${pbtnHov}!important}
+button[data-testid="play-button"] .e-10860-button-primary__inner,
+[data-testid="control-button-playpause"] .e-10860-button-primary__inner,
+[role="div"] .e-10860-button-primary__inner{${bgShared(pbtnG)}!important;color:${pbtnText}!important}
+button[data-testid="play-button"]:hover .e-10860-button-primary__inner,
+button[data-testid="play-button"]:focus-visible .e-10860-button-primary__inner,
+[data-testid="control-button-playpause"]:hover .e-10860-button-primary__inner,
+[role="div"]:hover .e-10860-button-primary__inner{${bgShared(pbtnHovG)}!important;${hovExtra}}
+.e-10860-chip{${bgShared(hl)}!important;color:${t}!important}
+.e-10860-chip[aria-pressed="true"],.e-10860-chip[aria-checked="true"],.e-10860-chip[aria-selected="true"]{${bgShared(accG)}!important;color:${contrastColorSafe(accG)}!important}
+
+`;
+    return css.replace(/background-color:(linear-gradient\([^;{}]*\))/g, "background:$1");
+  }
+
+  function applyCSS(colors) { styleEl.textContent = buildCSS(colors); }
+
+
+  const SBL_BODY_CLASS = "cs4-sbl-active";
+
+  // ===========================================================
+  // SIMPLE BEAUTIFUL LYRICS COMPATIBILITY
+  // ===========================================================
+
+  function sblCheck() {
+    if (document.querySelector(".lyrics-lyrics-container")) {
+      document.body.classList.add(SBL_BODY_CLASS);
+    } else {
+      document.body.classList.remove(SBL_BODY_CLASS);
+    }
+  }
+
+  sblCheck();
+  let _sblT; new MutationObserver(() => { clearTimeout(_sblT); _sblT = setTimeout(sblCheck, 250); }).observe(document.body, { childList: true, subtree: true });
+
+  let _rawColors  = loadColors();
+  let _liveColors = _rawColors;
+
+  function isHomePage() {
+    return !!(
+      document.querySelector("[data-testid='home-page']") ||
+      window.location.pathname === "/" ||
+      window.location.pathname === "/home"
+    );
+  }
+  const TOPBAR_SELS = [
+    "header[data-testid='topbar']",
+    "header[data-testid='topbar'] > :first-child",
+    ".Root__top-bar",
+    ".main-topBar-container",
+    "[data-testid='topbar-background']",
+  ];
+
+  let _topBarScrollEl = null;
+  let _topBarWriting = false;
+
+  function applyTopBarColor(color) {
+    if (_topBarWriting) return;
+    _topBarWriting = true;
+    const grad = isGradientValue(color);
+    TOPBAR_SELS.forEach(sel => {
+      document.querySelectorAll(sel).forEach(el => {
+        if (el.dataset.cs4Tbg === color) return;
+        el.dataset.cs4Tbg = color;
+        el.style.setProperty("background", color, "important");
+        if (!grad) {
+          el.style.setProperty("background-color", color, "important");
+          el.style.setProperty("background-image", "none", "important");
+        }
+        el.style.setProperty("box-shadow",       "none", "important");
+        el.style.setProperty("backdrop-filter",  "none", "important");
+        el.style.setProperty("-webkit-backdrop-filter", "none", "important");
+      });
+    });
+    _topBarWriting = false;
+  }
+
+  function fixTopBar() {
+    const bg = _liveColors.csMain || "#121212";
+
+    const scrollEl =
+      document.querySelector(".main-view-container__scroll-node") ||
+      document.querySelector("[class*='scrollNode']") ||
+      document.querySelector("[class*='scroll-node']") ||
+      document.querySelector("[data-overlayscrollbars-viewport]") ||
+      document.querySelector(".os-viewport");
+
+    if (scrollEl && _topBarScrollEl !== scrollEl) {
+      _topBarScrollEl = scrollEl;
+      let _raf = 0, _lastTop = null;
+      scrollEl.addEventListener("scroll", () => {
+        if (_raf) return;
+        _raf = requestAnimationFrame(() => {
+          _raf = 0;
+          const color = (isHomePage() || _topBarScrollEl.scrollTop <= 10) ? "transparent" : bg;
+          if (color === _lastTop) return;
+          _lastTop = color;
+          applyTopBarColor(color);
+        });
+      }, { passive: true });
+    }
+
+    const scrolled = _topBarScrollEl ? _topBarScrollEl.scrollTop > 10 : false;
+    const color = (isHomePage() || !scrolled) ? "transparent" : bg;
+    applyTopBarColor(color);
+  }
+
+  function fixTopBarContent() {
+    document.querySelectorAll("header[data-testid='topbar'] > .contentSpacing, .main-topBar-topbarContentContainer").forEach(el => {
+      const color = isHomePage() ? "" : "transparent";
+      if (color) {
+        el.style.setProperty("background-color", color, "important");
+      } else {
+        el.style.removeProperty("background-color");
+      }
+    });
+  }
+
+
+  function playPalette() {
+    const pbtn = _liveColors.csPlayButton || _liveColors.csButton || "#1db954";
+    const hovMissing = !_liveColors.csPlayButtonHover;
+    return {
+      pbtn,
+      pbtnHov: _liveColors.csPlayButtonHover || adjustColorSafe(pbtn, 0.1),
+      pbtnText: contrastColorSafe(pbtn),
+      hovFilter: hovMissing && isGradientValue(pbtn),
+    };
+  }
+
+  function paintBg(el, val) {
+    el.style.removeProperty("background");
+    el.style.removeProperty("background-image");
+    if (isGradientValue(val)) el.style.setProperty("background", val + " fixed", "important");
+    else el.style.setProperty("background-color", val, "important");
+  }
+  function clearBg(el) {
+    el.style.removeProperty("background");
+    el.style.removeProperty("background-image");
+    el.style.removeProperty("background-color");
+  }
+  function playHover(btn, on) {
+    const p = playPalette();
+    paintBg(btn, on ? p.pbtnHov : p.pbtn);
+    if (on && p.hovFilter) btn.style.setProperty("filter", "brightness(1.12)", "important");
+    else btn.style.removeProperty("filter");
+  }
+
+  function fixPlayButtons() {
+    const { pbtn, pbtnText } = playPalette();
+    document.querySelectorAll("[data-testid='control-button-playpause']").forEach(btn => {
+      paintBg(btn, pbtn);
+      btn.style.setProperty("color", pbtnText, "important");
+      btn.style.setProperty("border-radius", "50%", "important");
+      btn.querySelectorAll("svg,path,polygon").forEach(el => {
+        el.style.setProperty("fill", pbtnText, "important");
+        el.style.setProperty("color", pbtnText, "important");
+      });
+      if (!btn.dataset.cs4Hooked) {
+        btn.dataset.cs4Hooked = "1";
+        btn.addEventListener("mouseenter", () => playHover(btn, true));
+        btn.addEventListener("mouseleave", () => playHover(btn, false));
+      }
+    });
+
+    document.querySelectorAll("[role='div'],button[data-testid='play-button']").forEach(btn => {
+      if (
+        btn.closest("[class*='TrackListRow']") || btn.closest("[class*='tracklist-row']") ||
+        btn.closest(".main-trackList-trackListRow") || btn.closest("[data-testid='tracklist-row']") ||
+        btn.closest("[data-testid='queue-row']") || btn.closest("[class*='QueueRow']") ||
+        btn.dataset.testid === "control-button-playpause"
+      ) return;
+      btn.style.setProperty("color", pbtnText, "important");
+      btn.querySelectorAll("svg,path,polygon").forEach(el => {
+        el.style.setProperty("fill", pbtnText, "important");
+        el.style.setProperty("color", pbtnText, "important");
+      });
+      if (
+        btn.closest("[data-testid='action-bar']") || btn.closest("[data-testid='action-bar-row-actions']") ||
+        btn.closest("[class*='actionBar']") || btn.closest("[class*='ActionBar']") ||
+        btn.closest("[class*='entityHeader']") || btn.closest("[class*='EntityHeader']")
+      ) {
+        paintBg(btn, pbtn);
+        btn.style.setProperty("border-radius", "50%", "important");
+        if (!btn.dataset.cs4Hooked) {
+          btn.dataset.cs4Hooked = "1";
+          btn.addEventListener("mouseenter", () => playHover(btn, true));
+          btn.addEventListener("mouseleave", () => playHover(btn, false));
+        }
+        return;
+      }
+      clearBg(btn);
+      btn.style.setProperty("border-radius", "50%", "important");
+
+      if (!btn.dataset.cs4Hooked) {
+        btn.dataset.cs4Hooked = "1";
+        let cardAnchor =
+          btn.closest(".main-card-card") ||
+          btn.closest("[class*='CardComponent']") ||
+          btn.closest("[data-testid='card-container']") ||
+          btn.closest(":has(> [data-testid='shortcut-background'])") ||
+          btn.closest("[data-testid='shortcut']") ||
+          btn.closest("[class*='shortcut']") ||
+          btn.closest("[class*='Shortcut']") ||
+          btn.closest("[class*='recentlyPlayed']") ||
+          btn.closest("[class*='RecentlyPlayed']") ||
+          btn.closest("[class*='gridItem']");
+        if (!cardAnchor) {
+          let el = btn.parentElement;
+          for (let i = 0; i < 6 && el; i++) {
+            if (getComputedStyle(el).pointerEvents !== "none") { cardAnchor = el; break; }
+            el = el.parentElement;
+          }
+        }
+        if (!cardAnchor) cardAnchor = btn.parentElement;
+        if (cardAnchor) {
+          {
+            btn.style.setProperty("opacity", "0", "important");
+            cardAnchor.addEventListener("mouseenter", () => btn.style.setProperty("opacity", "1", "important"));
+            cardAnchor.addEventListener("mouseleave", () => btn.style.setProperty("opacity", "0", "important"));
+          }
+          cardAnchor.addEventListener("mouseenter", () => paintBg(btn, playPalette().pbtn));
+          cardAnchor.addEventListener("mouseleave", () => { clearBg(btn); btn.style.removeProperty("filter"); });
+          btn.addEventListener("mouseenter", () => playHover(btn, true));
+          btn.addEventListener("mouseleave", () => playHover(btn, false));
+        }
+      }
+    });
+  }
+
+
+  // ===========================================================
+  // FILTER BAR
+  // ===========================================================
+
+  const FILTER_SELS = [
+    "[data-testid='home-page'] [role='group']:has(.e-10860-chip)",
+    ".search-searchCategory-contentArea",
+    "[class*='search-searchCategory-contentArea']",
+  ];
+
+  let _filterScrollListener = null;
+  let _filterScrollEl       = null;
+
+  function applyFilterBarStyle(scrolled) {
+    const bgEl = _liveColors.csMainElevated || "#1a1a1a";
+    FILTER_SELS.forEach(sel => {
+      document.querySelectorAll(sel).forEach(el => {
+        if (!scrolled) {
+          el.style.setProperty("background-color", "transparent", "important");
+          el.style.setProperty("background", "transparent", "important");
+          el.style.setProperty("box-shadow", "none", "important");
+        } else {
+          el.style.setProperty("background-color", bgEl, "important");
+          el.style.setProperty("background", bgEl, "important");
+          el.style.setProperty("box-shadow", "0 2px 8px rgba(0,0,0,.45)", "important");
+        }
+      });
+    });
+  }
+
+  function attachFilterScrollObserver() {
+    if (!isHomePage()) return;
+    const scrollEl =
+      document.querySelector(".main-view-container__scroll-node") ||
+      document.querySelector("[class*='scrollNode']") ||
+      document.querySelector("[class*='scroll-node']") ||
+      document.querySelector("[data-overlayscrollbars-viewport]") ||
+      document.querySelector(".os-viewport");
+    if (!scrollEl || _filterScrollEl === scrollEl) return;
+    if (_filterScrollEl && _filterScrollListener) {
+      _filterScrollEl.removeEventListener("scroll", _filterScrollListener);
+    }
+    _filterScrollEl = scrollEl;
+    applyFilterBarStyle(false);
+    _filterScrollListener = () => applyFilterBarStyle(scrollEl.scrollTop > 10);
+    scrollEl.addEventListener("scroll", _filterScrollListener, { passive: true });
+  }
+
+  function fixFilterBar() {
+    if (!isHomePage()) return;
+    applyFilterBarStyle(_filterScrollEl ? _filterScrollEl.scrollTop > 10 : false);
+    attachFilterScrollObserver();
+  }
+
+  // ===========================================================
+  // HEADER WASH
+  // ===========================================================
+  const WASH_STYLE_ID = "cs4-wash-style";
+  const _washSheetsDone = new WeakSet();
+  const _washSelectors = new Set();
+
+  function scanWashRules() {
+    for (const sheet of Array.from(document.styleSheets)) {
+      if (_washSheetsDone.has(sheet)) continue;
+      const own = sheet.ownerNode;
+      if (own && own.id && /^cs4-/.test(own.id)) { _washSheetsDone.add(sheet); continue; }
+      let rules;
+      try { rules = sheet.cssRules; } catch (e) { continue; }
+      _washSheetsDone.add(sheet);
+      for (const r of Array.from(rules || [])) {
+        if (!r.style || !r.selectorText) continue;
+        const st = r.style;
+        if (st.getPropertyValue("position") !== "absolute" || st.getPropertyValue("z-index") !== "-1") continue;
+        const bi = st.getPropertyValue("background-image") || st.getPropertyValue("background");
+        if (!/linear-gradient\((?:[^()]|\([^()]*\))*var\(--background-base\)/.test(bi)) continue;
+        r.selectorText.split(",").forEach(sel => { sel = sel.trim(); if (sel) _washSelectors.add(sel); });
+      }
+    }
+  }
+
+  function fixHeaderWash() {
+    let st = document.getElementById(WASH_STYLE_ID);
+    const main = _liveColors && _liveColors.csMain;
+    if (!main || !isGradientValue(main)) { if (st && st.textContent) st.textContent = ""; return; }
+    scanWashRules();
+    if (!_washSelectors.size) return;
+    if (!st) { st = document.createElement("style"); st.id = WASH_STYLE_ID; document.head.appendChild(st); }
+    const css = [..._washSelectors].map(sel => "#main-view " + sel).join(",\n") + `{
+  background-image:linear-gradient(#0009 0%, transparent 100%), var(--background-noise)!important;
+  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 25%,transparent 100%)!important;
+  mask-image:linear-gradient(to bottom,#000 0%,#000 25%,transparent 100%)!important}`;
+    if (st.textContent !== css) st.textContent = css;
+  }
+
+  function runAllFixes() { fixTopBar(); fixTopBarContent(); fixPlayButtons(); fixFilterBar(); sblCheck(); fixHeaderWash(); }
+
+  const domObserver = new MutationObserver(() => {
+    clearTimeout(domObserver._t);
+    domObserver._t = setTimeout(runAllFixes, 200);
+  });
+  domObserver.observe(document.body, { childList: true, subtree: true, attributes: false });
+
+  function applyColors(colors) {
+    _rawColors  = colors;
+    _liveColors = isGradientsEnabled() ? colors : flattenGradients(colors);
+    applyCSS(_liveColors);
+    setTimeout(runAllFixes, 50);
+  }
+
+
   const SECTION_ID = "cs4-section";
 
-  function isSettings() {
-    return (
+  // ===========================================================
+  // SCHEDULED THEME
+  // ===========================================================
+
+  const KEY_SCHEDULE      = "cs4_schedule";
+  const KEY_SCHEDULE_LAST = "cs4_schedule_last";
+  const SCHEDULE_DEFAULTS = {
+    enabled: false,
+    slots: [{ start: "07:00", key: "light" }, { start: "19:00", key: "default" }],
+  };
+  const SCHEDULE_TEXT = {
+    en: { label: "Scheduled theme", from: "from", add: "Add time slot" },
+    it: { label: "Tema programmato", from: "dalle", add: "Aggiungi fascia" },
+    de: { label: "Zeitgesteuertes Theme", from: "ab", add: "Zeitfenster hinzufügen" },
+    fr: { label: "Thème programmé", from: "à partir de", add: "Ajouter une plage horaire" },
+    es: { label: "Tema programado", from: "desde las", add: "Añadir franja horaria" },
+    uk: { label: "Тема за розкладом", from: "з", add: "Додати часовий проміжок" },
+    ru: { label: "Тема по расписанию", from: "с", add: "Добавить интервал" },
+    zh: { label: "定时主题", from: "从", add: "添加时间段" },
+  };
+
+  function scheduleText(k) {
+    const l = String(getLang() || "en").slice(0, 2).toLowerCase();
+    return (SCHEDULE_TEXT[l] || SCHEDULE_TEXT.en)[k];
+  }
+
+  // =========
+  // SHUFFLE PRESET GENERATOR
+  // =========
+
+  const SHUFFLE_TEXT = {
+    en: { title: "Random preset", done: "🎲 Random preset ready. To keep it, press Apply & Save." },
+    it: { title: "Preset casuale", done: "🎲 Preset casuale pronto. Per tenerlo, premi Applica & Salva." },
+    de: { title: "Zufällige Voreinstellung", done: "🎲 Zufällige Voreinstellung bereit. Zum Behalten auf Anwenden & Speichern klicken." },
+    fr: { title: "Préréglage aléatoire", done: "🎲 Préréglage aléatoire prêt. Pour le garder, cliquez sur Appliquer & Sauvegarder." },
+    es: { title: "Preajuste aleatorio", done: "🎲 Preajuste aleatorio listo. Para conservarlo, pulsa Aplicar y guardar." },
+    uk: { title: "Випадковий пресет", done: "🎲 Випадковий пресет готовий. Щоб зберегти, натисніть «Застосувати та зберегти»." },
+    ru: { title: "Случайный пресет", done: "🎲 Случайный пресет готов. Чтобы сохранить, нажмите «Применить и сохранить»." },
+    zh: { title: "随机预设", done: "🎲 随机预设已生成。如需保留，请点击“应用并保存”。" },
+  };
+
+  const GRADIENTS_TEXT = {
+    en: { label: "Gradients", beta: "Beta" },
+    it: { label: "Gradient", beta: "Beta" },
+    de: { label: "Verläufe", beta: "Beta" },
+    fr: { label: "Dégradés", beta: "Bêta" },
+    es: { label: "Degradados", beta: "Beta" },
+    uk: { label: "Градієнти", beta: "Бета" },
+    ru: { label: "Градиенты", beta: "Бета" },
+    zh: { label: "渐变", beta: "测试版" },
+  };
+
+  function gradientsText(k) {
+    const l = String(getLang() || "en").slice(0, 2).toLowerCase();
+    return (GRADIENTS_TEXT[l] || GRADIENTS_TEXT.en)[k];
+  }
+
+  function shuffleText(k) {
+    const l = String(getLang() || "en").slice(0, 2).toLowerCase();
+    return (SHUFFLE_TEXT[l] || SHUFFLE_TEXT.en)[k];
+  }
+
+  function contrastRatio(a, b) {
+    const la = luminance(a);
+    const lb = luminance(b);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  }
+
+  function generateRandomPreset() {
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+    const wrap = h => ((h % 360) + 360) % 360;
+    const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
+    const hex = (h, sat, l) => hslToHex(wrap(h), clamp(sat, 0, 100), clamp(l, 0, 100));
+    const light = Math.random() < 0.25;
+    const dir = light ? -1 : 1;
+    const base = rnd(0, 360);
+    const scheme = pick([[30, -30], [180, 25], [150, 210], [120, 240], [20, -20]]);
+    const h1 = base;
+    const h2 = base + scheme[0];
+    const h3 = base + scheme[1];
+    const bgSat = light ? pick([10, 18, 26]) : pick([6, 16, 26, 38]);
+    const jit = () => rnd(-0.8, 0.8);
+    const steps = light
+      ? { main: 97, mainEl: 99, side: 93, player: 95, hl: 90, hlEl: 86, card: 99, cardHov: 93 }
+      : { main: 9, mainEl: 13, side: 6, player: 7, hl: 17, hlEl: 22, card: 12, cardHov: 17 };
+    const bg = k => hex(h1, bgSat, steps[k] + jit());
+    const out = {};
+    out.csMain = bg("main");
+    out.csMainElevated = bg("mainEl");
+    out.csSidebar = bg("side");
+    out.csPlayer = bg("player");
+    out.csHighlight = bg("hl");
+    out.csHighlightElevated = bg("hlEl");
+    out.csCard = bg("card");
+    out.csCardHover = bg("cardHov");
+    const worst = out.csHighlightElevated;
+    const fit = (h, sat, l, against, min) => {
+      let ll = l;
+      let c = hex(h, sat, ll);
+      for (let i = 0; i < 60 && contrastRatio(c, against) < min; i++) {
+        ll += dir;
+        c = hex(h, sat, ll);
+      }
+      return c;
+    };
+    out.csText = fit(h1, light ? 18 : 14, light ? 10 : 95, worst, 8);
+    out.csSubtext = fit(h1, light ? 12 : 10, light ? 36 : 70, worst, 4.8);
+    const accSat = rnd(65, 92);
+    const accent = fit(h1, accSat, light ? rnd(34, 44) : rnd(58, 68), worst, 4.5);
+    out.csAccent = accent;
+    const play = hex(h1, accSat, light ? 42 : 60);
+    out.csPlayButton = play;
+    out.csPlayButtonHover = hex(h1, accSat, light ? 35 : 69);
+    out.csProgressFg = accent;
+    out.csVolumeFg = hex(h2, accSat, light ? 42 : 62);
+    const notif = hex(h3, rnd(70, 90), light ? 52 : 58);
+    out.csNotification = notif;
+    out.csNotificationText = contrastColor(notif);
+    const barBg = hex(h1, bgSat, light ? 82 : 26);
+    out.csProgressBg = barBg;
+    out.csVolumeBg = barBg;
+    out.csButtonDisabled = hex(h1, 8, light ? 72 : 34);
+    return out;
+  }
+
+  function loadSchedule() {
+    try {
+      const raw = Spicetify.LocalStorage.get(KEY_SCHEDULE);
+      if (raw) {
+        const o = JSON.parse(raw);
+        if (Array.isArray(o.slots) && o.slots.length) return { enabled: !!o.enabled, slots: o.slots };
+        if (o.dayStart && o.nightStart) {
+          return {
+            enabled: !!o.enabled,
+            slots: [{ start: o.dayStart, key: o.dayKey || "light" }, { start: o.nightStart, key: o.nightKey || "default" }],
+          };
+        }
+      }
+    } catch (_) {}
+    return { enabled: false, slots: SCHEDULE_DEFAULTS.slots.map(x => ({ ...x })) };
+  }
+
+  function saveSchedule(obj) {
+    Spicetify.LocalStorage.set(KEY_SCHEDULE, JSON.stringify(obj));
+  }
+
+  function timeToMinutes(v) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(v || "");
+    return m ? (+m[1]) * 60 + (+m[2]) : 0;
+  }
+
+  function currentScheduleSlot(sch) {
+    const now = new Date();
+    const n = now.getHours() * 60 + now.getMinutes();
+    const sorted = [...sch.slots].sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+    let current = sorted[sorted.length - 1];
+    sorted.forEach(sl => { if (timeToMinutes(sl.start) <= n) current = sl; });
+    return current;
+  }
+
+  function schedulePresetOptions(selected) {
+    const esc = v => String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    return Object.entries(getAllPresets()).map(([k, p]) => {
+      const name = p.builtin ? (t().presetNames?.[k] || p.name) : p.name;
+      return `<option value="${esc(k)}" ${k === selected ? "selected" : ""}>${esc(p.emoji || "")} ${esc(name)}</option>`;
+    }).join("");
+  }
+
+  function scheduleBodyHtml(slots) {
+    const sorted = [...slots].sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+    const lines = sorted.map((sl, i) => `
+      <div class="cs4-sch-line">
+        <span>🕒 ${scheduleText("from")}</span>
+        <input type="time" value="${sl.start}">
+        <select>${schedulePresetOptions(sl.key)}</select>
+        ${sorted.length > 2 ? `<button type="button" class="cs4-sch-del" data-i="${i}">✕</button>` : ""}
+      </div>`).join("");
+    return lines + `<button type="button" id="cs4-sch-add" class="cs4-btn cs4-btn-secondary">＋ ${scheduleText("add")}</button>`;
+  }
+
+  function applySchedule(force, onApplied) {
+    const sch = loadSchedule();
+    if (!sch.enabled) return;
+    const slot = currentScheduleSlot(sch);
+    if (!slot) return;
+    const id = slot.start + "|" + slot.key;
+    if (!force && Spicetify.LocalStorage.get(KEY_SCHEDULE_LAST) === id) return;
+    const preset = getAllPresets()[slot.key];
+    if (!preset) return;
+    Spicetify.LocalStorage.set(KEY_SCHEDULE_LAST, id);
+    const colors = { ...preset.colors };
+    applyColors(colors);
+    saveColors(colors);
+    savePreset(slot.key);
+    if (onApplied) { onApplied(slot.key, colors); return; }
+    const section = document.getElementById(SECTION_ID);
+    if (section) renderUI(section);
+  }
+
+  // ===========================================================
+  // UI
+  // ===========================================================
+
+  function buildUI() {
+    if (document.getElementById(SECTION_ID)) return;
+
+    const isSettings =
       window.location.pathname.startsWith("/preferences") ||
       window.location.pathname.startsWith("/settings") ||
       window.location.hash.includes("preferences") ||
@@ -17,12 +1525,8 @@
       !!document.querySelector('[data-testid="settings-page"]') ||
       !!document.querySelector('[data-testid="settings"]') ||
       !!document.querySelector(".x-settings-container") ||
-      !!document.querySelector("[class*='settings-container']")
-    );
-  }
-
-  function mount() {
-    if (document.getElementById(SECTION_ID) || !isSettings()) return;
+      !!document.querySelector("[class*='settings-container']");
+    if (!isSettings) return;
 
     const target =
       document.querySelector(".x-settings-container") ||
@@ -35,31 +1539,1439 @@
 
     const section = document.createElement("div");
     section.id = SECTION_ID;
-    section.textContent = "Project under maintenance,\nretry later";
-    section.style.cssText =
-      "padding:48px 0 64px;text-align:center;white-space:pre-line;" +
-      "font-weight:800;line-height:1.15;letter-spacing:-0.02em;color:#ffffff;";
     target.appendChild(section);
-
-    const fit = () => {
-      const w = section.clientWidth;
-      if (!w) return;
-      section.style.fontSize = Math.max(12, Math.min(44, Math.floor(w / 17))) + "px";
-    };
-    fit();
-    window.addEventListener("resize", fit);
+    renderUI(section);
   }
 
-  let timer;
-  new MutationObserver(() => {
-    if (document.getElementById(SECTION_ID)) return;
-    clearTimeout(timer);
-    timer = setTimeout(mount, 300);
-  }).observe(document.body, { childList: true, subtree: true });
 
-  if (Spicetify.Platform.History) {
-    Spicetify.Platform.History.listen(() => setTimeout(mount, 400));
+  const KEY_LANG = "cs4_lang";
+
+  // ===========================================================
+  // LANG
+  // ===========================================================
+
+  const LANGUAGES = [
+    { code: "en-GB", flag: "🇬🇧", name: "English (UK)" },
+    { code: "en-US", flag: "🇺🇸", name: "English (US)" },
+    { code: "it",    flag: "🇮🇹", name: "Italiano" },
+    { code: "de",    flag: "🇩🇪", name: "Deutsch" },
+    { code: "fr",    flag: "🇫🇷", name: "Français" },
+    { code: "es",    flag: "🇪🇸", name: "Español" },
+    { code: "uk",    flag: "🇺🇦", name: "Українська" },
+    { code: "ru",    flag: "🇷🇺", name: "Русский" },
+    { code: "zh",    flag: "🇨🇳", name: "中文" },
+  ];
+
+  const TRANSLATIONS = {
+    "en-GB": {
+      subtitle:       "Customise every Spotify colour in real time",
+      tabPresets:     "Presets",
+      tabEditor:      "Colour editor",
+      saveBtn:        "＋ Save current",
+      presetNamePh:   "Custom preset name…",
+      applyBtn:       "✓ Apply & Save",
+      resetBtn:       "↺ Restore preset",
+      defaultBtn:     "↩ Spotify Default",
+      toastSaved:     "Saved and applied!",
+      toastReset:     "Restored to active preset.",
+      toastDefault:   "Spotify default restored.",
+      toastNoName:    "Enter a name.",
+      toastPresetSaved: (n) => `Preset "${n}" saved!`,
+      toastPresetApplied: (n) => `"${n}" applied!`,
+      toastPresetDeleted: "Preset deleted.",
+      groupText:      "Text",
+      groupBg:        "Backgrounds",
+      groupAccents:   "Accents",
+      groupStructure: "Structure",
+      groupPlayer:    "Player",
+      langLabel:      "Language",
+      presetNames: {
+        default:    "Spotify Default",
+        midnight:   "Midnight Blue",
+        rose:       "Rose Gold",
+        forest:     "Forest",
+        cyber:      "Cyberpunk",
+        monochrome: "Monochrome",
+        light:      "Light Mode",
+      },
+      colorLabels: {
+        csText: "Main text", csSubtext: "Secondary text",
+        csMain: "Main background", csMainElevated: "Elevated background",
+        csHighlight: "Hover / selection", csHighlightElevated: "Elevated hover",
+        csAccent: "Accent", csPlayButton: "Play button",
+        csPlayButtonHover: "Play button (hover)", csButtonDisabled: "Disabled button",
+        csSidebar: "Sidebar", csPlayer: "Player bar",
+        csCard: "Card", csCardHover: "Card hover",
+        csNotification: "Notifications",
+        csNotificationText: "Notification text",
+        csProgressBg: "Progress background", csProgressFg: "Progress color",
+        csVolumeBg: "Volume background", csVolumeFg: "Volume color",
+      },
+      tabSettings: "Settings",
+      communityLabel:     "🌐 Enable community presets",
+      versionsLabel: "⚙️ App versions", versionsCopyBtn: "Copy", versionsCopyTitle: "Copy Spotify / Spicetify / ChromaShift versions", versionsCopied: "Versions copied to clipboard", undoTitle: "Undo", redoTitle: "Redo", gradientTitle: "Gradient", gradientRemoveBtn: "Solid color", gradientTag: "Gradient", gradientAddBtn: "+ Color",
+      communityNoneFound: "No community presets found.",
+      deleteTitle: "Delete",
+      badgeCommunity: "community",
+      badgeCustom: "custom",
+    },
+    "en-US": {
+      subtitle:       "Customize every Spotify color in real time",
+      tabPresets:     "Presets",
+      tabEditor:      "Color editor",
+      saveBtn:        "＋ Save current",
+      presetNamePh:   "Custom preset name…",
+      applyBtn:       "✓ Apply & Save",
+      resetBtn:       "↺ Restore preset",
+      defaultBtn:     "↩ Spotify Default",
+      toastSaved:     "Saved and applied!",
+      toastReset:     "Restored to active preset.",
+      toastDefault:   "Spotify default restored.",
+      toastNoName:    "Enter a name.",
+      toastPresetSaved: (n) => `Preset "${n}" saved!`,
+      toastPresetApplied: (n) => `"${n}" applied!`,
+      toastPresetDeleted: "Preset deleted.",
+      groupText:      "Text",
+      groupBg:        "Backgrounds",
+      groupAccents:   "Accents",
+      groupStructure: "Structure",
+      groupPlayer:    "Player",
+      langLabel:      "Language",
+      presetNames: {
+        default:    "Spotify Default",
+        midnight:   "Midnight Blue",
+        rose:       "Rose Gold",
+        forest:     "Forest",
+        cyber:      "Cyberpunk",
+        monochrome: "Monochrome",
+        light:      "Light Mode",
+      },
+      colorLabels: {
+        csText: "Main text", csSubtext: "Secondary text",
+        csMain: "Main background", csMainElevated: "Elevated background",
+        csHighlight: "Hover / selection", csHighlightElevated: "Elevated hover",
+        csAccent: "Accent", csPlayButton: "Play button",
+        csPlayButtonHover: "Play button (hover)", csButtonDisabled: "Disabled button",
+        csSidebar: "Sidebar", csPlayer: "Player bar",
+        csCard: "Card", csCardHover: "Card hover",
+        csNotification: "Notifications",
+        csNotificationText: "Notification text",
+        csProgressBg: "Progress background", csProgressFg: "Progress color",
+        csVolumeBg: "Volume background", csVolumeFg: "Volume color",
+      },
+      tabSettings: "Settings",
+      communityLabel:     "🌐 Enable community presets",
+      versionsLabel: "⚙️ App versions", versionsCopyBtn: "Copy", versionsCopyTitle: "Copy Spotify / Spicetify / ChromaShift versions", versionsCopied: "Versions copied to clipboard", undoTitle: "Undo", redoTitle: "Redo", gradientTitle: "Gradient", gradientRemoveBtn: "Solid color", gradientTag: "Gradient", gradientAddBtn: "+ Color",
+      communityNoneFound: "No community presets found.",
+      deleteTitle: "Delete",
+      badgeCommunity: "community",
+      badgeCustom: "custom",
+    },
+    "it": {
+      subtitle:       "Personalizza ogni colore di Spotify in tempo reale",
+      tabPresets:     "Preset",
+      tabEditor:      "Editor colori",
+      saveBtn:        "＋ Salva corrente",
+      presetNamePh:   "Nome preset personalizzato…",
+      applyBtn:       "✓ Applica & Salva",
+      resetBtn:       "↺ Ripristina preset",
+      defaultBtn:     "↩ Default Spotify",
+      toastSaved:     "Salvato e applicato!",
+      toastReset:     "Ripristinato al preset attivo.",
+      toastDefault:   "Default Spotify ripristinato.",
+      toastNoName:    "Inserisci un nome.",
+      toastPresetSaved: (n) => `Preset "${n}" salvato!`,
+      toastPresetApplied: (n) => `"${n}" applicato!`,
+      toastPresetDeleted: "Preset eliminato.",
+      groupText:      "Testo",
+      groupBg:        "Sfondi",
+      groupAccents:   "Accenti",
+      groupStructure: "Struttura",
+      groupPlayer:    "Player",
+      langLabel:      "Lingua",
+      presetNames: {
+        default:    "Spotify Predefinito",
+        midnight:   "Blu Mezzanotte",
+        rose:       "Rosa Oro",
+        forest:     "Foresta",
+        cyber:      "Cyberpunk",
+        monochrome: "Monocromatico",
+        light:      "Modalità Chiara",
+      },
+      colorLabels: {
+        csText: "Testo principale", csSubtext: "Testo secondario",
+        csMain: "Sfondo principale", csMainElevated: "Sfondo elevato",
+        csHighlight: "Hover / selezione", csHighlightElevated: "Hover elevato",
+        csAccent: "Accento", csPlayButton: "Tasto Play",
+        csPlayButtonHover: "Tasto Play (hover)", csButtonDisabled: "Bottone disabilitato",
+        csSidebar: "Sidebar", csPlayer: "Player bar",
+        csCard: "Card", csCardHover: "Card hover",
+        csNotification: "Notifiche",
+        csNotificationText: "Testo notifiche",
+        csProgressBg: "Avanzamento sfondo", csProgressFg: "Avanzamento colore",
+        csVolumeBg: "Volume sfondo", csVolumeFg: "Volume colore",
+      },
+      tabSettings: "Impostazioni",
+      communityLabel:     "🌐 Abilita preset della community",
+      versionsLabel: "⚙️ Versioni app", versionsCopyBtn: "Copia", versionsCopyTitle: "Copia versioni Spotify / Spicetify / ChromaShift", versionsCopied: "Versioni copiate negli appunti", undoTitle: "Annulla", redoTitle: "Ripeti", gradientTitle: "Gradiente", gradientRemoveBtn: "Colore pieno", gradientTag: "Gradiente", gradientAddBtn: "+ Colore",
+      communityNoneFound: "Nessun preset community trovato.",
+      deleteTitle: "Elimina",
+      badgeCommunity: "community",
+      badgeCustom: "personalizzato",
+    },
+    "de": {
+      subtitle:       "Passe jede Spotify-Farbe in Echtzeit an",
+      tabPresets:     "Voreinstellungen",
+      tabEditor:      "Farb-Editor",
+      saveBtn:        "＋ Aktuell speichern",
+      presetNamePh:   "Name der Voreinstellung…",
+      applyBtn:       "✓ Anwenden & Speichern",
+      resetBtn:       "↺ Voreinstellung wiederherstellen",
+      defaultBtn:     "↩ Spotify-Standard",
+      toastSaved:     "Gespeichert und angewendet!",
+      toastReset:     "Aktive Voreinstellung wiederhergestellt.",
+      toastDefault:   "Spotify-Standard wiederhergestellt.",
+      toastNoName:    "Bitte einen Namen eingeben.",
+      toastPresetSaved: (n) => `Voreinstellung "${n}" gespeichert!`,
+      toastPresetApplied: (n) => `"${n}" angewendet!`,
+      toastPresetDeleted: "Voreinstellung gelöscht.",
+      groupText:      "Text",
+      groupBg:        "Hintergründe",
+      groupAccents:   "Akzente",
+      groupStructure: "Struktur",
+      groupPlayer:    "Player",
+      langLabel:      "Sprache",
+      presetNames: {
+        default:    "Spotify Standard",
+        midnight:   "Mitternachtsblau",
+        rose:       "Roségold",
+        forest:     "Wald",
+        cyber:      "Cyberpunk",
+        monochrome: "Monochrom",
+        light:      "Heller Modus",
+      },
+      colorLabels: {
+        csText: "Haupttext", csSubtext: "Sekundärtext",
+        csMain: "Haupthintergrund", csMainElevated: "Erhöhter Hintergrund",
+        csHighlight: "Hover / Auswahl", csHighlightElevated: "Erhöhter Hover",
+        csAccent: "Akzent", csPlayButton: "Play-Taste",
+        csPlayButtonHover: "Play-Taste (Hover)", csButtonDisabled: "Deaktivierte Schaltfläche",
+        csSidebar: "Seitenleiste", csPlayer: "Player-Leiste",
+        csCard: "Karte", csCardHover: "Karten-Hover",
+        csNotification: "Benachrichtigungen",
+        csNotificationText: "Benachrichtigung Text",
+        csProgressBg: "Fortschritt Hintergrund", csProgressFg: "Fortschritt Farbe",
+        csVolumeBg: "Lautstärke Hintergrund", csVolumeFg: "Lautstärke Farbe",
+      },
+      tabSettings: "Einstellungen",
+      communityLabel:     "🌐 Community-Presets aktivieren",
+      versionsLabel: "⚙️ App-Versionen", versionsCopyBtn: "Kopieren", versionsCopyTitle: "Spotify-/Spicetify-/ChromaShift-Versionen kopieren", versionsCopied: "Versionen in die Zwischenablage kopiert", undoTitle: "Rückgängig", redoTitle: "Wiederholen", gradientTitle: "Verlauf", gradientRemoveBtn: "Vollfarbe", gradientTag: "Verlauf", gradientAddBtn: "+ Farbe",
+      communityNoneFound: "Keine Community-Presets gefunden.",
+      deleteTitle: "Löschen",
+      badgeCommunity: "community",
+      badgeCustom: "benutzerdefiniert",
+    },
+    "fr": {
+      subtitle:       "Personnalisez chaque couleur de Spotify en temps réel",
+      tabPresets:     "Préréglages",
+      tabEditor:      "Éditeur de couleurs",
+      saveBtn:        "＋ Sauvegarder",
+      presetNamePh:   "Nom du préréglage…",
+      applyBtn:       "✓ Appliquer & Sauvegarder",
+      resetBtn:       "↺ Restaurer le préréglage",
+      defaultBtn:     "↩ Défaut Spotify",
+      toastSaved:     "Sauvegardé et appliqué !",
+      toastReset:     "Préréglage actif restauré.",
+      toastDefault:   "Défaut Spotify restauré.",
+      toastNoName:    "Veuillez entrer un nom.",
+      toastPresetSaved: (n) => `Préréglage "${n}" sauvegardé !`,
+      toastPresetApplied: (n) => `"${n}" appliqué !`,
+      toastPresetDeleted: "Préréglage supprimé.",
+      groupText:      "Texte",
+      groupBg:        "Arrière-plans",
+      groupAccents:   "Accents",
+      groupStructure: "Structure",
+      groupPlayer:    "Lecteur",
+      langLabel:      "Langue",
+      presetNames: {
+        default:    "Spotify par défaut",
+        midnight:   "Bleu minuit",
+        rose:       "Or rose",
+        forest:     "Forêt",
+        cyber:      "Cyberpunk",
+        monochrome: "Monochrome",
+        light:      "Mode clair",
+      },
+      colorLabels: {
+        csText: "Texte principal", csSubtext: "Texte secondaire",
+        csMain: "Arrière-plan principal", csMainElevated: "Arrière-plan élevé",
+        csHighlight: "Survol / sélection", csHighlightElevated: "Survol élevé",
+        csAccent: "Accent", csPlayButton: "Bouton lecture",
+        csPlayButtonHover: "Bouton lecture (survol)", csButtonDisabled: "Bouton désactivé",
+        csSidebar: "Barre latérale", csPlayer: "Barre du lecteur",
+        csCard: "Carte", csCardHover: "Survol carte",
+        csNotification: "Notifications",
+        csNotificationText: "Texte notification",
+        csProgressBg: "Fond progression", csProgressFg: "Couleur progression",
+        csVolumeBg: "Fond volume", csVolumeFg: "Couleur volume",
+      },
+      tabSettings: "Paramètres",
+      communityLabel:     "🌐 Activer les préréglages communautaires",
+      versionsLabel: "⚙️ Versions de l'app", versionsCopyBtn: "Copier", versionsCopyTitle: "Copier les versions Spotify / Spicetify / ChromaShift", versionsCopied: "Versions copiées dans le presse-papiers", undoTitle: "Annuler", redoTitle: "Rétablir", gradientTitle: "Dégradé", gradientRemoveBtn: "Couleur unie", gradientTag: "Dégradé", gradientAddBtn: "+ Couleur",
+      communityNoneFound: "Aucun préréglage communautaire trouvé.",
+      deleteTitle: "Supprimer",
+      badgeCommunity: "communauté",
+      badgeCustom: "personnalisé",
+    },
+    "es": {
+      subtitle:       "Personaliza cada color de Spotify en tiempo real",
+      tabPresets:     "Preajustes",
+      tabEditor:      "Editor de colores",
+      saveBtn:        "＋ Guardar actual",
+      presetNamePh:   "Nombre del preajuste…",
+      applyBtn:       "✓ Aplicar y guardar",
+      resetBtn:       "↺ Restaurar preajuste",
+      defaultBtn:     "↩ Predeterminado Spotify",
+      toastSaved:     "¡Guardado y aplicado!",
+      toastReset:     "Preajuste activo restaurado.",
+      toastDefault:   "Predeterminado de Spotify restaurado.",
+      toastNoName:    "Introduce un nombre.",
+      toastPresetSaved: (n) => `¡Preajuste "${n}" guardado!`,
+      toastPresetApplied: (n) => `¡"${n}" aplicado!`,
+      toastPresetDeleted: "Preajuste eliminado.",
+      groupText:      "Texto",
+      groupBg:        "Fondos",
+      groupAccents:   "Acentos",
+      groupStructure: "Estructura",
+      groupPlayer:    "Reproductor",
+      langLabel:      "Idioma",
+      presetNames: {
+        default:    "Spotify predeterminado",
+        midnight:   "Azul medianoche",
+        rose:       "Oro rosa",
+        forest:     "Bosque",
+        cyber:      "Cyberpunk",
+        monochrome: "Monocromo",
+        light:      "Modo claro",
+      },
+      colorLabels: {
+        csText: "Texto principal", csSubtext: "Texto secundario",
+        csMain: "Fondo principal", csMainElevated: "Fondo elevado",
+        csHighlight: "Hover / selección", csHighlightElevated: "Hover elevado",
+        csAccent: "Acento", csPlayButton: "Botón reproducir",
+        csPlayButtonHover: "Botón reproducir (hover)", csButtonDisabled: "Botón desactivado",
+        csSidebar: "Barra lateral", csPlayer: "Barra del reproductor",
+        csCard: "Tarjeta", csCardHover: "Hover tarjeta",
+        csNotification: "Notificaciones",
+        csNotificationText: "Texto notificación",
+        csProgressBg: "Fondo progreso", csProgressFg: "Color progreso",
+        csVolumeBg: "Fondo volumen", csVolumeFg: "Color volumen",
+      },
+      tabSettings: "Ajustes",
+      communityLabel:     "🌐 Activar preajustes de la comunidad",
+      versionsLabel: "⚙️ Versiones de la app", versionsCopyBtn: "Copiar", versionsCopyTitle: "Copiar versiones de Spotify / Spicetify / ChromaShift", versionsCopied: "Versiones copiadas al portapapeles", undoTitle: "Deshacer", redoTitle: "Rehacer", gradientTitle: "Degradado", gradientRemoveBtn: "Color sólido", gradientTag: "Degradado", gradientAddBtn: "+ Color",
+      communityNoneFound: "No se encontraron preajustes de la comunidad.",
+      deleteTitle: "Eliminar",
+      badgeCommunity: "comunidad",
+      badgeCustom: "personalizado",
+    },
+    "uk": {
+      subtitle:       "Налаштуйте кожен колір Spotify у реальному часі",
+      tabPresets:     "Пресети",
+      tabEditor:      "Редактор кольорів",
+      saveBtn:        "＋ Зберегти поточний",
+      presetNamePh:   "Назва пресету…",
+      applyBtn:       "✓ Застосувати та зберегти",
+      resetBtn:       "↺ Відновити пресет",
+      defaultBtn:     "↩ Стандарт Spotify",
+      toastSaved:     "Збережено та застосовано!",
+      toastReset:     "Відновлено активний пресет.",
+      toastDefault:   "Стандарт Spotify відновлено.",
+      toastNoName:    "Введіть назву.",
+      toastPresetSaved: (n) => `Пресет "${n}" збережено!`,
+      toastPresetApplied: (n) => `"${n}" застосовано!`,
+      toastPresetDeleted: "Пресет видалено.",
+      groupText:      "Текст",
+      groupBg:        "Фони",
+      groupAccents:   "Акценти",
+      groupStructure: "Структура",
+      groupPlayer:    "Плеєр",
+      langLabel:      "Мова",
+      presetNames: {
+        default:    "Стандарт Spotify",
+        midnight:   "Північ синя",
+        rose:       "Рожеве золото",
+        forest:     "Ліс",
+        cyber:      "Кіберпанк",
+        monochrome: "Монохром",
+        light:      "Світлий режим",
+      },
+      colorLabels: {
+        csText: "Основний текст", csSubtext: "Другорядний текст",
+        csMain: "Основний фон", csMainElevated: "Підвищений фон",
+        csHighlight: "Наведення / вибір", csHighlightElevated: "Підвищене наведення",
+        csAccent: "Акцент", csPlayButton: "Кнопка відтворення",
+        csPlayButtonHover: "Кнопка відтворення (наведення)", csButtonDisabled: "Вимкнена кнопка",
+        csSidebar: "Бічна панель", csPlayer: "Панель плеєра",
+        csCard: "Картка", csCardHover: "Наведення картки",
+        csNotification: "Сповіщення",
+        csNotificationText: "Текст сповіщення",
+        csProgressBg: "Фон прогресу", csProgressFg: "Колір прогресу",
+        csVolumeBg: "Фон гучності", csVolumeFg: "Колір гучності",
+      },
+      tabSettings: "Налаштування",
+      communityLabel:     "🌐 Увімкнути пресети спільноти",
+      versionsLabel: "⚙️ Версії застосунку", versionsCopyBtn: "Копіювати", versionsCopyTitle: "Копіювати версії Spotify / Spicetify / ChromaShift", versionsCopied: "Версії скопійовано в буфер обміну", undoTitle: "Скасувати", redoTitle: "Повторити", gradientTitle: "Градієнт", gradientRemoveBtn: "Суцільний колір", gradientTag: "Градієнт", gradientAddBtn: "+ Колір",
+      communityNoneFound: "Пресети спільноти не знайдено.",
+      deleteTitle: "Видалити",
+      badgeCommunity: "спільнота",
+      badgeCustom: "власний",
+    },
+    "ru": {
+      subtitle:       "Настройте каждый цвет Spotify в реальном времени",
+      tabPresets:     "Пресеты",
+      tabEditor:      "Редактор цветов",
+      saveBtn:        "＋ Сохранить текущий",
+      presetNamePh:   "Название пресета…",
+      applyBtn:       "✓ Применить и сохранить",
+      resetBtn:       "↺ Восстановить пресет",
+      defaultBtn:     "↩ По умолчанию Spotify",
+      toastSaved:     "Сохранено и применено!",
+      toastReset:     "Активный пресет восстановлен.",
+      toastDefault:   "Настройки Spotify восстановлены.",
+      toastNoName:    "Введите название.",
+      toastPresetSaved: (n) => `Пресет "${n}" сохранён!`,
+      toastPresetApplied: (n) => `"${n}" применён!`,
+      toastPresetDeleted: "Пресет удалён.",
+      groupText:      "Текст",
+      groupBg:        "Фоны",
+      groupAccents:   "Акценты",
+      groupStructure: "Структура",
+      groupPlayer:    "Плеер",
+      langLabel:      "Язык",
+      presetNames: {
+        default:    "Стандарт Spotify",
+        midnight:   "Полночный синий",
+        rose:       "Розовое золото",
+        forest:     "Лес",
+        cyber:      "Киберпанк",
+        monochrome: "Монохром",
+        light:      "Светлый режим",
+      },
+      colorLabels: {
+        csText: "Основной текст", csSubtext: "Вторичный текст",
+        csMain: "Основной фон", csMainElevated: "Поднятый фон",
+        csHighlight: "Наведение / выбор", csHighlightElevated: "Поднятое наведение",
+        csAccent: "Акцент", csPlayButton: "Кнопка воспроизведения",
+        csPlayButtonHover: "Кнопка воспроизведения (наведение)", csButtonDisabled: "Отключённая кнопка",
+        csSidebar: "Боковая панель", csPlayer: "Панель плеера",
+        csCard: "Карточка", csCardHover: "Наведение карточки",
+        csNotification: "Уведомления",
+        csNotificationText: "Текст уведомления",
+        csProgressBg: "Фон прогресса", csProgressFg: "Цвет прогресса",
+        csVolumeBg: "Фон громкости", csVolumeFg: "Цвет громкости",
+      },
+      tabSettings: "Настройки",
+      communityLabel:     "🌐 Включить пресеты сообщества",
+      versionsLabel: "⚙️ Версии приложений", versionsCopyBtn: "Копировать", versionsCopyTitle: "Скопировать версии Spotify / Spicetify / ChromaShift", versionsCopied: "Версии скопированы в буфер обмена", undoTitle: "Отменить", redoTitle: "Повторить", gradientTitle: "Градиент", gradientRemoveBtn: "Сплошной цвет", gradientTag: "Градиент", gradientAddBtn: "+ Цвет",
+      communityNoneFound: "Пресеты сообщества не найдены.",
+      deleteTitle: "Удалить",
+      badgeCommunity: "сообщество",
+      badgeCustom: "свой",
+    },
+    "zh": {
+      subtitle:       "实时自定义 Spotify 的每种颜色",
+      tabPresets:     "预设",
+      tabEditor:      "颜色编辑器",
+      saveBtn:        "＋ 保存当前",
+      presetNamePh:   "自定义预设名称…",
+      applyBtn:       "✓ 应用并保存",
+      resetBtn:       "↺ 恢复预设",
+      defaultBtn:     "↩ Spotify 默认",
+      toastSaved:     "已保存并应用！",
+      toastReset:     "已恢复活动预设。",
+      toastDefault:   "已恢复 Spotify 默认设置。",
+      toastNoName:    "请输入名称。",
+      toastPresetSaved: (n) => `预设"${n}"已保存！`,
+      toastPresetApplied: (n) => `"${n}"已应用！`,
+      toastPresetDeleted: "预设已删除。",
+      groupText:      "文字",
+      groupBg:        "背景",
+      groupAccents:   "强调色",
+      groupStructure: "结构",
+      groupPlayer:    "播放器",
+      langLabel:      "语言",
+      presetNames: {
+        default:    "Spotify 默认",
+        midnight:   "午夜蓝",
+        rose:       "玫瑰金",
+        forest:     "森林",
+        cyber:      "赛博朋克",
+        monochrome: "单色",
+        light:      "浅色模式",
+      },
+      colorLabels: {
+        csText: "主要文字", csSubtext: "次要文字",
+        csMain: "主背景", csMainElevated: "提升背景",
+        csHighlight: "悬停 / 选择", csHighlightElevated: "提升悬停",
+        csAccent: "强调色", csPlayButton: "播放按钮",
+        csPlayButtonHover: "播放按钮（悬停）", csButtonDisabled: "禁用按钮",
+        csSidebar: "侧边栏", csPlayer: "播放器栏",
+        csCard: "卡片", csCardHover: "卡片悬停",
+        csNotification: "通知",
+        csNotificationText: "通知文字",
+        csProgressBg: "进度背景", csProgressFg: "进度颜色",
+        csVolumeBg: "音量背景", csVolumeFg: "音量颜色",
+      },
+      tabSettings: "设置",
+      communityLabel:     "🌐 启用社区预设",
+      versionsLabel: "⚙️ 应用版本", versionsCopyBtn: "复制", versionsCopyTitle: "复制 Spotify / Spicetify / ChromaShift 版本", versionsCopied: "版本已复制到剪贴板", undoTitle: "撤销", redoTitle: "重做", gradientTitle: "渐变", gradientRemoveBtn: "纯色", gradientTag: "渐变", gradientAddBtn: "+ 颜色",
+      communityNoneFound: "未找到社区预设。",
+      deleteTitle: "删除",
+      badgeCommunity: "社区",
+      badgeCustom: "自定义",
+    },
+  };
+
+  function getLang() {
+    const stored = Spicetify.LocalStorage.get(KEY_LANG);
+    return (stored && TRANSLATIONS[stored]) ? stored : "en-GB";
   }
 
-  setTimeout(mount, 800);
+  function setLang(code) {
+    Spicetify.LocalStorage.set(KEY_LANG, code);
+  }
+
+  function t() {
+    return TRANSLATIONS[getLang()] || TRANSLATIONS["en-GB"];
+  }
+
+  function renderUI(container) {
+    container.innerHTML = "";
+
+    const c      = flattenGradients(_liveColors);
+    const acc    = c.csAccent            || "#1db954";
+    const bg     = c.csMain              || "#121212";
+    const bgEl   = c.csMainElevated      || "#1a1a1a";
+    const card   = c.csCard              || "#181818";
+    const hl     = c.csHighlight         || "#282828";
+    const hlEl   = c.csHighlightElevated || "#3e3e3e";
+    const txt    = c.csText              || "#ffffff";
+    const sub    = c.csSubtext           || "#a7a7a7";
+    const accTxt = contrastColor(acc);
+    const accDim = adjustColor(acc, -0.1);
+    const accGlo = acc + "44";
+
+    let editColors      = { ..._liveColors };
+    let activePresetKey = loadPreset();
+    let activeSliderPop = null;
+
+    let historyStack = [{ ...editColors }];
+    let historyIndex = 0;
+
+    function pushHistory() {
+      historyStack = historyStack.slice(0, historyIndex + 1);
+      historyStack.push({ ...editColors });
+      if (historyStack.length > 50) historyStack.shift();
+      historyIndex = historyStack.length - 1;
+      updateUndoRedoBtns();
+    }
+    function undo() {
+      if (historyIndex <= 0) return;
+      historyIndex--;
+      editColors = { ...historyStack[historyIndex] };
+      syncPickers();
+      applyColors(editColors);
+      updateUndoRedoBtns();
+    }
+    function redo() {
+      if (historyIndex >= historyStack.length - 1) return;
+      historyIndex++;
+      editColors = { ...historyStack[historyIndex] };
+      syncPickers();
+      applyColors(editColors);
+      updateUndoRedoBtns();
+    }
+    function updateUndoRedoBtns() {
+      const u = document.getElementById("cs4-undo");
+      const r = document.getElementById("cs4-redo");
+      if (u) u.disabled = historyIndex <= 0;
+      if (r) r.disabled = historyIndex >= historyStack.length - 1;
+    }
+
+    let uiStyle = document.getElementById("cs4-ui-style");
+    if (!uiStyle) { uiStyle = document.createElement("style"); uiStyle.id = "cs4-ui-style"; document.head.appendChild(uiStyle); }
+
+    uiStyle.textContent = `
+#cs4-section{border-top:1px solid ${hl};padding:40px 0 64px;font-family:'CircularSp','Circular Sp',system-ui,sans-serif}
+#cs4-section *{box-sizing:border-box}
+.cs4-header{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+.cs4-icon{width:42px;height:42px;border-radius:12px;background:${acc};display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 22px ${accGlo};flex-shrink:0}
+.cs4-title{font-size:21px;font-weight:800;color:${txt};letter-spacing:-.5px;margin:0}
+.cs4-subtitle{font-size:13px;color:${sub};margin:0 0 28px;padding-left:56px}
+.cs4-tabs{display:flex;gap:3px;margin-bottom:24px;background:${card};border-radius:12px;padding:4px;width:fit-content}
+.cs4-tab{padding:8px 22px;border-radius:9px;border:none;cursor:pointer;font-size:13px;font-weight:600;color:${sub};background:transparent;transition:all .17s;letter-spacing:.1px}
+.cs4-tab:hover{color:${txt};background:${hl}}
+.cs4-tab.cs4-active{color:${accTxt};background:${acc}}
+.cs4-panel{display:none}
+.cs4-panel.cs4-active{display:block}
+.cs4-presets-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:9px;margin-bottom:24px}
+.cs4-preset-card{border-radius:14px;border:2px solid transparent;background:${card};padding:15px;cursor:pointer;transition:all .17s;position:relative;overflow:hidden}
+.cs4-preset-card:hover{border-color:${hlEl};transform:translateY(-2px);box-shadow:0 6px 22px rgba(0,0,0,.4)}
+.cs4-preset-card.cs4-active{border-color:${acc};box-shadow:0 0 0 1px ${acc},0 6px 20px ${accGlo}}
+.cs4-preset-swatches{display:flex;gap:5px;margin-bottom:10px}
+.cs4-swatch{width:18px;height:18px;border-radius:50%;border:1.5px solid rgba(255,255,255,.1);flex-shrink:0}
+.cs4-preset-name{font-size:13px;font-weight:700;color:${txt};display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cs4-preset-badge{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:${accDim}33;color:${acc};margin-left:auto}
+.cs4-preset-badge-community{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:#5865F233;color:#5865F2;margin-left:auto}
+.cs4-community-row{display:flex;align-items:center;justify-content:space-between;background:${card};border-radius:12px;padding:12px 16px;margin-bottom:14px;gap:12px}
+.cs4-beta-tag{font-size:9px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;padding:2px 6px;border-radius:999px;border:1.5px solid ${acc};color:${acc}}
+.cs4-sch-line{display:flex;align-items:center;gap:8px;font-size:12px;color:${sub}}
+.cs4-sch-line input[type="time"],.cs4-sch-line select{background:${bgEl};color:${txt};border:1.5px solid ${hlEl};border-radius:8px;padding:5px 8px;font:inherit;font-size:12px;outline:none}
+.cs4-sch-line select{flex:1;min-width:0}
+.cs4-sch-line input[type="time"]:focus,.cs4-sch-line select:focus{border-color:${acc}}
+.cs4-sch-del{background:none;border:none;color:${sub};cursor:pointer;font-size:14px;padding:2px 6px;border-radius:6px}
+.cs4-sch-del:hover{color:${acc}}
+#cs4-sch-add{align-self:flex-start}
+.cs4-community-label{font-size:12px;font-weight:600;color:${sub};display:flex;align-items:center;gap:6px}
+.cs4-community-toggle{position:relative;width:40px;height:22px;flex-shrink:0}
+.cs4-community-toggle input{opacity:0;width:0;height:0;position:absolute}
+.cs4-community-slider{position:absolute;inset:0;background:${hlEl};border-radius:11px;cursor:pointer;transition:background .2s}
+.cs4-community-toggle input:checked + .cs4-community-slider{background:${acc}}
+.cs4-community-slider:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .2s}
+.cs4-community-toggle input:checked + .cs4-community-slider:before{transform:translateX(18px)}
+.cs4-preset-del{position:absolute;top:8px;right:8px;width:21px;height:21px;border-radius:50%;border:none;background:rgba(255,80,80,.15);color:#ff6b6b;font-size:11px;cursor:pointer;display:none;align-items:center;justify-content:center;transition:background .14s}
+.cs4-preset-card:hover .cs4-preset-del{display:flex}
+.cs4-preset-del:hover{background:rgba(255,80,80,.3)}
+.cs4-save-row{display:flex;gap:10px;align-items:center;background:${card};border-radius:12px;padding:14px 16px}
+.cs4-name-input{flex:1;background:${hl};border:1.5px solid ${hlEl};border-radius:8px;padding:8px 12px;font-size:13px;color:${txt};outline:none;transition:border-color .15s}
+.cs4-name-input::placeholder{color:${sub}}
+.cs4-name-input:focus{border-color:${acc}}
+.cs4-group-label{font-size:10px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:${sub};margin:22px 0 10px;padding-bottom:8px;border-bottom:1px solid ${hl}}
+.cs4-group-label:first-child{margin-top:0}
+.cs4-colors-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:8px}
+.cs4-color-row{background:${card};border-radius:12px;padding:11px 13px;display:flex;align-items:center;gap:11px;transition:all .12s;border:1.5px solid transparent}
+.cs4-color-row:hover{background:${hl};border-color:${hlEl}}
+.cs4-color-row.cs4-editing{border-color:${acc};background:${hl}}
+.cs4-color-circle{width:36px;height:36px;border-radius:50%;border:2.5px solid rgba(255,255,255,.15);cursor:pointer;flex-shrink:0;position:relative;transition:transform .14s,border-color .14s}
+.cs4-color-circle:hover{transform:scale(1.1);border-color:rgba(255,255,255,.4)}
+.cs4-color-circle input[type="color"]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border-radius:50%}
+.cs4-color-lbl{flex:1;font-size:13px;font-weight:600;color:${txt};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cs4-hex{width:82px;background:${bgEl};border:1.5px solid ${hlEl};border-radius:7px;padding:5px 8px;font-family:'Courier New',monospace;font-size:12px;color:${contrastColor(bgEl)};outline:none;text-align:center;transition:border-color .14s;flex-shrink:0}
+.cs4-hex:focus{border-color:${acc}}
+.cs4-hex.cs4-invalid{border-color:#e5534b}
+.cs4-sl-btn{padding:5px 9px;border-radius:7px;border:1.5px solid ${hlEl};background:${bgEl};color:${contrastColor(bgEl)};font-size:11px;cursor:pointer;transition:all .14s;flex-shrink:0}
+.cs4-sl-btn:hover{background:${hl};color:${contrastColor(hl)};border-color:${acc}}
+.cs4-sl-popup{position:fixed;z-index:99999;background:${bgEl};border:1px solid ${hlEl};border-radius:14px;padding:16px 18px;width:236px;box-shadow:0 18px 50px rgba(0,0,0,.75)}
+.cs4-sl-title{font-size:10px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:${sub};margin-bottom:12px}
+.cs4-sl-row{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.cs4-sl-row:last-child{margin-bottom:0}
+.cs4-sl-name{font-size:11px;color:${sub};width:16px;flex-shrink:0;font-weight:700}
+.cs4-sl-track{flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;outline:none;cursor:pointer}
+.cs4-sl-track::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;background:${acc};cursor:pointer;border:2px solid ${bgEl};box-shadow:0 0 6px ${accGlo}}
+.cs4-sl-val{font-size:11px;font-family:'Courier New',monospace;color:${txt};width:26px;text-align:right;flex-shrink:0}
+.cs4-gr-btn{width:30px;height:26px;padding:0;border-radius:7px;border:1.5px solid ${hlEl};background:${bgEl};color:${contrastColor(bgEl)};cursor:pointer;transition:all .14s;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center}
+.cs4-gr-btn:hover{background:${hl};color:${contrastColor(hl)};border-color:${acc}}
+.cs4-gr-btn.cs4-gr-active{border-color:${acc};color:${contrastColor(bgEl)}}
+.cs4-gr-popup{width:280px}
+.cs4-gr-preview{height:34px;border-radius:9px;margin-bottom:14px;border:1px solid ${hlEl}}
+.cs4-gr-track{background:${hlEl}}
+.cs4-gr-chips{display:flex;gap:5px;margin:2px 0 14px}
+.cs4-gr-chip{flex:1;padding:5px 0;border-radius:6px;border:1.5px solid ${hlEl};background:${bgEl};color:${sub};font:700 10px 'Courier New',monospace;cursor:pointer;transition:all .14s}
+.cs4-gr-chip:hover{background:${hl};color:${txt}}
+.cs4-gr-chip.cs4-on{border-color:${acc};color:${acc}}
+.cs4-gr-stop{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.cs4-gr-stop input[type="color"]{-webkit-appearance:none;appearance:none;width:32px;height:26px;border:1.5px solid ${hlEl};border-radius:7px;background:none;padding:0;cursor:pointer;flex-shrink:0}
+.cs4-gr-stop input[type="color"]::-webkit-color-swatch-wrapper{padding:2px}
+.cs4-gr-stop input[type="color"]::-webkit-color-swatch{border:none;border-radius:4px}
+.cs4-gr-stop .cs4-sl-val{width:34px}
+.cs4-gr-x{width:22px;height:22px;border-radius:6px;border:none;background:transparent;color:${sub};font-size:16px;line-height:1;cursor:pointer;flex-shrink:0;transition:all .14s}
+.cs4-gr-x:hover:not(:disabled){background:${hl};color:${txt}}
+.cs4-gr-x:disabled{opacity:.25;cursor:default}
+.cs4-gr-foot{display:flex;gap:8px;margin-top:6px}
+.cs4-gr-foot .cs4-btn{flex:1;justify-content:center;font-size:11px;padding:8px 10px}
+.cs4-gr-foot .cs4-btn:disabled{opacity:.35;cursor:default}
+.cs4-lang-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.cs4-lang-label{font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:${sub};margin-right:4px}
+.cs4-lang-btn{background:${hl};border:1.5px solid transparent;border-radius:8px;padding:5px 8px;font-size:18px;cursor:pointer;transition:all .14s;line-height:1}
+.cs4-lang-btn:hover{border-color:${hlEl};transform:scale(1.12)}
+.cs4-lang-btn.cs4-lang-active{border-color:${acc};box-shadow:0 0 0 1px ${acc};transform:scale(1.1)}
+.cs4-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:26px;padding-top:20px;border-top:1px solid ${hl}}
+.cs4-icon-btn{width:42px;height:42px;border-radius:50%;border:1.5px solid ${hlEl};background:${card};color:${txt};cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .14s;margin-left:auto}
+.cs4-icon-btn + .cs4-icon-btn{margin-left:0}
+.cs4-shuffle-btn{color:${acc};border-color:${acc}}
+.cs4-shuffle-btn:hover{background:${acc};color:${accTxt}}
+.cs4-shuffle-btn.cs4-spin svg{animation:cs4-shuffle-spin .5s ease}
+@keyframes cs4-shuffle-spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.cs4-icon-btn:hover:not(:disabled){background:${hl};border-color:${acc};color:${acc}}
+.cs4-icon-btn:disabled{opacity:.3;cursor:default}
+.cs4-btn{padding:9px 22px;border-radius:500px;font-size:13px;font-weight:700;letter-spacing:.3px;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:7px;transition:all .14s}
+.cs4-btn-primary{background:${acc};color:${accTxt}}
+.cs4-btn-primary:hover{filter:brightness(1.12);transform:scale(1.02);box-shadow:0 0 18px ${accGlo}}
+.cs4-btn-secondary{background:${hl};color:${txt}}
+.cs4-btn-secondary:hover{background:${hlEl};transform:scale(1.02)}
+.cs4-btn-danger{background:rgba(255,80,80,.13);color:#ff6b6b}
+.cs4-btn-danger:hover{background:rgba(255,80,80,.26)}
+#cs4-toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(70px);background:${bgEl};color:${txt};border:1px solid ${hlEl};border-left:3px solid ${acc};padding:11px 22px;border-radius:10px;font-size:13px;font-weight:600;z-index:999999;opacity:0;pointer-events:none;white-space:nowrap;transition:opacity .22s,transform .28s cubic-bezier(.34,1.56,.64,1)}
+#cs4-toast.cs4-show{opacity:1;transform:translateX(-50%) translateY(0)}
+`;
+    const tr = t();
+    container.innerHTML = `
+<div class="cs4-header">
+  <div class="cs4-icon">🎨</div>
+  <h2 class="cs4-title">ChromaShift</h2>
+</div>
+<p class="cs4-subtitle">${tr.subtitle}</p>
+<div class="cs4-lang-bar" id="cs4-lang-bar">
+  <span class="cs4-lang-label">${tr.langLabel}:</span>
+  ${LANGUAGES.map(l => `<button class="cs4-lang-btn${getLang()===l.code?' cs4-lang-active':''}" data-lang="${l.code}" title="${l.name}">${l.flag}</button>`).join("")}
+</div>
+<div class="cs4-tabs">
+  <button class="cs4-tab cs4-active" data-panel="presets">${tr.tabPresets}</button>
+  <button class="cs4-tab" data-panel="editor">${tr.tabEditor}</button>
+  <button class="cs4-tab" data-panel="settings">${tr.tabSettings}</button>
+</div>
+<div class="cs4-panel cs4-active" id="cs4-panel-presets">
+  <div class="cs4-presets-grid" id="cs4-grid"></div>
+  <div class="cs4-save-row">
+    <input class="cs4-name-input" id="cs4-pname" placeholder="${tr.presetNamePh}" maxlength="32">
+    <button class="cs4-btn cs4-btn-primary" id="cs4-save-btn">${tr.saveBtn}</button>
+  </div>
+</div>
+<div class="cs4-panel" id="cs4-panel-editor">
+  <div id="cs4-editor"></div>
+  <div class="cs4-actions">
+    <button class="cs4-btn cs4-btn-primary" id="cs4-apply">${tr.applyBtn}</button>
+    <button class="cs4-btn cs4-btn-secondary" id="cs4-reset">${tr.resetBtn}</button>
+    <button class="cs4-btn cs4-btn-danger" id="cs4-default">${tr.defaultBtn}</button>
+    <button class="cs4-icon-btn cs4-shuffle-btn" id="cs4-shuffle" title="${shuffleText("title")}">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22"/><path d="M2 6h1.972a4 4 0 0 1 3.6 2.2"/><path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45"/></svg>
+    </button>
+    <button class="cs4-icon-btn" id="cs4-undo" title="${tr.undoTitle}" disabled>
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
+    </button>
+    <button class="cs4-icon-btn" id="cs4-redo" title="${tr.redoTitle}" disabled>
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/></svg>
+    </button>
+  </div>
+</div>
+<div class="cs4-panel" id="cs4-panel-settings">
+  <div class="cs4-community-row">
+    <span class="cs4-community-label">${tr.communityLabel}</span>
+    <label class="cs4-community-toggle">
+      <input type="checkbox" id="cs4-community-chk" ${isCommunityEnabled() ? "checked" : ""}>
+      <span class="cs4-community-slider"></span>
+    </label>
+  </div>
+  <div class="cs4-community-row" style="margin-top:12px;">
+    <span class="cs4-community-label">🧪 ${gradientsText("label")} <span class="cs4-beta-tag">${gradientsText("beta")}</span></span>
+    <label class="cs4-community-toggle">
+      <input type="checkbox" id="cs4-grad-chk" ${isGradientsEnabled() ? "checked" : ""}>
+      <span class="cs4-community-slider"></span>
+    </label>
+  </div>
+  <div class="cs4-community-row" style="margin-top:12px;flex-direction:column;align-items:stretch;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <span class="cs4-community-label">🕒 ${scheduleText("label")}</span>
+      <label class="cs4-community-toggle">
+        <input type="checkbox" id="cs4-sch-chk" ${loadSchedule().enabled ? "checked" : ""}>
+        <span class="cs4-community-slider"></span>
+      </label>
+    </div>
+    <div id="cs4-sch-body" style="display:${loadSchedule().enabled ? "flex" : "none"};flex-direction:column;gap:8px;">${scheduleBodyHtml(loadSchedule().slots)}</div>
+  </div>
+  <div class="cs4-community-row" style="margin-top:12px;">
+    <span class="cs4-community-label" id="cs4-versions-label">${tr.versionsLabel}</span>
+    <button class="cs4-btn cs4-btn-primary" id="cs4-versions-copy-btn" title="${tr.versionsCopyTitle}">${tr.versionsCopyBtn}</button>
+  </div>
+</div>
+`;
+    let toastEl = document.getElementById("cs4-toast");
+    if (!toastEl) { toastEl = document.createElement("div"); toastEl.id = "cs4-toast"; document.body.appendChild(toastEl); }
+    function toast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add("cs4-show");
+      clearTimeout(toastEl._t);
+      toastEl._t = setTimeout(() => toastEl.classList.remove("cs4-show"), 2800);
+    }
+    container.querySelectorAll(".cs4-lang-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        setLang(btn.dataset.lang);
+        const s = document.getElementById(SECTION_ID);
+        if (s) renderUI(s);
+      });
+    });
+    container.querySelectorAll(".cs4-tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        container.querySelectorAll(".cs4-tab").forEach(t => t.classList.remove("cs4-active"));
+        container.querySelectorAll(".cs4-panel").forEach(p => p.classList.remove("cs4-active"));
+        tab.classList.add("cs4-active");
+        document.getElementById(`cs4-panel-${tab.dataset.panel}`).classList.add("cs4-active");
+      });
+    });
+    function renderPresets() {
+      const grid = document.getElementById("cs4-grid");
+      if (!grid) return;
+      grid.innerHTML = "";
+      Object.entries(getAllPresets()).forEach(([key, preset]) => {
+        const el = document.createElement("div");
+        el.className = "cs4-preset-card" + (key === activePresetKey ? " cs4-active" : "");
+        const swKeys = ["csMain","csAccent","csText","csSidebar","csPlayer"];
+        el.innerHTML = `
+          <div class="cs4-preset-swatches">
+            ${swKeys.map(k=>`<div class="cs4-swatch" style="background:${preset.colors[k]||"#222"}"></div>`).join("")}
+          </div>
+          <div class="cs4-preset-name">
+            <span>${preset.emoji||"🎨"}</span>
+            <span>${preset.builtin ? (t().presetNames?.[key] || preset.name) : preset.name}</span>
+            ${preset.community ? `<span class="cs4-preset-badge-community">${t().badgeCommunity}</span>` : !preset.builtin ? `<span class="cs4-preset-badge">${t().badgeCustom}</span>` : ""}
+          </div>
+          ${!preset.builtin && !preset.community ? `<button class="cs4-preset-del" title="${t().deleteTitle}">✕</button>` : ""}`;
+        el.addEventListener("click", e => {
+          if (e.target.closest(".cs4-preset-del")) return;
+          editColors = { ...preset.colors };
+          activePresetKey = key;
+          applyColors(editColors);
+          saveColors(editColors);
+          savePreset(key);
+          renderPresets();
+          syncPickers();
+          setTimeout(() => { const s = document.getElementById(SECTION_ID); if (s) renderUI(s); }, 80);
+          toast(t().toastPresetApplied(preset.builtin ? (t().presetNames?.[key] || preset.name) : preset.name));
+        });
+        const del = el.querySelector(".cs4-preset-del");
+        if (del) {
+          del.addEventListener("click", e => {
+            e.stopPropagation();
+            const customs = loadCustomPresets();
+            delete customs[key];
+            saveCustomPresets(customs);
+            if (activePresetKey === key) { activePresetKey = "default"; savePreset("default"); }
+            renderPresets();
+            toast(t().toastPresetDeleted);
+          });
+        }
+        grid.appendChild(el);
+      });
+    }
+    renderPresets();
+
+    const gradChk = document.getElementById("cs4-grad-chk");
+    if (gradChk) {
+      gradChk.addEventListener("change", () => {
+        setGradientsEnabled(gradChk.checked);
+        buildEditor();
+        syncPickers();
+        applyColors(editColors);
+      });
+    }
+
+    const schChk = document.getElementById("cs4-sch-chk");
+    if (schChk) {
+      const schBody = document.getElementById("cs4-sch-body");
+      const afterApply = (key, colors) => {
+        editColors = { ...colors };
+        activePresetKey = key;
+        renderPresets();
+        syncPickers();
+      };
+      const readSlots = () => [...schBody.querySelectorAll(".cs4-sch-line")].map(l => ({
+        start: l.querySelector("input[type=time]").value || "07:00",
+        key: l.querySelector("select").value,
+      }));
+      const persist = slots => saveSchedule({ enabled: schChk.checked, slots });
+      const bindSchedule = () => {
+        schBody.querySelectorAll("input[type=time],select").forEach(el => {
+          el.addEventListener("change", () => { persist(readSlots()); applySchedule(true, afterApply); });
+        });
+        schBody.querySelectorAll(".cs4-sch-del").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const slots = readSlots();
+            slots.splice(+btn.dataset.i, 1);
+            persist(slots);
+            schBody.innerHTML = scheduleBodyHtml(slots);
+            bindSchedule();
+            applySchedule(true, afterApply);
+          });
+        });
+        const addBtn = schBody.querySelector("#cs4-sch-add");
+        if (addBtn) {
+          addBtn.addEventListener("click", () => {
+            const slots = readSlots();
+            slots.push({ start: "12:00", key: slots[0] ? slots[0].key : "default" });
+            persist(slots);
+            schBody.innerHTML = scheduleBodyHtml(slots);
+            bindSchedule();
+            applySchedule(true, afterApply);
+          });
+        }
+      };
+      schChk.addEventListener("change", () => {
+        persist(readSlots());
+        schBody.style.display = schChk.checked ? "flex" : "none";
+        applySchedule(true, afterApply);
+      });
+      bindSchedule();
+    }
+
+    const communityChk = document.getElementById("cs4-community-chk");
+    if (communityChk) {
+      communityChk.addEventListener("change", async () => {
+        const enabled = communityChk.checked;
+        setCommunityEnabled(enabled);
+        if (enabled) {
+          communityChk.disabled = true;
+          communityChk.parentElement.style.opacity = "0.5";
+          const presets = await fetchCommunityPresets();
+          communityChk.disabled = false;
+          communityChk.parentElement.style.opacity = "1";
+          if (presets && Object.keys(presets).length > 0) {
+            saveCommunityPresets(presets);
+          } else {
+            toast(t().communityNoneFound);
+            setCommunityEnabled(false);
+            communityChk.checked = false;
+            return;
+          }
+        } else {
+          saveCommunityPresets({});
+        }
+        setTimeout(() => {
+          try { Spicetify.Platform.reload(); } catch (_) {
+            try { window.location.reload(); } catch (__) {}
+          }
+        }, 400);
+      });
+    }
+
+    function getAppVersions() {
+      let spotifyV = "?", spicetifyV = "?";
+      try {
+        spotifyV =
+          (Spicetify && Spicetify.Platform && Spicetify.Platform.version) ||
+          (Spicetify && Spicetify.Platform && Spicetify.Platform.PlatformData && Spicetify.Platform.PlatformData.version) ||
+          "?";
+      } catch (_) {}
+      try {
+        spicetifyV =
+          (Spicetify && Spicetify.Config && Spicetify.Config.version) ||
+          (Spicetify && Spicetify.CONFIG && Spicetify.CONFIG.version) ||
+          "?";
+      } catch (_) {}
+      return { spotifyV, spicetifyV, chrV: CURRENT_VERSION };
+    }
+
+    const versionsCopyBtn = document.getElementById("cs4-versions-copy-btn");
+    if (versionsCopyBtn) {
+      versionsCopyBtn.addEventListener("click", async () => {
+        const v = getAppVersions();
+        const text = `${v.spotifyV} ● ${v.spicetifyV} ● ${v.chrV}`;
+        try {
+          await navigator.clipboard.writeText(text);
+          toast(t().versionsCopied);
+        } catch (_) {
+          toast(text);
+        }
+      });
+    }
+
+    document.getElementById("cs4-save-btn").addEventListener("click", () => {
+      const ni = document.getElementById("cs4-pname");
+      const name = ni.value.trim();
+      if (!name) { toast(t().toastNoName); return; }
+      const customs = loadCustomPresets();
+      const key = "custom_" + Date.now();
+      customs[key] = { name, emoji: "🎨", builtin: false, colors: { ...editColors } };
+      saveCustomPresets(customs);
+      ni.value = "";
+      activePresetKey = key;
+      savePreset(key);
+      renderPresets();
+      toast(t().toastPresetSaved(name));
+    });
+    const editorEl = document.getElementById("cs4-editor");
+    const pickerRefs = {};
+
+    function buildEditor() {
+      editorEl.innerHTML = "";
+      const groups = [...new Set(COLOR_DEFS.map(d => d.group))];
+      groups.forEach(group => {
+        const lbl = document.createElement("div");
+        lbl.className = "cs4-group-label";
+        lbl.textContent = t()[group] || group;
+        editorEl.appendChild(lbl);
+
+        const grid = document.createElement("div");
+        grid.className = "cs4-colors-grid";
+
+        COLOR_DEFS.filter(d => d.group === group).forEach(def => {
+          const rawVal = editColors[def.key] || "#000000";
+          const val = (!isGradientsEnabled() && isGradientValue(rawVal)) ? gradientFirstColor(rawVal) : rawVal;
+          const canGradient = GRADIENT_KEYS.has(def.key) && isGradientsEnabled();
+          const row = document.createElement("div");
+          row.className = "cs4-color-row";
+          row.dataset.key = def.key;
+          row.innerHTML = `
+            <div class="cs4-color-circle" style="background:${val}">
+              <input type="color" value="#000000" data-key="${def.key}">
+            </div>
+            <div class="cs4-color-lbl">${t().colorLabels[def.labelKey] || def.labelKey}</div>
+            <input class="cs4-hex" value="" maxlength="7" spellcheck="false" data-key="${def.key}">
+            <button class="cs4-sl-btn" data-slkey="${def.key}" title="Slider HSL">HSL</button>
+            ${canGradient ? `<button class="cs4-gr-btn" data-grkey="${def.key}"></button>` : ""}
+          `;
+
+          const picker  = row.querySelector("input[type='color']");
+          const circle  = row.querySelector(".cs4-color-circle");
+          const hexInp  = row.querySelector(".cs4-hex");
+          const slBtn   = row.querySelector(".cs4-sl-btn");
+          const grBtn   = row.querySelector(".cs4-gr-btn");
+          pickerRefs[def.key] = { picker, circle, hexInp, slBtn, grBtn, row };
+
+          function setColor(v) {
+            editColors[def.key] = v;
+            circle.style.background = v;
+            if (picker.value !== v) picker.value = v;
+            if (hexInp.value !== v) hexInp.value = v;
+            hexInp.classList.remove("cs4-invalid");
+            applyColors(editColors);
+          }
+
+          picker.addEventListener("input", e => setColor(e.target.value));
+          picker.addEventListener("change", () => pushHistory());
+
+          hexInp.addEventListener("input", e => {
+            const raw = e.target.value.trim();
+            if (isValidHex(raw)) { hexInp.classList.remove("cs4-invalid"); setColor(normalizeHex(raw)); }
+            else hexInp.classList.add("cs4-invalid");
+          });
+          hexInp.addEventListener("blur", e => {
+            if (!isValidHex(e.target.value) && !isGradientValue(editColors[def.key])) {
+              hexInp.value = editColors[def.key] || "#000000"; hexInp.classList.remove("cs4-invalid");
+            }
+          });
+          hexInp.addEventListener("change", e => {
+            if (isValidHex(e.target.value)) pushHistory();
+          });
+
+          slBtn.addEventListener("click", e => {
+            e.stopPropagation();
+            openSlider(def.key, slBtn);
+          });
+
+          if (grBtn) {
+            grBtn.addEventListener("click", async e => {
+              e.stopPropagation();
+              openGradient(def.key, grBtn);
+            });
+          }
+
+          grid.appendChild(row);
+        });
+        editorEl.appendChild(grid);
+      });
+    }
+
+    function syncPickers() {
+      COLOR_DEFS.forEach(def => {
+        const rawV = editColors[def.key] || "#000000";
+        const v = (!isGradientsEnabled() && isGradientValue(rawV)) ? gradientFirstColor(rawV) : rawV;
+        const r = pickerRefs[def.key];
+        if (!r) return;
+        const grad = isGradientValue(v);
+        r.circle.style.background = v;
+        r.hexInp.classList.remove("cs4-invalid");
+        if (grad) {
+          r.hexInp.value = "";
+          r.hexInp.disabled = true;
+          r.hexInp.placeholder = t().gradientTag || "";
+          r.picker.style.visibility = "hidden";
+          if (r.slBtn) r.slBtn.disabled = true;
+        } else {
+          r.picker.value = v;
+          r.picker.style.visibility = "visible";
+          r.hexInp.disabled = false;
+          r.hexInp.placeholder = "";
+          r.hexInp.value = v;
+          if (r.slBtn) r.slBtn.disabled = false;
+        }
+        if (r.grBtn) {
+          r.grBtn.innerHTML = ICON_GRAD;
+          r.grBtn.title = t().gradientTitle;
+          r.grBtn.classList.toggle("cs4-gr-active", grad);
+        }
+      });
+    }
+    function openSlider(key, anchor) {
+      if (activeSliderPop) { activeSliderPop.remove(); activeSliderPop = null; }
+      const hex = editColors[key] || "#1db954";
+      const hsl = hexToHsl(hex);
+      const pop = document.createElement("div");
+      pop.className = "cs4-sl-popup";
+      const defLabel = t().colorLabels[COLOR_DEFS.find(d => d.key === key)?.labelKey] || key;
+      pop.innerHTML = `
+        <div class="cs4-sl-title">${defLabel}</div>
+        <div class="cs4-sl-row">
+          <span class="cs4-sl-name">H</span>
+          <input class="cs4-sl-track" id="cs4h" type="range" min="0" max="360" value="${hsl.h}"
+            style="background:linear-gradient(to right,hsl(0,100%,50%),hsl(60,100%,50%),hsl(120,100%,50%),hsl(180,100%,50%),hsl(240,100%,50%),hsl(300,100%,50%),hsl(360,100%,50%))">
+          <span class="cs4-sl-val" id="cs4hv">${hsl.h}</span>
+        </div>
+        <div class="cs4-sl-row">
+          <span class="cs4-sl-name">S</span>
+          <input class="cs4-sl-track" id="cs4s" type="range" min="0" max="100" value="${hsl.s}"
+            style="background:linear-gradient(to right,hsl(${hsl.h},0%,${hsl.l}%),hsl(${hsl.h},100%,${hsl.l}%))">
+          <span class="cs4-sl-val" id="cs4sv">${hsl.s}</span>
+        </div>
+        <div class="cs4-sl-row">
+          <span class="cs4-sl-name">L</span>
+          <input class="cs4-sl-track" id="cs4l" type="range" min="0" max="100" value="${hsl.l}"
+            style="background:linear-gradient(to right,#000,hsl(${hsl.h},${hsl.s}%,50%),#fff)">
+          <span class="cs4-sl-val" id="cs4lv">${hsl.l}</span>
+        </div>
+      `;
+      document.body.appendChild(pop);
+      activeSliderPop = pop;
+
+      const rect = anchor.getBoundingClientRect();
+      pop.style.top  = Math.min(rect.bottom + 8, window.innerHeight - 200) + "px";
+      pop.style.left = Math.min(rect.left, window.innerWidth - 252) + "px";
+
+      const slH = pop.querySelector("#cs4h");
+      const slS = pop.querySelector("#cs4s");
+      const slL = pop.querySelector("#cs4l");
+
+      function onSlide() {
+        const h = +slH.value, s = +slS.value, l = +slL.value;
+        pop.querySelector("#cs4hv").textContent = h;
+        pop.querySelector("#cs4sv").textContent = s;
+        pop.querySelector("#cs4lv").textContent = l;
+        slS.style.background = `linear-gradient(to right,hsl(${h},0%,${l}%),hsl(${h},100%,${l}%))`;
+        slL.style.background = `linear-gradient(to right,#000,hsl(${h},${s}%,50%),#fff)`;
+        const newHex = hslToHex(h, s, l);
+        const r = pickerRefs[key];
+        if (!r) return;
+        editColors[key] = newHex;
+        r.circle.style.background = newHex;
+        r.picker.value = newHex;
+        r.hexInp.value = newHex;
+        r.hexInp.classList.remove("cs4-invalid");
+        applyColors(editColors);
+      }
+      [slH, slS, slL].forEach(s => {
+        s.addEventListener("input", onSlide);
+        s.addEventListener("change", () => pushHistory());
+      });
+
+      setTimeout(() => {
+        function close(e) {
+          if (!pop.contains(e.target) && e.target !== anchor) {
+            pop.remove(); activeSliderPop = null;
+            document.removeEventListener("click", close);
+          }
+        }
+        document.addEventListener("click", close);
+      }, 50);
+    }
+
+    function openGradient(key, anchor) {
+      if (activeSliderPop) { activeSliderPop.remove(); activeSliderPop = null; }
+      const current = editColors[key];
+      const g = parseGradientValue(current, isGradientValue(current) ? null : current);
+      let angle = g.angle;
+      const stops = g.stops.map(x => ({ ...x }));
+      const r = pickerRefs[key];
+      const defLabel = t().colorLabels[COLOR_DEFS.find(d => d.key === key)?.labelKey] || key;
+      const ANGLES = [0, 45, 90, 135, 180, 270];
+
+      const pop = document.createElement("div");
+      pop.className = "cs4-sl-popup cs4-gr-popup";
+      pop.innerHTML = `
+        <div class="cs4-sl-title">${defLabel} · ${t().gradientTag}</div>
+        <div class="cs4-gr-preview"></div>
+        <div class="cs4-sl-row">
+          <span class="cs4-sl-name">∠</span>
+          <input class="cs4-sl-track cs4-gr-track" data-angle type="range" min="0" max="360" value="${angle}">
+          <span class="cs4-sl-val cs4-gr-angval" style="width:34px">${angle}°</span>
+        </div>
+        <div class="cs4-gr-chips">${ANGLES.map(a => `<button class="cs4-gr-chip" data-a="${a}">${a}°</button>`).join("")}</div>
+        <div class="cs4-gr-stops"></div>
+        <div class="cs4-gr-foot">
+          <button class="cs4-btn cs4-btn-secondary" data-add>${t().gradientAddBtn}</button>
+          <button class="cs4-btn cs4-btn-secondary" data-solid>${t().gradientRemoveBtn}</button>
+        </div>
+      `;
+      document.body.appendChild(pop);
+      activeSliderPop = pop;
+
+      const preview  = pop.querySelector(".cs4-gr-preview");
+      const angInp   = pop.querySelector("[data-angle]");
+      const angVal   = pop.querySelector(".cs4-gr-angval");
+      const stopsBox = pop.querySelector(".cs4-gr-stops");
+      const addBtn   = pop.querySelector("[data-add]");
+      const chips    = [...pop.querySelectorAll(".cs4-gr-chip")];
+
+      function place() {
+        const rect = anchor.getBoundingClientRect();
+        pop.style.top  = Math.max(8, Math.min(rect.bottom + 8, window.innerHeight - pop.offsetHeight - 12)) + "px";
+        pop.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - pop.offsetWidth - 12)) + "px";
+      }
+
+      function paintPreview() {
+        const val = makeGradientValue(angle, stops);
+        preview.style.background = val;
+        angVal.textContent = angle + "°";
+        chips.forEach(c => c.classList.toggle("cs4-on", +c.dataset.a === angle));
+        return val;
+      }
+      function apply() {
+        const val = paintPreview();
+        editColors[key] = val;
+        applyColors(editColors);
+        syncPickers();
+      }
+
+      function renderStops() {
+        stopsBox.innerHTML = stops.map((x, i) => `
+          <div class="cs4-gr-stop">
+            <input type="color" value="${x.color}" data-c="${i}">
+            <input class="cs4-sl-track cs4-gr-track" type="range" min="0" max="100" value="${x.pos}" data-p="${i}">
+            <span class="cs4-sl-val" data-pv="${i}">${x.pos}%</span>
+            <button class="cs4-gr-x" data-x="${i}" ${stops.length <= 2 ? "disabled" : ""}>×</button>
+          </div>`).join("");
+        stopsBox.querySelectorAll("[data-c]").forEach(inp => {
+          inp.addEventListener("input", () => { stops[+inp.dataset.c].color = inp.value; apply(); });
+          inp.addEventListener("change", () => pushHistory());
+        });
+        stopsBox.querySelectorAll("[data-p]").forEach(inp => {
+          inp.addEventListener("input", () => {
+            const i = +inp.dataset.p;
+            stops[i].pos = +inp.value;
+            stopsBox.querySelector(`[data-pv="${i}"]`).textContent = inp.value + "%";
+            apply();
+          });
+          inp.addEventListener("change", () => pushHistory());
+        });
+        stopsBox.querySelectorAll("[data-x]").forEach(btn => {
+          btn.addEventListener("click", () => {
+            if (stops.length <= 2) return;
+            stops.splice(+btn.dataset.x, 1);
+            renderStops(); apply(); pushHistory(); place();
+          });
+        });
+        addBtn.disabled = stops.length >= MAX_STOPS;
+      }
+
+      angInp.addEventListener("input", () => { angle = +angInp.value; apply(); });
+      angInp.addEventListener("change", () => pushHistory());
+      chips.forEach(c => c.addEventListener("click", () => {
+        angle = +c.dataset.a; angInp.value = angle; apply(); pushHistory();
+      }));
+
+      addBtn.addEventListener("click", () => {
+        if (stops.length >= MAX_STOPS) return;
+        const sorted = [...stops].sort((a, b) => a.pos - b.pos);
+        let gi = 0, gw = -1;
+        for (let i = 0; i < sorted.length - 1; i++) {
+          const w = sorted[i + 1].pos - sorted[i].pos;
+          if (w > gw) { gw = w; gi = i; }
+        }
+        const a = sorted[gi], b = sorted[gi + 1];
+        stops.push({ color: mixHex(a.color, b.color), pos: Math.round((a.pos + b.pos) / 2) });
+        stops.sort((x, y) => x.pos - y.pos);
+        renderStops(); apply(); pushHistory(); place();
+      });
+
+      pop.querySelector("[data-solid]").addEventListener("click", () => {
+        if (isGradientValue(editColors[key])) {
+          editColors[key] = [...stops].sort((a, b) => a.pos - b.pos)[0].color;
+          applyColors(editColors);
+          pushHistory();
+        }
+        pop.remove(); activeSliderPop = null;
+        syncPickers();
+      });
+
+      renderStops();
+      paintPreview();
+      place();
+
+      setTimeout(() => {
+        function close(e) {
+          if (activeSliderPop !== pop) { document.removeEventListener("click", close); return; }
+          const path = e.composedPath ? e.composedPath() : [];
+          if (!path.includes(pop) && !path.includes(anchor)) {
+            pop.remove(); activeSliderPop = null;
+            document.removeEventListener("click", close);
+            syncPickers();
+          }
+        }
+        document.addEventListener("click", close);
+      }, 50);
+    }
+
+    buildEditor();
+    syncPickers();
+
+    document.getElementById("cs4-apply").addEventListener("click", () => {
+      applyColors(editColors); saveColors(editColors);
+      const customs = loadCustomPresets();
+      if (customs[activePresetKey]) {
+        customs[activePresetKey].colors = { ...editColors };
+        saveCustomPresets(customs);
+      }
+      toast(t().toastSaved);
+    });
+    document.getElementById("cs4-reset").addEventListener("click", () => {
+      const p = getAllPresets()[activePresetKey] || BUILTIN_PRESETS.default;
+      editColors = { ...p.colors };
+      syncPickers(); applyColors(editColors);
+      pushHistory();
+      toast(t().toastReset);
+    });
+    document.getElementById("cs4-shuffle").addEventListener("click", e => {
+      const btn = e.currentTarget;
+      btn.classList.remove("cs4-spin");
+      void btn.offsetWidth;
+      btn.classList.add("cs4-spin");
+      editColors = generateRandomPreset();
+      activePresetKey = "";
+      pushHistory();
+      syncPickers();
+      applyColors(editColors);
+      renderPresets();
+      toast(shuffleText("done"));
+    });
+    document.getElementById("cs4-undo").addEventListener("click", undo);
+    document.getElementById("cs4-redo").addEventListener("click", redo);
+    document.getElementById("cs4-default").addEventListener("click", () => {
+      editColors = { ...BUILTIN_PRESETS.default.colors };
+      activePresetKey = "default";
+      syncPickers(); applyColors(editColors); saveColors(editColors); savePreset("default");
+      setTimeout(() => { const s = document.getElementById(SECTION_ID); if (s) renderUI(s); }, 80);
+      toast(t().toastDefault);
+    });
+  }
+
+
+  // ===========================================================
+  // NAVIGATION
+  // ===========================================================
+
+  function tryMount() { if (!document.getElementById(SECTION_ID)) buildUI(); }
+
+  let _navT; const navObserver = new MutationObserver(() => { if (document.getElementById(SECTION_ID)) return; clearTimeout(_navT); _navT = setTimeout(tryMount, 300); });
+  navObserver.observe(document.body, { childList: true, subtree: true });
+
+  if (Spicetify.Platform?.History) {
+    Spicetify.Platform.History.listen(() => setTimeout(tryMount, 400));
+  }
+
+
+  // ===========================================================
+  // AUTO-UPDATER
+  // ===========================================================
+
+  const CURRENT_VERSION  = "3.5.0";
+  const RELEASES_API     = "https://api.github.com/repos/stefaceriani/chromashift/releases/latest";
+  const RELEASES_PAGE    = "https://github.com/stefaceriani/chromashift/releases";
+  const UPDATE_INTERVAL  = 60 * 60 * 1000;
+
+  function parseSemver(v) {
+    return (v || "").replace(/^v/, "").split(".").map(Number);
+  }
+
+  function isNewer(remote, local) {
+    const r = parseSemver(remote), l = parseSemver(local);
+    for (let i = 0; i < 3; i++) {
+      if ((r[i] || 0) > (l[i] || 0)) return true;
+      if ((r[i] || 0) < (l[i] || 0)) return false;
+    }
+    return false;
+  }
+
+  function showUpdateBadge(remoteVersion) {
+    if (document.getElementById("cs4-update-badge")) return;
+
+    const acc    = _liveColors.csAccent || "#1db954";
+    const accTxt = contrastColor(acc);
+    const accGlo = acc + "66";
+
+    const badge = document.createElement("div");
+    badge.id = "cs4-update-badge";
+    badge.style.cssText = `
+      position:fixed;bottom:88px;right:18px;z-index:9999998;
+      background:${acc};color:${accTxt};
+      border-radius:14px;padding:10px 16px;
+      box-shadow:0 0 0 3px ${accGlo},0 4px 18px rgba(0,0,0,.55);
+      font-size:12px;font-weight:700;font-family:inherit;
+      display:flex;align-items:center;gap:8px;
+      cursor:pointer;
+      animation:cs4-badge-in .35s cubic-bezier(.34,1.56,.64,1);
+      max-width:300px;user-select:none;
+    `;
+
+    badge.innerHTML = `
+      <style>
+        @keyframes cs4-badge-in{from{opacity:0;transform:translateY(12px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+        #cs4-update-badge:hover{filter:brightness(1.1)}
+      </style>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path d="M12 16V8M12 8L8.5 11.5M12 8L15.5 11.5" stroke="${accTxt}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="12" cy="12" r="10" stroke="${accTxt}" stroke-width="2"/>
+      </svg>
+      <span>ChromaShift v${remoteVersion} available — click to restart</span>
+      <span id="cs4-badge-close" style="margin-left:4px;opacity:.65;cursor:pointer;font-size:15px;line-height:1">✕</span>
+    `;
+
+    document.body.appendChild(badge);
+    badge.addEventListener("click", async (e) => {
+      if (e.target.id === "cs4-badge-close") { badge.remove(); return; }
+      const msgEl = badge.querySelector("span:not(#cs4-badge-close)");
+      msgEl.textContent = "Clearing cache…";
+      try {
+        await fetch("https://purge.jsdelivr.net/gh/stefaceriani/chromashift@main/chromashift.js");
+      } catch (_) {}
+
+      msgEl.textContent = "Restarting…";
+      await new Promise(r => setTimeout(r, 800));
+      try { Spicetify.Platform.reload(); return; } catch (_) {}
+      try { window.location.reload(); return; } catch (_) {}
+      window.open(RELEASES_PAGE, "_blank");
+    });
+
+    document.getElementById("cs4-badge-close")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      badge.remove();
+    });
+    setTimeout(() => badge?.remove(), 15000);
+  }
+
+  async function checkForUpdates() {
+    try {
+      const res = await fetch(RELEASES_API + "?t=" + Date.now(), {
+        headers: { "Accept": "application/vnd.github.v3+json" }
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const remoteVersion = (data.tag_name || "").replace(/^v/, "");
+      if (!remoteVersion) return;
+      if (!isNewer(remoteVersion, CURRENT_VERSION)) return;
+      showUpdateBadge(remoteVersion);
+    } catch (_) {}
+  }
+
+
+  // ===========================================================
+  // BOOT
+  // ===========================================================
+
+  applyColors(loadColors());
+  applySchedule(false);
+  setInterval(() => applySchedule(false), 60000);
+  setTimeout(() => { tryMount(); runAllFixes(); }, 800);
+  setTimeout(checkForUpdates, 5000);
+  setInterval(checkForUpdates, UPDATE_INTERVAL);
+  window.addEventListener("load", () => setTimeout(runAllFixes, 500));
+
 })();
